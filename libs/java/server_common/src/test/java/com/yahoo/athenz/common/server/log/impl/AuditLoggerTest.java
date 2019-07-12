@@ -64,6 +64,13 @@ public class AuditLoggerTest {
         AuditLoggerFactory auditLoggerFactory = new DefaultAuditLoggerFactory();
         AuditLogger logger = auditLoggerFactory.create();
         AuditLogMsgBuilder msgBldr = logger.getMsgBuilder();
-        auditLogger.log(msgBldr);
+        logger.log(msgBldr);
+    }
+
+    @Test
+    public void testAuditLogger() {
+        AuditLogger auditLogger = new DefaultAuditLogger("testLogger");
+        auditLogger.log("testLogMsg", "testVersiontag");
+        auditLogger.log(null);
     }
 }

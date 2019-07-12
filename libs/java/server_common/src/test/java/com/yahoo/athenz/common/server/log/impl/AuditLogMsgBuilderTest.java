@@ -147,5 +147,16 @@ public class AuditLogMsgBuilderTest {
         Assert.assertTrue(msg.contains("UUID="), "Test string=" + msg);
         Assert.assertTrue(msg.contains("WHO-fullname=(null)"), "Test string=" + msg);
         Assert.assertTrue(msg.contains("WHEN-epoch="), "Test string=" + msg);
+
+        //when all the properties are not null now
+        msgBldr.whatDetails("testDetails");
+        msgBldr.whoFullName("testFullName");
+        msgBldr.uuId("testUUID");
+        msg = msgBldr.build();
+        Assert.assertTrue(msg.contains("WHAT-api=(testBuild)"), "Test string=" + msg);
+        Assert.assertTrue(msg.contains("WHO-fullname=(testFullName)"), "Test string=" + msg);
+        Assert.assertTrue(msg.contains("WHEN-epoch="), "Test string=" + msg);
+        Assert.assertTrue(msg.contains("UUID=(testUUID)"), "Test string=" + msg);
+        Assert.assertTrue(msg.contains("WHAT-details=(testDetails)"), "Test string=" + msg);
     }
 }
