@@ -21,6 +21,9 @@
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
+  <properties>
+    <target.percentage>66</target.percentage>
+  </properties>
   <artifactId>athenz-jetty-container</artifactId>
   <name>athenz-jetty-container</name>
   <description>Athenz Jetty Container</description>
