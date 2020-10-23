@@ -981,7 +981,7 @@ public class ZMSImpl implements Authorizer, KeyStore, ZMSHandler {
         Map<String, Integer> eligibleTemplatesForAutoUpdate = new HashMap<>();
         for (String templateName : serverSolutionTemplates.getTemplates().keySet()) {
             Template template = serverSolutionTemplates.get(templateName);
-            if (template.getMetadata().getAutoUpdate()
+            if (template != null && template.getMetadata() != null && template.getMetadata().getAutoUpdate() == Boolean.TRUE
                     && template.getMetadata().getKeywordsToReplace().isEmpty()) {
                 eligibleTemplatesForAutoUpdate.put(templateName, template.getMetadata().getLatestVersion());
             }
@@ -6639,10 +6639,15 @@ public class ZMSImpl implements Authorizer, KeyStore, ZMSHandler {
         if (val == null) {
             throw ZMSUtils.requestError("Missing or malformed " + type, caller);
         }
-        
-        Result result = validator.validate(val, type);
-        if (!result.valid) {
-            throw ZMSUtils.requestError("Invalid " + type  + " error: " + result.error, caller);
+
+        try {
+            Result result = validator.validate(val, type);
+            if (!result.valid) {
+                throw ZMSUtils.requestError("Invalid " + type + " error: " + result.error, caller);
+            }
+        } catch (Exception ex) {
+            LOG.error("Object validation exception", ex);
+            throw ZMSUtils.requestError("Invalid " + type + " error: " + ex.getMessage(), caller);
         }
     }
     

@@ -8403,6 +8403,19 @@ public class ZMSImplTest {
             fail();
         } catch (ResourceException ignored) {
         }
+
+        role = new Role().setName("coretech:role.dev-team");
+        roleMembers = new ArrayList<>();
+        roleMembers.add(new RoleMember().setMemberName("user.user1"));
+        roleMembers.add(null);
+        role.setRoleMembers(roleMembers);
+
+        try {
+            zms.validate(role, "Role", "testValidate");
+            fail();
+        } catch (ResourceException ex) {
+            assertTrue(ex.getMessage().contains("Invalid Role"), ex.getMessage());
+        }
     }
     
     @Test
@@ -19622,7 +19635,7 @@ public class ZMSImplTest {
         expextedNotifications.get(0).addDetails("domain", "testdomain1");
         expextedNotifications.get(0).addDetails("member", "user.fury");
         expextedNotifications.get(0).setNotificationToEmailConverter(new PutRoleMembershipNotificationTask.PutMembershipNotificationToEmailConverter());
-        expextedNotifications.get(0).setType("role_membership_approval");
+        expextedNotifications.get(0).setNotificationToMetricConverter(new PutRoleMembershipNotificationTask.PutMembershipNotificationToMetricConverter());
 
         Mockito.verify(mockNotificationManager,
                 times(1)).sendNotifications(eq(expextedNotifications));

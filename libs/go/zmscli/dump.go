@@ -30,6 +30,7 @@ func (cli Zms) dumpDomain(buf *bytes.Buffer, domain *zms.Domain) {
 	dumpInt32Value(buf, indentLevel1, "product_id", domain.YpmId)
 	dumpStringValue(buf, indentLevel1, "org", string(domain.Org))
 	dumpBoolValue(buf, indentLevel1, "audit_enabled", domain.AuditEnabled)
+	dumpStringValue(buf, indentLevel1, "user_authority_filter", domain.UserAuthorityFilter)
 	dumpInt32Value(buf, indentLevel1, "member_expiry_days", domain.MemberExpiryDays)
 	dumpInt32Value(buf, indentLevel1, "service_expiry_days", domain.ServiceExpiryDays)
 	dumpInt32Value(buf, indentLevel1, "token_expiry_mins", domain.TokenExpiryMins)
@@ -652,14 +653,17 @@ func (cli Zms) dumpRolesPrincipal(buf *bytes.Buffer, roleMember *zms.DomainRoleM
 	buf.WriteString( "member: " + string(roleMember.MemberName) + "\n")
 	buf.WriteString( "roles:\n")
 	for _, role := range roleMember.MemberRoles {
-		buf.WriteString(indentLevel1Dash + string(role.RoleName) + " domain: " + string(role.DomainName))
+		buf.WriteString(indentLevel1Dash + "name: " + string(role.RoleName) +"\n")
+		buf.WriteString(indentLevel1 + "  domain: " + string(role.DomainName) + "\n")
 		if role.Expiration != nil {
-			buf.WriteString(" expiration: " + role.Expiration.String())
+			buf.WriteString(indentLevel1 + "  expiration: " + role.Expiration.String() + "\n")
 		}
 		if role.ReviewReminder != nil {
-			buf.WriteString(" review: " + role.ReviewReminder.String())
+			buf.WriteString(indentLevel1 + "  review: " + role.ReviewReminder.String() + "\n")
 		}
-		buf.WriteString("\n")
+		if role.SystemDisabled != nil && *role.SystemDisabled != 0 {
+			buf.WriteString(indentLevel1 + "  system-disabled: true\n")
+		}
 	}
 }
 
@@ -667,10 +671,13 @@ func (cli Zms) dumpGroupsPrincipal(buf *bytes.Buffer, groupMember *zms.DomainGro
 	buf.WriteString( "member: " + string(groupMember.MemberName) + "\n")
 	buf.WriteString( "groups:\n")
 	for _, group := range groupMember.MemberGroups {
-		buf.WriteString(indentLevel1Dash + string(group.GroupName) + " domain: " + string(group.DomainName))
+		buf.WriteString(indentLevel1Dash + "name: " + string(group.GroupName) +"\n")
+		buf.WriteString(indentLevel1 + "  domain: " + string(group.DomainName) + "\n")
 		if group.Expiration != nil {
-			buf.WriteString(" expiration: " + group.Expiration.String())
+			buf.WriteString(indentLevel1 + "  expiration: " + group.Expiration.String() + "\n")
 		}
-		buf.WriteString("\n")
+		if group.SystemDisabled != nil && *group.SystemDisabled != 0 {
+			buf.WriteString(indentLevel1 + "  system-disabled: true\n")
+		}
 	}
 }
