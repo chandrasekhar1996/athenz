@@ -18,6 +18,7 @@ package com.yahoo.athenz.zms.utils;
 import java.util.*;
 
 import com.yahoo.athenz.auth.Authority;
+import com.yahoo.athenz.auth.impl.SimplePrincipal;
 import com.yahoo.athenz.zms.*;
 import org.eclipse.jetty.util.StringUtil;
 import org.slf4j.Logger;
@@ -148,31 +149,6 @@ public class ZMSUtils {
             trustedRole.append("res_group.").append(resourceGroup).append('.');
         }
         return trustedRole.toString();
-    }
-
-    public static List<String> convertRoleMembersToMembers(List<RoleMember> members) {
-        List<String> memberList = new ArrayList<>();
-        if (members == null) {
-            return memberList;
-        }
-        for (RoleMember member: members) {
-            // only add active members to membername list. Active flag is optional for default value
-            if (member.getActive() != Boolean.FALSE) {
-                memberList.add(member.getMemberName());
-            }
-        }
-        return memberList;
-    }
-    
-    public static List<RoleMember> convertMembersToRoleMembers(List<String> members) {
-        List<RoleMember> roleMemberList = new ArrayList<>();
-        if (members == null) {
-            return roleMemberList;
-        }
-        for (String member: members) {
-            roleMemberList.add(new RoleMember().setMemberName(member));
-        }
-        return roleMemberList;
     }
     
     /**
@@ -437,5 +413,28 @@ public class ZMSUtils {
         }
 
         return false;
+    }
+
+    public static Principal createPrincipalForName(String principalName, String userDomain, String userDomainAlias) {
+
+        String domain;
+        String name;
+
+        // if we have no . in the principal name we're going to default
+        // to our configured user domain
+
+        int idx = principalName.lastIndexOf('.');
+        if (idx == -1) {
+            domain = userDomain;
+            name = principalName;
+        } else {
+            domain = principalName.substring(0, idx);
+            if (userDomainAlias != null && userDomainAlias.equals(domain)) {
+                domain = userDomain;
+            }
+            name = principalName.substring(idx + 1);
+        }
+
+        return SimplePrincipal.create(domain, name, (String) null);
     }
 }
