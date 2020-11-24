@@ -98,7 +98,12 @@ func (cli *Zms) EvalCommand(params []string) (*string, error) {
 			return cli.helpCommand(params)
 		case "lookup-domain-by-aws-account", "lookup-domain-by-account":
 			if argc == 1 {
-				return cli.LookupDomainById(args[0], nil)
+				return cli.LookupDomainById(args[0], "", nil)
+			}
+			return cli.helpCommand(params)
+		case "lookup-domain-by-azure-subscription", "lookup-domain-by-subscription":
+			if argc == 1 {
+				return cli.LookupDomainById("", args[0], nil)
 			}
 			return cli.helpCommand(params)
 		case "lookup-domain-by-product-id":
@@ -107,7 +112,7 @@ func (cli *Zms) EvalCommand(params []string) (*string, error) {
 				if err != nil {
 					return nil, err
 				}
-				return cli.LookupDomainById("", &productID)
+				return cli.LookupDomainById("", "", &productID)
 			}
 			return cli.helpCommand(params)
 		case "overdue-review":
@@ -257,13 +262,13 @@ func (cli *Zms) EvalCommand(params []string) (*string, error) {
 				principal = args[0]
 			}
 			return cli.ListPendingDomainGroupMembers(principal)
-		case "show-roles-principal" :
+		case "show-roles-principal":
 			if argc == 0 {
 				return cli.ShowRolesPrincipal("", dn)
 			} else if argc == 1 {
 				return cli.ShowRolesPrincipal(args[0], dn)
 			}
-		case "show-groups-principal" :
+		case "show-groups-principal":
 			if argc == 0 {
 				return cli.ShowGroupsPrincipal("", dn)
 			} else if argc == 1 {
@@ -581,6 +586,10 @@ func (cli *Zms) EvalCommand(params []string) (*string, error) {
 			if argc == 1 {
 				return cli.SetDomainAccount(dn, args[0])
 			}
+		case "set-azure-subscription", "set-domain-subscription":
+			if argc == 1 {
+				return cli.SetDomainSubscription(dn, args[0])
+			}
 		case "set-domain-member-expiry-days":
 			if argc == 1 {
 				days, err := cli.getInt32(args[0])
@@ -843,6 +852,24 @@ func (cli *Zms) EvalCommand(params []string) (*string, error) {
 				}
 				return cli.PutGroupMembershipDecision(dn, args[0], args[1], approval)
 			}
+		case "add-role-tag":
+			if argc >= 3 {
+				return cli.AddRoleTags(dn, args[0], args[1], args[2:])
+			}
+		case "delete-role-tag":
+			if argc == 2 {
+				return cli.DeleteRoleTags(dn, args[0], args[1], "")
+			} else if argc == 3 {
+				return cli.DeleteRoleTags(dn, args[0], args[1], args[2])
+			}
+		case "show-roles":
+			if argc == 0 {
+				return cli.ShowRoles(dn, "", "")
+			} else if argc == 1 {
+				return cli.ShowRoles(dn, args[0], "")
+			} else if argc == 2 {
+				return cli.ShowRoles(dn, args[0], args[1])
+			}
 		default:
 			return nil, fmt.Errorf("unrecognized command '%v'. type 'zms-cli help' to see help information", cmd)
 		}
@@ -916,6 +943,13 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   account-id  : lookup domain with specified account id\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   lookup-domain-by-aws-account 1234567890\n")
+	case "lookup-domain-by-subscription", "lookup-domain-by-azure-subscription":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   lookup-domain-by-azure-subscription subscription-id\n")
+		buf.WriteString(" parameters:\n")
+		buf.WriteString("   subscription-id  : lookup domain with specified subscription id\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   lookup-domain-by-azure-subscription 12345678-1234-1234-1234-1234567890\n")
 	case "lookup-domain-by-product-id":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   lookup-domain-by-product-id product-id\n")
@@ -983,6 +1017,16 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   account-id    : set the aws account id for the domain\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " set-aws-account \"134901934383\"\n")
+	case "set-azure-subscription", "set-domain-subscription":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " set-azure-subscription subscription-id\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain        : name of the domain being updated\n")
+		}
+		buf.WriteString("   subscription-id    : set the azure subscription id for the domain\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-azure-subscription \"12345678-1234-1234-1234-1234567890\"\n")
 	case "set-audit-enabled":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   " + domainParam + " set-audit-enabled audit-enabled\n")
@@ -1549,7 +1593,7 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   user_or_service : users or services to be checked if they are members\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " check-group-member readers " + cli.UserDomain + ".john " + cli.UserDomain + ".joe media.sports.storage\n")
-	case "check-active-grorup-member":
+	case "check-active-group-member":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   " + domainParam + " check-active-group-member group user_or_service\n")
 		buf.WriteString(" parameters:\n")
@@ -1581,6 +1625,41 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   group   : name of the group to be deleted\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " delete-group readers\n")
+	case "add-role-tag":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " add-role-tag group_role tag_key tag_value [tag_value ...]\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain          : name of the domain that role belongs to\n")
+		}
+		buf.WriteString("   group-role      : name of the standard group role to add members to\n")
+		buf.WriteString("   tag_key         : tag key to be added to this role\n")
+		buf.WriteString("   tag_value       : tag values to be added to this role, multiple values are allowed\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " add-role-tag readers readers-tag-key reader-tag-value-1 reader-tag-value-2\n")
+	case "delete-role-tag":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " delete-role-tag group_role tag_key [tag_value]\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain          : name of the domain that role belongs to\n")
+		}
+		buf.WriteString("   group-role      : name of the standard group role to add members to\n")
+		buf.WriteString("   tag_key         : tag key to be removed from to this role\n")
+		buf.WriteString("   tag_value       : optional, tag value to be removed from this tag value list\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " delete-role-tag readers readers-tag-key reader-tag-value-1\n")
+	case "show-roles":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " show-roles [tag_key] [tag_value]\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain          : name of the domain that role belongs to\n")
+		}
+		buf.WriteString("   tag_key         : optional, query all roles with given tag name\n")
+		buf.WriteString("   tag_value       : optional, query all roles with given tag key and value\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " show-roles readers readers-tag-key reader-tag-value\n")
 	case "list-service":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   " + domainParam + " list-service\n")
@@ -2313,6 +2392,7 @@ func (cli Zms) HelpListCommand() string {
 	buf.WriteString("   list-domain [prefix] | [limit skip prefix depth]\n")
 	buf.WriteString("   show-domain [domain]\n")
 	buf.WriteString("   lookup-domain-by-aws-account account-id\n")
+	buf.WriteString("   lookup-domain-by-azure-subscription subscription-id\n")
 	buf.WriteString("   lookup-domain-by-product-id product-id\n")
 	buf.WriteString("   lookup-domain-by-role role-member role-name\n")
 	buf.WriteString("   add-domain domain product-id [admin ...] - to add top level domains\n")
@@ -2320,6 +2400,7 @@ func (cli Zms) HelpListCommand() string {
 	buf.WriteString("   set-domain-meta description\n")
 	buf.WriteString("   set-audit-enabled audit-enabled\n")
 	buf.WriteString("   set-aws-account account-id\n")
+	buf.WriteString("   set-azure-subscription subscription-id\n")
 	buf.WriteString("   set-product-id product-id\n")
 	buf.WriteString("   set-application-id application-id\n")
 	buf.WriteString("   set-org-name org-name\n")
@@ -2357,6 +2438,7 @@ func (cli Zms) HelpListCommand() string {
 	buf.WriteString(" Role commands:\n")
 	buf.WriteString("   list-role\n")
 	buf.WriteString("   show-role role [log | expand | pending]\n")
+	buf.WriteString("   show-roles [tag_key] [tag_value]\n")
 	buf.WriteString("   show-roles-principal\n")
 	buf.WriteString("   add-delegated-role role trusted_domain\n")
 	buf.WriteString("   add-group-role role member [member ... ]\n")
@@ -2386,6 +2468,8 @@ func (cli Zms) HelpListCommand() string {
 	buf.WriteString("   set-role-notify-roles group_role rolename[,rolename...]\n")
 	buf.WriteString("   set-role-user-authority-filter group_role attribute[,attribute...]\n")
 	buf.WriteString("   set-role-user-authority-expiration group_role attribute\n")
+	buf.WriteString("   add-role-tag group_role tag_key tag_value [tag_value ...]\n")
+	buf.WriteString("   delete-role-tag group_role tag_key [tag_value]\n")
 	buf.WriteString("   put-membership-decision group_role user_or_service [expiration] decision\n")
 	buf.WriteString("\n")
 	buf.WriteString(" Group commands:\n")

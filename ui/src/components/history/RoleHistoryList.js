@@ -205,7 +205,7 @@ export default class RoleHistoryList extends React.Component {
             return;
         }
         this.api
-            .getRole(this.props.domain, this.props.role, true, true, true)
+            .getRole(this.props.domain, this.props.role, true, false, true)
             .then((data) => {
                 let successMsg = `Filtered history records for role ${this.props.role} below. `;
                 let alertType = 'success';
@@ -213,17 +213,19 @@ export default class RoleHistoryList extends React.Component {
                     successMsg = `No history records for role ${this.props.role} found. `;
                     alertType = 'warning';
                 }
-                let historyRows = data.auditLog.filter(
-                    (item) =>
-                        item.created >=
-                            this.dateUtils.uxDatetimeToRDLTimestamp(
-                                this.state.startDate
-                            ) &&
-                        item.created <=
-                            this.dateUtils.uxDatetimeToRDLTimestamp(
-                                this.state.endDate
-                            )
-                );
+                let historyRows = data.auditLog
+                    ? data.auditLog.filter(
+                          (item) =>
+                              item.created >=
+                                  this.dateUtils.uxDatetimeToRDLTimestamp(
+                                      this.state.startDate
+                                  ) &&
+                              item.created <=
+                                  this.dateUtils.uxDatetimeToRDLTimestamp(
+                                      this.state.endDate
+                                  )
+                      )
+                    : [];
                 this.setState({
                     list: historyRows,
                     showSuccess: true,

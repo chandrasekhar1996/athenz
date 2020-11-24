@@ -135,6 +135,7 @@ export default class MemberTable extends React.Component {
                         <MemberRow
                             domain={domain}
                             role={role}
+                            pending={this.props.pending}
                             details={item}
                             idx={i}
                             color={color}
@@ -202,6 +203,9 @@ export default class MemberTable extends React.Component {
                         </TableHeadStyled>
                         <TableHeadStyled align={left}>
                             Expiration Date
+                        </TableHeadStyled>
+                        <TableHeadStyled align={left}>
+                            Review Reminder Date
                         </TableHeadStyled>
                         <TableHeadStyled align={center}>Delete</TableHeadStyled>
                     </tr>

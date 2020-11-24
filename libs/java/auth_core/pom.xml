@@ -17,7 +17,7 @@
   <parent>
     <groupId>com.yahoo.athenz</groupId>
     <artifactId>athenz</artifactId>
-    <version>1.9.23-SNAPSHOT</version>
+    <version>1.9.25-SNAPSHOT</version>
     <relativePath>../../../pom.xml</relativePath>
   </parent>
 
@@ -27,7 +27,7 @@
   <description>Core Auth Interfaces</description>
 
   <properties>
-    <code.coverage.min>0.71</code.coverage.min>
+    <code.coverage.min>0.89</code.coverage.min>
   </properties>
   <dependencies>
     <dependency>
@@ -72,6 +72,12 @@
       <artifactId>jjwt-jackson</artifactId>
       <version>${jjwt.version}</version>
       <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-inline</artifactId>
+      <version>${mockito.version}</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 

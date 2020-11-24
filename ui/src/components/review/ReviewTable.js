@@ -21,14 +21,8 @@ import Color from '../denali/Color';
 import InputLabel from '../denali/InputLabel';
 import Input from '../denali/Input';
 import RequestUtils from '../utils/RequestUtils';
+import { Router } from '../../routes';
 
-const TDStyled = styled.td`
-    background-color: ${(props) => props.color};
-    text-align: ${(props) => props.align};
-    padding: 30px 20px;
-    vertical-align: middle;
-    word-break: break-all;
-`;
 const TitleDiv = styled.div`
     font-size: 16px;
     font-weight: 600;
@@ -97,58 +91,106 @@ const StyledJustification = styled(Input)`
     margin-top: 5px;
 `;
 
-export default class RoleMemberReviewDetails extends React.Component {
+export default class ReviewTable extends React.Component {
     constructor(props) {
         super(props);
         this.api = this.props.api;
         this.submitReview = this.submitReview.bind(this);
         this.submitRoleMetaExpiry = this.submitRoleMetaExpiry.bind(this);
-        this.updateRoleMeta = this.updateRoleMeta.bind(this);
+        this.onClickSettings = this.onClickSettings.bind(this);
         this.cancelRoleMetaUpdate = this.cancelRoleMetaUpdate.bind(this);
         this.onUpdate = this.onUpdate.bind(this);
 
+        let members = props.members && props.members.map((m) => m.memberName);
         this.state = {
-            list: this.props.members || [],
+            roleObj: props.roleDetails,
+            list: props.members || [],
             memberExpiry: '',
             serviceExpiry: '',
-            showUpdateRoleMeta: false,
+            memberExpiry: props.roleDetails.memberExpiryDays,
+            serviceExpiry: props.roleDetails.serviceExpiryDays,
             submittedReview: false,
+            showUpdateRoleMeta: !(
+                props.roleDetails.memberExpiryDays ||
+                props.roleDetails.serviceExpiryDays
+            ),
+            extendedMembers: new Set(members),
+            deletedMembers: new Set(),
         };
-        this.loadRole();
     }
 
     loadRole() {
-        this.props.api
-            .getRole(this.props.domain, this.props.role, false, true, false)
-            .then((role) => {
-                if (role.trust != null) {
+        if (this.props.roleDetails.trust) {
+            this.props.api
+                .getRole(this.props.domain, this.props.role, false, true, false)
+                .then((role) => {
+                    if (role.trust != null) {
+                        this.setState({
+                            showTrustError: true,
+                            errorMessage: `This is a delegated role. It needs to be reviewed in ${role.trust} domain.`,
+                        });
+                    } else {
+                        let members =
+                            role.roleMembers &&
+                            role.roleMembers.map((m) => m.memberName);
+                        this.setState({
+                            roleObj: role,
+                            list: role.roleMembers || [],
+                            showUpdateRoleMeta: !(
+                                role.memberExpiryDays || role.serviceExpiryDays
+                            ),
+                            memberExpiry: role.memberExpiryDays,
+                            serviceExpiry: role.serviceExpiryDays,
+                            extendedMembers: new Set(members),
+                            deletedMembers: new Set(),
+                            submittedReview: false,
+                        });
+                    }
+                })
+                .catch((err) => {
                     this.setState({
-                        showTrustError: true,
-                        errorMessage: `This is a delegated role. It needs to be reviewed in ${role.trust} domain.`,
+                        errorMessage: RequestUtils.xhrErrorCheckHelper(err),
                     });
-                } else {
-                    let members =
-                        role.roleMembers &&
-                        role.roleMembers.map((m) => m.memberName);
-                    this.setState({
-                        roleObj: role,
-                        list: role.roleMembers || [],
-                        showUpdateRoleMeta: !(
-                            role.memberExpiryDays || role.serviceExpiryDays
-                        ),
-                        memberExpiry: role.memberExpiryDays,
-                        serviceExpiry: role.serviceExpiryDays,
-                        extendedMembers: new Set(members),
-                        deletedMembers: new Set(),
-                        submittedReview: false,
-                    });
-                }
-            })
-            .catch((err) => {
-                this.setState({
-                    errorMessage: RequestUtils.xhrErrorCheckHelper(err),
                 });
-            });
+        } else {
+            this.props.api
+                .getRole(
+                    this.props.domain,
+                    this.props.role,
+                    false,
+                    false,
+                    false
+                )
+                .then((role) => {
+                    if (role.trust != null) {
+                        this.setState({
+                            showTrustError: true,
+                            errorMessage: `This is a delegated role. It needs to be reviewed in ${role.trust} domain.`,
+                        });
+                    } else {
+                        let members =
+                            role.roleMembers &&
+                            role.roleMembers.map((m) => m.memberName);
+                        this.setState({
+                            roleObj: role,
+                            list: role.roleMembers || [],
+                            showUpdateRoleMeta: !(
+                                role.memberExpiryDays || role.serviceExpiryDays
+                            ),
+                            memberExpiry: role.memberExpiryDays,
+                            serviceExpiry: role.serviceExpiryDays,
+                            extendedMembers: new Set(members),
+                            deletedMembers: new Set(),
+                            submittedReview: false,
+                        });
+                    }
+                })
+                .catch((err) => {
+                    this.setState({
+                        errorMessage: RequestUtils.xhrErrorCheckHelper(err),
+                    });
+                });
+        }
     }
 
     inputChanged(key, evt) {
@@ -261,6 +303,7 @@ export default class RoleMemberReviewDetails extends React.Component {
                     this.props.onUpdateSuccess(
                         `Successfully submitted the review for role ${this.props.role}`
                     );
+                    this.loadRole();
                 })
                 .catch((err) => {
                     this.setState({
@@ -272,8 +315,11 @@ export default class RoleMemberReviewDetails extends React.Component {
         }
     }
 
-    updateRoleMeta() {
-        this.setState({ showUpdateRoleMeta: true });
+    onClickSettings() {
+        Router.pushRoute('settings', {
+            domain: this.props.domain,
+            role: this.props.role,
+        });
     }
 
     cancelRoleMetaUpdate() {
@@ -321,7 +367,7 @@ export default class RoleMemberReviewDetails extends React.Component {
                 {text}
                 <br />
                 {changeText}
-                <StyledAnchor onClick={this.updateRoleMeta}>
+                <StyledAnchor onClick={this.onClickSettings}>
                     {' '}
                     here{' '}
                 </StyledAnchor>
@@ -378,6 +424,15 @@ export default class RoleMemberReviewDetails extends React.Component {
                 {
                     this.props.onUpdateSuccess();
                 }
+            }
+
+            if (!this.state.list || this.state.list.length === 0) {
+                return (
+                    <ReviewMembersContainerDiv>
+                        There is no members to review for role:{' '}
+                        {this.props.role}.
+                    </ReviewMembersContainerDiv>
+                );
             }
 
             return (
@@ -460,7 +515,11 @@ export default class RoleMemberReviewDetails extends React.Component {
                 <ReviewMembersContainerDiv>
                     User principal and/or Service principal expiry days are
                     required before a role can be reviewed. Please go to
-                    Settings tab to set those up.
+                    <StyledAnchor onClick={this.onClickSettings}>
+                        {' '}
+                        Settings{' '}
+                    </StyledAnchor>
+                    tab to set those up.
                 </ReviewMembersContainerDiv>
             );
         }

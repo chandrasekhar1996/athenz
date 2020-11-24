@@ -15,33 +15,11 @@
  */
 import React from 'react';
 import styled from '@emotion/styled';
-import { colors } from '../denali/styles';
 import ReviewTable from './ReviewTable';
 import Alert from '../denali/Alert';
-import { MODAL_TIME_OUT } from '../constants/constants';
-import RequestUtils from '../utils/RequestUtils';
 
 const RolesSectionDiv = styled.div`
     margin: 20px;
-`;
-
-const RoleLabel = styled.label`
-    color: ${colors.grey800};
-    margin-left: 5px;
-    white-space: nowrap;
-    font: 300 14px HelveticaNeue-Reg, Helvetica, Arial, sans-serif;
-`;
-
-const SliderDiv = styled.div`
-    vertical-align: middle;
-`;
-
-const AddContainerDiv = styled.div`
-    padding-bottom: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-flow: row nowrap;
 `;
 
 export default class ReviewList extends React.Component {
@@ -54,7 +32,7 @@ export default class ReviewList extends React.Component {
             errorMessage: null,
         };
         this.closeModal = this.closeModal.bind(this);
-        this.reloadMembers = this.reloadMembers.bind(this);
+        this.submitSuccess = this.submitSuccess.bind(this);
     }
 
     componentDidUpdate = (prevProps) => {
@@ -69,30 +47,12 @@ export default class ReviewList extends React.Component {
         }
     };
 
-    reloadMembers(successMessage) {
-        this.api
-            .getRole(this.props.domain, this.props.role, true, true, true)
-            .then((role) => {
-                this.setState({
-                    members: role.members,
-                    showSuccess: true,
-                    successMessage,
-                    errorMessage: null,
-                });
-                // this is to close the success alert
-                setTimeout(
-                    () =>
-                        this.setState({
-                            showSuccess: false,
-                        }),
-                    MODAL_TIME_OUT
-                );
-            })
-            .catch((err) => {
-                this.setState({
-                    errorMessage: RequestUtils.xhrErrorCheckHelper(err),
-                });
-            });
+    submitSuccess(successMessage) {
+        this.setState({
+            showSuccess: true,
+            successMessage,
+            errorMessage: null,
+        });
     }
 
     closeModal() {
@@ -100,17 +60,18 @@ export default class ReviewList extends React.Component {
     }
 
     render() {
-        const { domain, role } = this.props;
+        const { domain, role, roleDetails } = this.props;
 
         return (
             <RolesSectionDiv data-testid='member-list'>
                 <ReviewTable
                     domain={domain}
                     role={role}
+                    roleDetails={roleDetails}
                     members={this.state.members}
                     api={this.api}
                     _csrf={this.props._csrf}
-                    onUpdateSuccess={this.reloadMembers}
+                    onUpdateSuccess={this.submitSuccess}
                     justificationRequired={this.props.isDomainAuditEnabled}
                     userProfileLink={this.props.userProfileLink}
                 />

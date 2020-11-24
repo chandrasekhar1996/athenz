@@ -27,6 +27,7 @@ func (cli Zms) dumpDomain(buf *bytes.Buffer, domain *zms.Domain) {
 	dumpStringValue(buf, indentLevel1, "name", string(domain.Name))
 	dumpStringValue(buf, indentLevel1, "description", domain.Description)
 	dumpStringValue(buf, indentLevel1, "aws_account", domain.Account)
+	dumpStringValue(buf, indentLevel1, "azure_subscription", domain.AzureSubscription)
 	dumpInt32Value(buf, indentLevel1, "product_id", domain.YpmId)
 	dumpStringValue(buf, indentLevel1, "org", string(domain.Org))
 	dumpBoolValue(buf, indentLevel1, "audit_enabled", domain.AuditEnabled)
@@ -156,6 +157,21 @@ func (cli Zms) dumpRole(buf *bytes.Buffer, role zms.Role, auditLog bool, indent1
 			buf.WriteString("\n")
 		}
 	}
+	if role.Tags != nil {
+		buf.WriteString(indent2)
+		buf.WriteString("tags:\n")
+		indent3 := indent2 + "  - "
+		indent4 := indent2 + "    "
+		indent5 := indent4 + "  - "
+		for tagKey, tagValues := range role.Tags {
+			buf.WriteString(indent3 + "key: ")
+			buf.WriteString(string(tagKey) + "\n")
+			buf.WriteString(indent4 + "values:\n")
+			for _, tagValue := range tagValues.List {
+				buf.WriteString(indent5 + string(tagValue) + "\n")
+			}
+		}
+	}
 	if auditLog {
 		buf.WriteString(indent2)
 		buf.WriteString("changes: \n")
@@ -177,11 +193,11 @@ func (cli Zms) dumpRole(buf *bytes.Buffer, role zms.Role, auditLog bool, indent1
 	}
 }
 
-func (cli Zms) dumpRoles(buf *bytes.Buffer, dn string) {
+func (cli Zms) dumpRoles(buf *bytes.Buffer, dn string, tagKey string, tagValue string) {
 	buf.WriteString(indentLevel1)
 	buf.WriteString("roles:\n")
 	members := true
-	roles, err := cli.Zms.GetRoles(zms.DomainName(dn), &members)
+	roles, err := cli.Zms.GetRoles(zms.DomainName(dn), &members, zms.CompoundName(tagKey), zms.CompoundName(tagValue))
 	if err != nil {
 		log.Fatalf("Unable to get role list - error: %v", err)
 	}
@@ -515,6 +531,12 @@ func (cli Zms) dumpSignedDomain(buf *bytes.Buffer, signedDomain *zms.SignedDomai
 			buf.WriteString(domainData.Account)
 			buf.WriteString("\n")
 		}
+		if domainData.AzureSubscription != "" {
+			buf.WriteString(indentLevel1)
+			buf.WriteString("azureSubscription: ")
+			buf.WriteString(domainData.AzureSubscription)
+			buf.WriteString("\n")
+		}
 		buf.WriteString(indentLevel1)
 		buf.WriteString("signature: ")
 		buf.WriteString(signedDomain.Signature)
@@ -650,10 +672,10 @@ func (cli Zms) dumpDomainGroupMembers(buf *bytes.Buffer, domainGroupMembers *zms
 }
 
 func (cli Zms) dumpRolesPrincipal(buf *bytes.Buffer, roleMember *zms.DomainRoleMember) {
-	buf.WriteString( "member: " + string(roleMember.MemberName) + "\n")
-	buf.WriteString( "roles:\n")
+	buf.WriteString("member: " + string(roleMember.MemberName) + "\n")
+	buf.WriteString("roles:\n")
 	for _, role := range roleMember.MemberRoles {
-		buf.WriteString(indentLevel1Dash + "name: " + string(role.RoleName) +"\n")
+		buf.WriteString(indentLevel1Dash + "name: " + string(role.RoleName) + "\n")
 		buf.WriteString(indentLevel1 + "  domain: " + string(role.DomainName) + "\n")
 		if role.Expiration != nil {
 			buf.WriteString(indentLevel1 + "  expiration: " + role.Expiration.String() + "\n")
@@ -668,10 +690,10 @@ func (cli Zms) dumpRolesPrincipal(buf *bytes.Buffer, roleMember *zms.DomainRoleM
 }
 
 func (cli Zms) dumpGroupsPrincipal(buf *bytes.Buffer, groupMember *zms.DomainGroupMember) {
-	buf.WriteString( "member: " + string(groupMember.MemberName) + "\n")
-	buf.WriteString( "groups:\n")
+	buf.WriteString("member: " + string(groupMember.MemberName) + "\n")
+	buf.WriteString("groups:\n")
 	for _, group := range groupMember.MemberGroups {
-		buf.WriteString(indentLevel1Dash + "name: " + string(group.GroupName) +"\n")
+		buf.WriteString(indentLevel1Dash + "name: " + string(group.GroupName) + "\n")
 		buf.WriteString(indentLevel1 + "  domain: " + string(group.DomainName) + "\n")
 		if group.Expiration != nil {
 			buf.WriteString(indentLevel1 + "  expiration: " + group.Expiration.String() + "\n")

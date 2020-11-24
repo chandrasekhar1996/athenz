@@ -13,7 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 //
 public interface ZMSHandler { 
     Domain getDomain(ResourceContext context, String domain);
-    DomainList getDomainList(ResourceContext context, Integer limit, String skip, String prefix, Integer depth, String account, Integer productId, String roleMember, String roleName, String modifiedSince);
+    DomainList getDomainList(ResourceContext context, Integer limit, String skip, String prefix, Integer depth, String account, Integer productId, String roleMember, String roleName, String subscription, String modifiedSince);
     Domain postTopLevelDomain(ResourceContext context, String auditRef, TopLevelDomain detail);
     Domain postSubDomain(ResourceContext context, String parent, String auditRef, SubDomain detail);
     Domain postUserDomain(ResourceContext context, String name, String auditRef, UserDomain detail);
@@ -32,7 +32,7 @@ public interface ZMSHandler {
     void deleteEntity(ResourceContext context, String domainName, String entityName, String auditRef);
     EntityList getEntityList(ResourceContext context, String domainName);
     RoleList getRoleList(ResourceContext context, String domainName, Integer limit, String skip);
-    Roles getRoles(ResourceContext context, String domainName, Boolean members);
+    Roles getRoles(ResourceContext context, String domainName, Boolean members, String tagKey, String tagValue);
     Role getRole(ResourceContext context, String domainName, String roleName, Boolean auditLog, Boolean expand, Boolean pending);
     void putRole(ResourceContext context, String domainName, String roleName, String auditRef, Role role);
     void deleteRole(ResourceContext context, String domainName, String roleName, String auditRef);

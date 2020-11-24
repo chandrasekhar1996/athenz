@@ -48,13 +48,13 @@ public class ZMSResources {
     @GET
     @Path("/domain")
     @Produces(MediaType.APPLICATION_JSON)
-    public DomainList getDomainList(@QueryParam("limit") Integer limit, @QueryParam("skip") String skip, @QueryParam("prefix") String prefix, @QueryParam("depth") Integer depth, @QueryParam("account") String account, @QueryParam("ypmid") Integer productId, @QueryParam("member") String roleMember, @QueryParam("role") String roleName, @HeaderParam("If-Modified-Since") String modifiedSince) {
+    public DomainList getDomainList(@QueryParam("limit") Integer limit, @QueryParam("skip") String skip, @QueryParam("prefix") String prefix, @QueryParam("depth") Integer depth, @QueryParam("account") String account, @QueryParam("ypmid") Integer productId, @QueryParam("member") String roleMember, @QueryParam("role") String roleName, @QueryParam("azure") String subscription, @HeaderParam("If-Modified-Since") String modifiedSince) {
         int code = ResourceException.OK;
         ResourceContext context = null;
         try {
             context = this.delegate.newResourceContext(this.request, this.response, "getDomainList");
             context.authenticate();
-            return this.delegate.getDomainList(context, limit, skip, prefix, depth, account, productId, roleMember, roleName, modifiedSince);
+            return this.delegate.getDomainList(context, limit, skip, prefix, depth, account, productId, roleMember, roleName, subscription, modifiedSince);
         } catch (ResourceException e) {
             code = e.getCode();
             switch (code) {
@@ -664,13 +664,13 @@ public class ZMSResources {
     @GET
     @Path("/domain/{domainName}/roles")
     @Produces(MediaType.APPLICATION_JSON)
-    public Roles getRoles(@PathParam("domainName") String domainName, @QueryParam("members") @DefaultValue("false") Boolean members) {
+    public Roles getRoles(@PathParam("domainName") String domainName, @QueryParam("members") @DefaultValue("false") Boolean members, @QueryParam("tagKey") String tagKey, @QueryParam("tagValue") String tagValue) {
         int code = ResourceException.OK;
         ResourceContext context = null;
         try {
             context = this.delegate.newResourceContext(this.request, this.response, "getRoles");
             context.authenticate();
-            return this.delegate.getRoles(context, domainName, members);
+            return this.delegate.getRoles(context, domainName, members, tagKey, tagValue);
         } catch (ResourceException e) {
             code = e.getCode();
             switch (code) {

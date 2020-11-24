@@ -19,7 +19,7 @@
   <parent>
     <groupId>com.yahoo.athenz</groupId>
     <artifactId>athenz</artifactId>
-    <version>1.9.23-SNAPSHOT</version>
+    <version>1.9.25-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
@@ -200,6 +200,16 @@
       <groupId>${project.groupId}</groupId>
       <artifactId>athenz-zts-java-client-core</artifactId>
       <version>${project.parent.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.swagger.core.v3</groupId>
+      <artifactId>swagger-jaxrs2</artifactId>
+      <version>${swagger.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.swagger.core.v3</groupId>
+      <artifactId>swagger-jaxrs2-servlet-initializer</artifactId>
+      <version>${swagger.version}</version>
     </dependency>
   </dependencies>
 

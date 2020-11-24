@@ -17,7 +17,7 @@
   <parent>
     <groupId>com.yahoo.athenz</groupId>
     <artifactId>athenz</artifactId>
-    <version>1.9.23-SNAPSHOT</version>
+    <version>1.9.25-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
@@ -39,7 +39,7 @@
   </dependencyManagement>
 
   <properties>
-    <code.coverage.min>0.95</code.coverage.min>
+    <code.coverage.min>0.96</code.coverage.min>
   </properties>
 
   <dependencies>
@@ -160,6 +160,16 @@
       <version>4.6.1</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>io.swagger.core.v3</groupId>
+      <artifactId>swagger-jaxrs2</artifactId>
+      <version>${swagger.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.swagger.core.v3</groupId>
+      <artifactId>swagger-jaxrs2-servlet-initializer</artifactId>
+      <version>${swagger.version}</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -190,8 +200,6 @@
         <configuration>
           <excludes>
             <exclude>**/ZMSResources.class</exclude>
-            <exclude>**/FileConnection.class</exclude>
-            <exclude>**/FileObjectStore.class</exclude>
           </excludes>
         </configuration>
       </plugin>

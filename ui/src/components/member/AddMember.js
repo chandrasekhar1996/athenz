@@ -205,6 +205,16 @@ export default class AddMember extends React.Component {
                                 clear={this.state.memberExpiry}
                             />
                         </FlatPickrInputDiv>
+                        <FlatPickrInputDiv>
+                            <FlatPicker
+                                onChange={(memberReviewReminder) => {
+                                    this.setState({ memberReviewReminder });
+                                }}
+                                placeholder='Reminder (Optional)'
+                                id='addMemberToRoles-reminder'
+                                clear={this.state.memberReviewReminder}
+                            />
+                        </FlatPickrInputDiv>
                         {this.props.justificationRequired && (
                             <StyledJustification
                                 id='justification'
@@ -228,7 +238,7 @@ export default class AddMember extends React.Component {
                 isOpen={this.state.showModal}
                 cancel={this.props.onCancel}
                 submit={this.onSubmit}
-                title={'Add Member to Role:'}
+                title={'Add Member to Role: ' + this.props.role}
                 errorMessage={this.state.errorMessage}
                 sections={sections}
             />
