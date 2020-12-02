@@ -2861,7 +2861,7 @@ public class ZMSImpl implements Authorizer, KeyStore, ZMSHandler {
             principal = ((RsrcCtxWrapper) context).principal().getFullName();
         }
         validateRequest(context.request(), caller);
-        validate(principal, TYPE_ENTITY_NAME, caller);
+        validate(principal, TYPE_RESOURCE_NAME, caller);
 
         // for consistent handling of all requests, we're going to convert
         // all incoming object values into lower case (e.g. domain, role,
