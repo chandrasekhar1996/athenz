@@ -127,7 +127,10 @@ export default class GroupRoleTable extends React.Component {
             }
         }
 
-        if (!this.state.roles || this.state.roles.length === 0) {
+        if (
+            this.state.roles && this.state.roles.length === 0 &&
+            this.state.searchText === ''
+        ) {
             return (
                 <GroupRoleDiv>
                     The group isn't a member of any role.

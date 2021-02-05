@@ -207,7 +207,7 @@ export default class GroupRolesPage extends React.Component {
                                             selectedName={'roles'}
                                         />
                                     </PageHeaderDiv>
-                                    {roles && roles.length > 0 && (
+                                    {this.state.roles && this.state.roles.length > 0 && (
                                         <ContainerDiv>
                                             <StyledSearchInputDiv>
                                                 <SearchInput
@@ -226,8 +226,8 @@ export default class GroupRolesPage extends React.Component {
                                                     onChange={(event) =>
                                                         this.setState({
                                                             searchText:
-                                                                event.target
-                                                                    .value,
+                                                            event.target
+                                                                .value,
                                                             error: false,
                                                         })
                                                     }
@@ -241,6 +241,7 @@ export default class GroupRolesPage extends React.Component {
                                             domain={this.domain}
                                             roles={roles}
                                             prefixes={prefix}
+                                            searchText={this.state.searchText}
                                         />
                                     </TableDiv>
                                 </RolesContentDiv>

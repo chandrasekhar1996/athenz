@@ -107,6 +107,12 @@ export default class RoleGroup extends React.Component {
                     if (i % 2 === 0) {
                         color = colors.row;
                     }
+                    let key = '';
+                    if (this.props.category === GROUP_ROLES_CATEGORY) {
+                        key = item.roleName + '-' + item.domainName;
+                    } else {
+                        key = item.name;
+                    }
                     return (
                         <RoleSectionRow
                             category={this.props.category}
@@ -115,7 +121,7 @@ export default class RoleGroup extends React.Component {
                             idx={i}
                             color={color}
                             domain={domain}
-                            key={item.name}
+                            key={key}
                             onUpdateSuccess={this.props.onUpdateSuccess}
                             _csrf={this.props._csrf}
                             justificationRequired={
@@ -127,7 +133,10 @@ export default class RoleGroup extends React.Component {
                 });
 
                 rows.push(
-                    <TrStyled key='aws-role-section' data-testid='role-group'>
+                    <TrStyled
+                        key='aws-role-section-expanded'
+                        data-testid='role-group'
+                    >
                         <TDStyled align={left} colSpan='8'>
                             <StyledDiv>
                                 <LeftMarginSpan>
