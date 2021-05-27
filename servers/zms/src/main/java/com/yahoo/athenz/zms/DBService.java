@@ -2928,7 +2928,7 @@ public class DBService implements RolesProvider {
     }
 
     private boolean processDomainTags(ObjectStoreConnection con, Map<String, StringList> domainTags,
-            Domain originalDomain, final String domainName, boolean updateDomainLastModTimestamp) {
+                                      Domain originalDomain, final String domainName, boolean updateDomainLastModTimestamp) {
 
         if (originalDomain == null || originalDomain.getTags() == null || originalDomain.getTags().isEmpty()) {
             if (domainTags == null || domainTags.isEmpty()) {
@@ -2944,13 +2944,17 @@ public class DBService implements RolesProvider {
             return true;
         }
 
+        if (domainTags == null) {
+            return true;
+        }
+        
         Map<String, StringList> originalDomainTags = originalDomain.getTags();
 
         Set<String> tagsToRemove = originalDomainTags.entrySet().stream()
-            .filter(curTag -> domainTags.get(curTag.getKey()) == null
-                || !domainTags.get(curTag.getKey()).equals(curTag.getValue()))
-            .map(Map.Entry::getKey)
-            .collect(Collectors.toSet());
+                .filter(curTag -> domainTags.get(curTag.getKey()) == null
+                        || !domainTags.get(curTag.getKey()).equals(curTag.getValue()))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
 
         boolean tagsChanged = false;
         if (tagsToRemove != null && !tagsToRemove.isEmpty()) {
@@ -2961,9 +2965,9 @@ public class DBService implements RolesProvider {
         }
 
         Map<String, StringList> tagsToAdd = domainTags.entrySet().stream()
-            .filter(curTag -> originalDomainTags.get(curTag.getKey()) == null
-                || !originalDomainTags.get(curTag.getKey()).equals(curTag.getValue()))
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                .filter(curTag -> originalDomainTags.get(curTag.getKey()) == null
+                        || !originalDomainTags.get(curTag.getKey()).equals(curTag.getValue()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         if (tagsToAdd != null && !tagsToAdd.isEmpty()) {
             if (!con.insertDomainTags(originalDomain.getName(), tagsToAdd)) {
