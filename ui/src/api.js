@@ -487,13 +487,7 @@ const Api = (req) => {
             });
         },
 
-        addServiceHost(
-            domainName,
-            serviceName,
-            staticWorkload,
-            auditRef,
-            _csrf
-        ) {
+        addServiceHost(domain, service, detail, auditRef, _csrf) {
             return new Promise((resolve, reject) => {
                 fetchr.updateOptions({
                     context: {
@@ -501,9 +495,9 @@ const Api = (req) => {
                     },
                 });
                 var params = {
-                    domainName,
-                    serviceName,
-                    staticWorkload,
+                    domain,
+                    service,
+                    detail,
                     auditRef,
                 };
 
@@ -1762,7 +1756,7 @@ const Api = (req) => {
                 fetchr
                     .read('instances')
                     .params({ domainName, serviceName, category })
-                    .end((err, workloadList) => {
+                    .end((err, data) => {
                         if (err) {
                             reject(err);
                         } else {
@@ -1776,27 +1770,38 @@ const Api = (req) => {
                                 totalHealthyDynamic: 0,
                             };
                             let totalHealthyDynamicCount = 0;
-                            if (workloadList != null) {
-                                workLoadMeta.totalRecords = workloadList.length;
+                            if (data && data.workloadList != null) {
+                                workLoadMeta.totalRecords =
+                                    data.workloadList.length;
                                 if (category === SERVICE_TYPE_STATIC) {
-                                    workloadList.forEach((workload) => {
-                                        result.workLoadData.push(workload);
+                                    data.workloadList.forEach((workload) => {
+                                        if (
+                                            workload.provider ===
+                                            SERVICE_TYPE_STATIC_LABEL
+                                        ) {
+                                            result.workLoadData.push(workload);
+                                        }
                                     });
                                     workLoadMeta.totalStatic =
                                         result.workLoadData.length;
                                     result.workLoadMeta = workLoadMeta;
                                     resolve(result);
                                 } else {
-                                    workloadList.forEach((workload) => {
-                                        result.workLoadData.push(workload);
+                                    data.workloadList.forEach((workload) => {
                                         if (
-                                            workload.hostname !== 'NA' &&
-                                            localDate.isRefreshedinLastSevenDays(
-                                                workload.updateTime,
-                                                'UTC'
-                                            )
+                                            workload.provider !==
+                                            SERVICE_TYPE_STATIC_LABEL
                                         ) {
-                                            totalHealthyDynamicCount++;
+                                            result.workLoadData.push(workload);
+                                            if (
+                                                workload.hostname !== 'NA' &&
+                                                localDate.isRefreshedinLastSevenDays(
+                                                    workload.updateTime,
+                                                    'UTC'
+                                                )
+                                            ) {
+                                                totalHealthyDynamicCount++;
+                                            }
                                         }
                                     });
                                     workLoadMeta.totalHealthyDynamic =
@@ -1861,6 +1866,45 @@ const Api = (req) => {
                         assertionChanged,
                         assertionConditionChanged,
                         data,
+                    })
+                    .end((err, data) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(data);
+                        }
+                    });
+            });
+        },
+
+        validateMicrosegmentationPolicy(
+            category,
+            roleMembers,
+            inboundDestinationService,
+            outboundSourceService,
+            sourcePort,
+            destinationPort,
+            protocol,
+            domainName,
+            _csrf
+        ) {
+            return new Promise((resolve, reject) => {
+                fetchr.updateOptions({
+                    context: {
+                        _csrf: _csrf,
+                    },
+                });
+                fetchr
+                    .read('validateMicrosegmentation')
+                    .params({
+                        category,
+                        roleMembers,
+                        inboundDestinationService,
+                        outboundSourceService,
+                        sourcePort,
+                        destinationPort,
+                        protocol,
+                        domainName,
                     })
                     .end((err, data) => {
                         if (err) {

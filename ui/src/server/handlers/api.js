@@ -1291,7 +1291,7 @@ Fetchr.registerService({
 Fetchr.registerService({
     name: 'add-service-host',
     update(req, resource, params, body, config, callback) {
-        req.clients.msd.putStaticWorkload(
+        req.clients.zms.putServiceIdentity(
             params,
             responseHandler.bind({ caller: 'add-service-host', callback, req })
         );
@@ -1984,6 +1984,7 @@ Fetchr.registerService({
 
 Fetchr.registerService({
     name: 'microsegmentation',
+
     read(req, resource, params, config, callback) {
         let jsonData = {
             inbound: [],
@@ -2103,7 +2104,7 @@ Fetchr.registerService({
                         return callback(null, jsonData);
                     })
                     .catch((err) => {
-                        return this.callback(errorHandler.fetcherError(err));
+                        return callback(errorHandler.fetcherError(err));
                     });
             }
         );
@@ -2412,25 +2413,114 @@ Fetchr.registerService({
 });
 
 Fetchr.registerService({
+    name: 'validateMicrosegmentation',
+
+    read(req, resource, params, config, callback) {
+        console.log(params.destinationPort);
+        let entitySelectorService = '';
+        let entitySelectorPorts = [];
+        let peerPorts = [];
+
+        if (params.category === 'inbound') {
+            trafficDirection = 'INGRESS';
+            entitySelectorService = {
+                domainName: params.domainName,
+                serviceName: params.inboundDestinationService,
+            };
+            console.log('HI');
+            console.log(params.destinationPort);
+            let port = params.destinationPort.split('-');
+            let entitySelectorPort = {
+                port: port[0],
+                endPort: port[1],
+                protocol: params.protocol,
+            };
+            entitySelectorPorts.push(entitySelectorPort);
+
+            let peerPortList = params.sourcePort.split(',');
+            for (var i = 0; i < peerPortList.length; i++) {
+                let port = peerPortList[i].split('-');
+                let peerPort = {
+                    port: port[0],
+                    endPort: port[1],
+                    protocol: params.protocol,
+                };
+                peerPorts.push(peerPort);
+            }
+        } else {
+            trafficDirection = 'EGRESS';
+            entitySelectorService = {
+                domainName: params.domainName,
+                serviceName: params.outboundSourceService,
+            };
+
+            let port = params.sourcePort.split('-');
+            let entitySelectorPort = {
+                port: port[0],
+                endPort: port[1],
+                protocol: params.protocol,
+            };
+            entitySelectorPorts.push(entitySelectorPort);
+
+            let peerPortList = params.destinationPort.split(',');
+            for (var i = 0; i < peerPortList.length; i++) {
+                let port = peerPortList[i].split('-');
+                let peerPort = {
+                    port: port[0],
+                    endPort: port[1],
+                    protocol: params.protocol,
+                };
+                peerPorts.push(peerPort);
+            }
+        }
+
+        let athenzServices = [];
+        for (var i = 0; i < params.roleMembers.length; i++) {
+            let memberName = params.roleMembers[i].memberName;
+            let lastPeriodIndex = memberName.lastIndexOf('.');
+            let athenzService = {
+                domainName: memberName.substring(0, lastPeriodIndex),
+                serviceName: memberName.substring(lastPeriodIndex + 1),
+            };
+            athenzServices.push(athenzService);
+        }
+
+        let transportPolicy = {
+            entitySelector: {
+                match: {
+                    athenzService: entitySelectorService,
+                    conditions: [],
+                },
+                ports: entitySelectorPorts,
+            },
+            peer: {
+                athenzServices: athenzServices,
+                ports: peerPorts,
+            },
+            trafficDirection: trafficDirection,
+        };
+
+        req.clients.msd.validateTransportPolicy(
+            { transportPolicy: transportPolicy },
+            (err, data) => {
+                if (err) {
+                    return callback(errorHandler.fetcherError(err));
+                } else {
+                    return callback(null, data);
+                }
+            }
+        );
+    },
+});
+
+Fetchr.registerService({
     name: 'instances',
     read(req, resource, params, config, callback) {
-        req.clients.msd.getWorkloadsByService(
-            { domainName: params.domainName, serviceName: params.serviceName },
+        req.clients.zts.getWorkloadsByService(
+            { domainName: 'athenz.dev', serviceName: 'zts' },
             (err, data) => {
                 if (data) {
-                    if (
-                        data.dynamicWorkloadList &&
-                        params.category !== 'static'
-                    ) {
-                        return callback(null, data.dynamicWorkloadList);
-                    } else if (
-                        data.staticWorkloadList &&
-                        params.category === 'static'
-                    ) {
-                        return callback(null, data.staticWorkloadList);
-                    } else {
-                        return callback(null, new Map());
-                    }
+                    return callback(null, data);
                 } else {
                     return callback(errorHandler.fetcherError(err));
                 }
