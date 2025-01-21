@@ -19,6 +19,7 @@ package com.yahoo.athenz.zms.notification;
 import com.yahoo.athenz.common.server.notification.NotificationTask;
 import com.yahoo.athenz.common.server.notification.NotificationTaskFactory;
 import com.yahoo.athenz.common.server.notification.NotificationToEmailConverterCommon;
+import com.yahoo.athenz.common.server.notification.NotificationToSlackBlockConverterCommon;
 import com.yahoo.athenz.zms.DBService;
 import com.yahoo.athenz.zms.ZMSConsts;
 
@@ -30,6 +31,7 @@ public class ZMSNotificationTaskFactory implements NotificationTaskFactory {
     private final DBService dbService;
     private final String userDomainPrefix;
     private final NotificationToEmailConverterCommon notificationToEmailConverterCommon;
+    private final NotificationToSlackBlockConverterCommon notificationToSlackBlockConverterCommon;
 
     public ZMSNotificationTaskFactory(DBService dbService, String userDomainPrefix,
             NotificationToEmailConverterCommon notificationToEmailConverterCommon) {
@@ -37,6 +39,17 @@ public class ZMSNotificationTaskFactory implements NotificationTaskFactory {
         this.dbService = dbService;
         this.userDomainPrefix = userDomainPrefix;
         this.notificationToEmailConverterCommon = notificationToEmailConverterCommon;
+        this.notificationToSlackBlockConverterCommon = null;
+    }
+
+    public ZMSNotificationTaskFactory(DBService dbService, String userDomainPrefix,
+                                      NotificationToEmailConverterCommon notificationToEmailConverterCommon,
+                                      NotificationToSlackBlockConverterCommon notificationToSlackBlockConverterCommon) {
+
+        this.dbService = dbService;
+        this.userDomainPrefix = userDomainPrefix;
+        this.notificationToEmailConverterCommon = notificationToEmailConverterCommon;
+        this.notificationToSlackBlockConverterCommon = notificationToSlackBlockConverterCommon;
     }
 
     @Override

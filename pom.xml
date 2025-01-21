@@ -221,6 +221,7 @@
     <module>assembly/zts</module>
     <module>assembly/ui</module>
     <module>assembly/utils</module>
+      <module>libs/java/server_notification_slack</module>
   </modules>
 
   <build>

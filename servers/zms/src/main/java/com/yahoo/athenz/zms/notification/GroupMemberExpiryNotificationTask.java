@@ -400,6 +400,42 @@ public class GroupMemberExpiryNotificationTask implements NotificationTask {
         }
     }
 
+    // TODO chandu
+    public static class GroupExpiryPrincipalNotificationToSlackMessageConverter implements NotificationToSlackMessageConverter {
+        private static final String EMAIL_TEMPLATE_PRINCIPAL_EXPIRY = "messages/group-member-expiry.html";
+        private static final String PRINCIPAL_EXPIRY_SUBJECT = "athenz.notification.email.group_member.expiry.subject";
+
+        private final NotificationToEmailConverterCommon notificationToEmailConverterCommon;
+        private final String emailPrincipalExpiryBody;
+
+        public GroupExpiryPrincipalNotificationToSlackMessageConverter(NotificationToEmailConverterCommon notificationToEmailConverterCommon) {
+            this.notificationToEmailConverterCommon = notificationToEmailConverterCommon;
+            emailPrincipalExpiryBody =  notificationToEmailConverterCommon.readContentFromFile(getClass().getClassLoader(), EMAIL_TEMPLATE_PRINCIPAL_EXPIRY);
+        }
+
+        private String getPrincipalExpiryBody(Map<String, String> metaDetails) {
+            if (metaDetails == null) {
+                return null;
+            }
+
+            return notificationToEmailConverterCommon.generateBodyFromTemplate(metaDetails, emailPrincipalExpiryBody,
+                    NOTIFICATION_DETAILS_MEMBER, NOTIFICATION_DETAILS_ROLES_LIST,
+                    TEMPLATE_COLUMN_NAMES.length, TEMPLATE_COLUMN_NAMES);
+        }
+
+//        public NotificationSlackMessage getNotificationAsEmail(Notification notification) {
+//            String subject = notificationToEmailConverterCommon.getSubject(PRINCIPAL_EXPIRY_SUBJECT);
+//            String body = getPrincipalExpiryBody(notification.getDetails());
+//            Set<String> fullyQualifiedEmailAddresses = notificationToEmailConverterCommon.getFullyQualifiedEmailAddresses(notification.getRecipients());
+//            return new NotificationEmail(subject, body, fullyQualifiedEmailAddresses);
+//        }
+
+        @Override
+        public NotificationSlackMessage getNotificationAsSlackMessage(Notification notification) {
+            return new NotificationSlackMessage();
+        }
+    }
+
     public static class GroupExpiryDomainNotificationToEmailConverter implements NotificationToEmailConverter {
         private static final String EMAIL_TEMPLATE_DOMAIN_MEMBER_EXPIRY = "messages/domain-group-member-expiry.html";
         private static final String DOMAIN_MEMBER_EXPIRY_SUBJECT = "athenz.notification.email.domain.group_member.expiry.subject";

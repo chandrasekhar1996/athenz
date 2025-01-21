@@ -600,6 +600,192 @@ public class RoleMemberNotificationCommonTest {
         assertNotNull(consolidatedMembers.get("user.joe"));
     }
 
+
+    // CHANDU optimize/remove
+    @Test
+    public void testConsolidateSlackRoleMembers() {
+
+        DBService dbsvc = Mockito.mock(DBService.class);
+
+        List<Role> athenzRoles = new ArrayList<>();
+        List<RoleMember> roleMembers = new ArrayList<>();
+        roleMembers.add(new RoleMember().setMemberName("user.joe"));
+        Role role = new Role().setName("athenz:role.admin").setRoleMembers(roleMembers);
+        athenzRoles.add(role);
+
+        Domain domain = new Domain().setName("athenz").setSlackChannel("#slack-dev-channel");
+        Mockito.when(dbsvc.getDomain("athenz", false)).thenReturn(domain);
+
+        Mockito.when(dbsvc.getRolesByDomain("athenz")).thenReturn(athenzRoles);
+        Mockito.when(dbsvc.getRole("athenz", "admin", Boolean.FALSE, Boolean.TRUE, Boolean.FALSE))
+                .thenReturn(role);
+
+        List<Role> sportsRoles = new ArrayList<>();
+        roleMembers = new ArrayList<>();
+        roleMembers.add(new RoleMember().setMemberName("sports.api"));
+        roleMembers.add(new RoleMember().setMemberName("sports:group.dev-team"));
+        role = new Role().setName("sports:role.admin").setRoleMembers(roleMembers);
+        sportsRoles.add(role);
+
+        Domain sportsDomain = new Domain().setName("sports").setSlackChannel("#slack-prod-channel");
+        Mockito.when(dbsvc.getDomain("sports", false)).thenReturn(sportsDomain);
+
+        Mockito.when(dbsvc.getRolesByDomain("sports")).thenReturn(sportsRoles);
+        Mockito.when(dbsvc.getRole("sports", "admin", Boolean.FALSE, Boolean.TRUE, Boolean.FALSE))
+                .thenReturn(role);
+
+        List<Role> weatherRoles = new ArrayList<>();
+        role = new Role().setName("weather:role.admin").setRoleMembers(new ArrayList<>());
+        weatherRoles.add(role);
+        Mockito.when(dbsvc.getRolesByDomain("weather")).thenReturn(weatherRoles);
+        Mockito.when(dbsvc.getRole("weather", "admin", Boolean.FALSE, Boolean.TRUE, Boolean.FALSE))
+                .thenReturn(role);
+
+        RoleMemberNotificationCommon task = new RoleMemberNotificationCommon(
+                dbsvc, USER_DOMAIN_PREFIX);
+
+        Map<String, DomainRoleMember> members = new HashMap<>();
+
+        List<MemberRole> memberRoles = new ArrayList<>();
+        memberRoles.add(new MemberRole().setMemberName("user.joe").setDomainName("athenz").setRoleName("dev-team"));
+        memberRoles.add(new MemberRole().setMemberName("user.joe").setDomainName("sports").setRoleName("qa-team"));
+        DomainRoleMember domainRoleMember = new DomainRoleMember().setMemberName("user.joe")
+                .setMemberRoles(memberRoles);
+        members.put("user.joe", domainRoleMember);
+
+        memberRoles = new ArrayList<>();
+        memberRoles.add(new MemberRole().setMemberName("athenz.api").setDomainName("athenz").setRoleName("dev-team"));
+        memberRoles.add(new MemberRole().setMemberName("athenz.api").setDomainName("coretech").setRoleName("qa-team"));
+        domainRoleMember = new DomainRoleMember().setMemberName("athenz.api")
+                .setMemberRoles(memberRoles);
+        members.put("athenz.api", domainRoleMember);
+
+        memberRoles = new ArrayList<>();
+        memberRoles.add(new MemberRole().setMemberName("sports.api").setDomainName("sports").setRoleName("dev-team"));
+        domainRoleMember = new DomainRoleMember().setMemberName("sports.api")
+                .setMemberRoles(memberRoles);
+        members.put("sports.api", domainRoleMember);
+
+        memberRoles = new ArrayList<>();
+        memberRoles.add(new MemberRole().setMemberName("weather.api").setDomainName("weather").setRoleName("dev-team"));
+        domainRoleMember = new DomainRoleMember().setMemberName("weather.api")
+                .setMemberRoles(memberRoles);
+        members.put("weather.api", domainRoleMember);
+
+        Map<String, DomainRoleMember> consolidatedMembers = task.consolidateRoleMembersForSlack(members);
+        assertEquals(consolidatedMembers.size(), 3);
+        assertNotNull(consolidatedMembers.get("user.joe"));
+        assertNotNull(consolidatedMembers.get("#slack-dev-channel"));
+        assertNotNull(consolidatedMembers.get("#slack-prod-channel"));
+    }
+
+
+    // TODO CHANDU
+    @Test
+    public void testExpiryPrincipalGetNotificationDetailsWithGroupsSlack() {
+
+        DBService dbsvc = Mockito.mock(DBService.class);
+        RoleMemberNotificationCommon roleMemberNotificationCommon = new RoleMemberNotificationCommon(dbsvc,
+                USER_DOMAIN_PREFIX);
+        NotificationToEmailConverterCommon notificationToEmailConverterCommon =
+                new NotificationToEmailConverterCommon(null);
+
+        // our dev-team group has no notify roles set up so the admin notification
+        // must go the domain admins
+
+        Group devGroup = new Group().setName("athenz:group.dev-team");
+        Mockito.when(dbsvc.getGroup("athenz", "dev-team", Boolean.FALSE, Boolean.FALSE))
+                .thenReturn(devGroup);
+
+        Domain domain = new Domain().setName("athenz").setSlackChannel("#slack-dev-channel");
+        Mockito.when(dbsvc.getDomain("athenz", false)).thenReturn(domain);
+
+
+        Role adminRole = new Role().setName("athenz:role.admin");
+        adminRole.setRoleMembers(Collections.singletonList(new RoleMember().setMemberName("user.user1")));
+        Mockito.when(dbsvc.getRole("athenz", "admin", Boolean.FALSE, Boolean.TRUE, Boolean.FALSE))
+                .thenReturn(adminRole);
+
+        List<MemberRole> memberRoles1 = new ArrayList<>();
+        memberRoles1.add(new MemberRole().setRoleName("role1").setDomainName("athenz")
+                .setMemberName("athenz:group.dev-team"));
+        DomainRoleMember groupMember1 = new DomainRoleMember();
+        groupMember1.setMemberName("athenz:group.dev-team");
+        groupMember1.setMemberRoles(memberRoles1);
+
+        // our qa-team group has a notify role set up so the admin notification
+        // must go to the configured role members
+
+        Group qaGroup = new Group().setName("sports:group.qa-team").setNotifyRoles("ops:role.qa-admin");
+        Mockito.when(dbsvc.getGroup("sports", "qa-team", Boolean.FALSE, Boolean.FALSE))
+                .thenReturn(qaGroup);
+
+        Role sportsRole = new Role().setName("sports:role.admin");
+        sportsRole.setRoleMembers(Collections.singletonList(new RoleMember().setMemberName("user.user2")));
+        Mockito.when(dbsvc.getRole("sports", "admin", Boolean.FALSE, Boolean.TRUE, Boolean.FALSE))
+                .thenReturn(sportsRole);
+
+        Role notifyRole = new Role().setName("ops:role.qa-admin");
+        notifyRole.setRoleMembers(Collections.singletonList(new RoleMember().setMemberName("user.user3")));
+        Mockito.when(dbsvc.getRole("ops", "qa-admin", Boolean.FALSE, Boolean.TRUE, Boolean.FALSE))
+                .thenReturn(notifyRole);
+
+        List<MemberRole> memberRoles2 = new ArrayList<>();
+        memberRoles2.add(new MemberRole().setRoleName("role2").setDomainName("sports")
+                .setMemberName("sports:group.qa-team"));
+        DomainRoleMember groupMember2 = new DomainRoleMember();
+        groupMember2.setMemberName("sports:group.qa-team");
+        groupMember2.setMemberRoles(memberRoles2);
+
+        Map<String, DomainRoleMember> members = new HashMap<>();
+        members.put("athenz:group.dev-team", groupMember1);
+        members.put("sports:group.qa-team", groupMember2);
+
+        List<Notification> notifications = roleMemberNotificationCommon.getNotificationDetails(
+                Notification.Type.ROLE_MEMBER_EXPIRY, members,
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberExpiryNotificationTask.ExpiryRoleMemberDetailStringer(),
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToMetricConverter(),
+                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToMetricConverter(),
+                memberRole -> DisableNotificationEnum.getEnumSet(0));
+
+        assertEquals(notifications.size(), 4);
+        for (Notification notification : notifications) {
+            assertEquals(notification.getRecipients().size(), 1);
+            final String principal = notification.getRecipients().iterator().next();
+            switch (principal) {
+                case "user.user1":
+                    if (notification.getDetails().size() == 1) {
+                        assertEquals(notification.getDetails().get(NOTIFICATION_DETAILS_MEMBERS_LIST),
+                                "athenz;role1;athenz:group.dev-team;null;");
+                    } else if (notification.getDetails().size() == 2) {
+                        assertEquals(notification.getDetails().get(NOTIFICATION_DETAILS_ROLES_LIST),
+                                "athenz;role1;athenz:group.dev-team;null;");
+                        assertEquals(notification.getDetails().get(NOTIFICATION_DETAILS_MEMBER), "user.user1");
+                    } else {
+                        fail();
+                    }
+                    break;
+                case "user.user2":
+                    assertEquals(notification.getDetails().size(), 1);
+                    assertEquals(notification.getDetails().get(NOTIFICATION_DETAILS_MEMBERS_LIST),
+                            "sports;role2;sports:group.qa-team;null;");
+                    break;
+                case "user.user3":
+                    assertEquals(notification.getDetails().size(), 2);
+                    assertEquals(notification.getDetails().get(NOTIFICATION_DETAILS_ROLES_LIST),
+                            "sports;role2;sports:group.qa-team;null;");
+                    assertEquals(notification.getDetails().get(NOTIFICATION_DETAILS_MEMBER), "user.user3");
+                    break;
+                default:
+                    fail("unexpected principal: " + principal);
+                    break;
+            }
+        }
+    }
+
+
     @Test
     public void testConsolidateDomainMembers() {
 

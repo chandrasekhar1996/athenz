@@ -95,6 +95,66 @@ public class NotificationCommon {
         return notification;
     }
 
+    public Notification createNotification(Notification.Type type, final String recipient,
+                                           Map<String, String> details,
+                                           NotificationToEmailConverter notificationToEmailConverter,
+                                           NotificationToMetricConverter notificationToMetricConverter,
+                                           NotificationToSlackMessageConverter notificationToSlackMessageConverter) {
+
+        if (recipient == null || recipient.isEmpty()) {
+            LOGGER.error("Notification requires a valid recipient");
+            return null;
+        }
+
+        Notification notification = new Notification(type);
+        notification.setDetails(details);
+        notification.setNotificationToEmailConverter(notificationToEmailConverter);
+        notification.setNotificationToMetricConverter(notificationToMetricConverter);
+        notification.setNotificationToSlackMessageConverter(notificationToSlackMessageConverter);
+
+        // if the recipient is a service then we're going to send a notification
+        // to the service's domain admin users
+
+        addNotificationRecipient(notification, recipient, false);
+
+        if (notification.getRecipients() == null || notification.getRecipients().isEmpty()) {
+            LOGGER.error("Notification requires at least 1 recipient");
+            return null;
+        }
+
+        return notification;
+    }
+
+    public Notification createNotification(Notification.Type type, Notification.ChannelType channelType, final String recipient,
+                                           Map<String, String> details,
+                                           NotificationToEmailConverter notificationToEmailConverter,
+                                           NotificationToMetricConverter notificationToMetricConverter,
+                                           NotificationToSlackMessageConverter notificationToSlackMessageConverter) {
+
+        if (recipient == null || recipient.isEmpty()) {
+            LOGGER.error("Notification requires a valid recipient");
+            return null;
+        }
+
+        Notification notification = new Notification(type, channelType);
+        notification.setDetails(details);
+        notification.setNotificationToEmailConverter(notificationToEmailConverter);
+        notification.setNotificationToMetricConverter(notificationToMetricConverter);
+        notification.setNotificationToSlackMessageConverter(notificationToSlackMessageConverter);
+
+        // if the recipient is a service then we're going to send a notification
+        // to the service's domain admin users
+
+        addNotificationRecipient(notification, recipient, false);
+
+        if (notification.getRecipients() == null || notification.getRecipients().isEmpty()) {
+            LOGGER.error("Notification requires at least 1 recipient");
+            return null;
+        }
+
+        return notification;
+    }
+
     void addDomainRoleRecipients(Notification notification, final String domainName, final String roleName) {
 
         Set<String> domainRoleMembers = domainRoleMembersFetcher.getDomainRoleMembers(domainName, roleName);
@@ -105,6 +165,7 @@ public class NotificationCommon {
         notification.getRecipients().addAll(domainRoleMembers);
     }
 
+    // TODO CHANDU add slack support
     void addNotificationRecipient(Notification notification, final String recipient, boolean ignoreService) {
 
         int roleDomainIndex = recipient.indexOf(AuthorityConsts.ROLE_SEP);
@@ -119,6 +180,30 @@ public class NotificationCommon {
             final String domainName = AthenzUtils.extractPrincipalDomainName(recipient);
             if (domainName != null) {
                 addDomainRoleRecipients(notification, domainName, ServerCommonConsts.ADMIN_ROLE_NAME);
+            }
+        }
+    }
+
+    void addNotificationRecipient(Notification notification, final String recipient, boolean ignoreService, Notification.ChannelType channelType) {
+
+        int roleDomainIndex = recipient.indexOf(AuthorityConsts.ROLE_SEP);
+        if (roleDomainIndex != -1) {
+            addDomainRoleRecipients(notification, recipient.substring(0, roleDomainIndex),
+                    recipient.substring(roleDomainIndex + AuthorityConsts.ROLE_SEP.length()));
+        } else if (recipient.contains(AuthorityConsts.GROUP_SEP)) {
+            // Do nothing. Group members will not get individual notifications.
+        } else if (recipient.startsWith(userDomainPrefix)) {
+            notification.addRecipient(recipient);
+        } else {
+            if (channelType.equals(Notification.ChannelType.SLACK)) {
+                notification.addRecipient(recipient);
+            } else {
+                if (!ignoreService) {
+                    final String domainName = AthenzUtils.extractPrincipalDomainName(recipient);
+                    if (domainName != null) {
+                        addDomainRoleRecipients(notification, domainName, ServerCommonConsts.ADMIN_ROLE_NAME);
+                    }
+                }
             }
         }
     }

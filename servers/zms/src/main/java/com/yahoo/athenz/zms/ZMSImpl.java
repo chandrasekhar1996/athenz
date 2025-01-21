@@ -39,6 +39,7 @@ import com.yahoo.athenz.common.server.metastore.DomainMetaStoreFactory;
 import com.yahoo.athenz.common.server.notification.Notification;
 import com.yahoo.athenz.common.server.notification.NotificationManager;
 import com.yahoo.athenz.common.server.notification.NotificationToEmailConverterCommon;
+import com.yahoo.athenz.common.server.notification.NotificationToSlackBlockConverterCommon;
 import com.yahoo.athenz.common.server.rest.Http;
 import com.yahoo.athenz.common.server.rest.Http.AuthorityList;
 import com.yahoo.athenz.common.server.ServerResourceException;
@@ -225,6 +226,7 @@ public class ZMSImpl implements Authorizer, KeyStore, ZMSHandler {
     protected ZMSGroupMembersFetcher groupMemberFetcher = null;
     protected DomainMetaStore domainMetaStore = null;
     protected NotificationToEmailConverterCommon notificationToEmailConverterCommon;
+    protected NotificationToSlackBlockConverterCommon notificationToSlackBlockConverterCommon;
     protected List<ChangePublisher<DomainChangeMessage>> domainChangePublishers = new ArrayList<>();
     protected ServiceProviderManager serviceProviderManager;
     protected ServiceProviderClient serviceProviderClient;
@@ -758,8 +760,10 @@ public class ZMSImpl implements Authorizer, KeyStore, ZMSHandler {
         }
     }
 
+    // chandu notification manager set
     private void setNotificationManager() {
         notificationToEmailConverterCommon = new NotificationToEmailConverterCommon(userAuthority);
+        notificationToSlackBlockConverterCommon = new NotificationToSlackBlockConverterCommon(userAuthority);
         ZMSNotificationTaskFactory zmsNotificationTaskFactory = new ZMSNotificationTaskFactory(dbService, userDomainPrefix, notificationToEmailConverterCommon);
         notificationManager = new NotificationManager(zmsNotificationTaskFactory.getNotificationTasks(),
                 userAuthority, keyStore, dbService);

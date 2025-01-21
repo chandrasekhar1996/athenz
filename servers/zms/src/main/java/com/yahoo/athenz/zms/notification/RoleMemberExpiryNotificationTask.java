@@ -62,6 +62,16 @@ public class RoleMemberExpiryNotificationTask implements NotificationTask {
             return Collections.emptyList();
         }
 
+        List<Notification> slackNotification = roleMemberNotificationCommon.getNotificationDetails(
+                Notification.Type.ROLE_MEMBER_EXPIRY,
+                expiryMembers,
+                roleExpiryPrincipalNotificationToEmailConverter,
+                roleExpiryDomainNotificationToEmailConverter,
+                new ExpiryRoleMemberDetailStringer(),
+                roleExpiryPrincipalNotificationToMetricConverter,
+                roleExpiryDomainNotificationToMetricConverter,
+                new ReviewDisableRoleMemberNotificationFilter());
+
         return roleMemberNotificationCommon.getNotificationDetails(
                 Notification.Type.ROLE_MEMBER_EXPIRY,
                 expiryMembers,
@@ -217,6 +227,22 @@ public class RoleMemberExpiryNotificationTask implements NotificationTask {
             return NotificationUtils.getNotificationAsMetrics(notification, currentTime, NOTIFICATION_TYPE,
                     NOTIFICATION_DETAILS_MEMBERS_LIST, METRIC_NOTIFICATION_ROLE_KEY, METRIC_NOTIFICATION_EXPIRY_DAYS_KEY,
                     notificationToMetricConverterCommon);
+        }
+    }
+
+    public static class RoleExpiryPrincipalNotificationToSlackMessageConverter implements NotificationToSlackMessageConverter {
+
+        @Override
+        public NotificationSlackMessage getNotificationAsSlackMessage(Notification notification) {
+            return null;
+        }
+    }
+
+    public static class RoleExpiryDomainNotificationToSlackMessageConverterr implements NotificationToSlackMessageConverter {
+
+        @Override
+        public NotificationSlackMessage getNotificationAsSlackMessage(Notification notification) {
+            return null;
         }
     }
 }
