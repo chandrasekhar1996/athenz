@@ -238,7 +238,7 @@ public class RoleMemberExpiryNotificationTask implements NotificationTask {
         }
     }
 
-    public static class RoleExpiryDomainNotificationToSlackMessageConverterr implements NotificationToSlackMessageConverter {
+    public static class RoleExpiryDomainNotificationToSlackMessageConverter implements NotificationToSlackMessageConverter {
 
         @Override
         public NotificationSlackMessage getNotificationAsSlackMessage(Notification notification) {

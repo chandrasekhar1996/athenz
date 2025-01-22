@@ -25,39 +25,7 @@ import java.lang.invoke.MethodHandles;
 
 public class SlackFactory {
 
-    public static final String PROP_MESSAGING_CLI_SERVICE_URL = "athenz.messaging_cli.service_url";
-    public static final String PROP_MESSAGING_CLI_KEY_PATH = "athenz.messaging_cli.key_path";
-    public static final String PROP_MESSAGING_CLI_CERT_PATH = "athenz.messaging_cli.cert_path";
-    public static final String PROP_MESSAGING_CLI_TRUST_STORE_PATH = "athenz.messaging_cli.truststore_path";
-
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-    protected static AthenzPulsarClient.TlsConfig tlsConfig() {
-        String tlsCertPath = System.getProperty(PROP_MESSAGING_CLI_CERT_PATH);
-        String tlsKeyPath = System.getProperty(PROP_MESSAGING_CLI_KEY_PATH);
-        String tlsCaPath = System.getProperty(PROP_MESSAGING_CLI_TRUST_STORE_PATH);
 
-        if (tlsCertPath == null || tlsKeyPath == null || tlsCaPath == null) {
-            LOG.error("Pulsar client configuration invalid. tlsCertPath :[{}]. tlsKeyPath : [{}], tlsCaPath: [{}]",
-                    tlsCertPath, tlsKeyPath, tlsCaPath);
-            throw new IllegalArgumentException("invalid settings configured");
-        }
-
-        return new AthenzPulsarClient.TlsConfig(tlsCertPath, tlsKeyPath, tlsCaPath);
-    }
-
-    protected static String serviceUrl() {
-        String serviceUrl = System.getProperty(PROP_MESSAGING_CLI_SERVICE_URL);
-
-        if (serviceUrl == null) {
-            LOG.error("Pulsar client null service url");
-            throw new IllegalArgumentException("invalid pulsar service url");
-        }
-
-        return serviceUrl;
-    }
-
-    private SubscriptionType toSubscriptionType(String subscriptionType) {
-        return SubscriptionType.valueOf(subscriptionType);
-    }
 }

@@ -82,6 +82,11 @@
             <version>${logback.server.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.slack.api</groupId>
+            <artifactId>bolt-jetty</artifactId> <!-- will resolve "bolt" and "bolt-servlet" artifacts as its dependencies -->
+            <version>1.45.1</version>
+        </dependency>
     </dependencies>
 
 </project>
