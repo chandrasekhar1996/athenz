@@ -84,8 +84,20 @@
         </dependency>
         <dependency>
             <groupId>com.slack.api</groupId>
-            <artifactId>bolt-jetty</artifactId> <!-- will resolve "bolt" and "bolt-servlet" artifacts as its dependencies -->
+            <artifactId>slack-api-client</artifactId>
             <version>1.45.1</version>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>ssm</artifactId>
+            <version>2.29.38</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.yahoo.athenz</groupId>
+            <artifactId>athenz-server-aws-common</artifactId>
+            <version>1.12.8-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 

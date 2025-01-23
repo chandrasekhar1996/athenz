@@ -1,5 +1,4 @@
 /*
- *
  * Copyright The Athenz Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,19 +12,19 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package com.yahoo.athenz.common.notification.slack;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Collection;
 
-import java.lang.invoke.MethodHandles;
+public interface SlackClient {
 
-public class SlackFactory {
-
-    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-
-
+    /**
+     * Send a slack message through the provider
+     * @param recipients list of slack recipients, can be channel or user
+     * @param message the notification message content
+     * @return true if slack message was sent
+     */
+    boolean sendMessage(Collection<String> recipients, String message);
 }
