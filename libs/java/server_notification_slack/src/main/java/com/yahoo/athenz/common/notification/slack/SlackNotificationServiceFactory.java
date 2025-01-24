@@ -1,7 +1,6 @@
 package com.yahoo.athenz.common.notification.slack;
 
 import com.yahoo.athenz.auth.PrivateKeyStore;
-import com.yahoo.athenz.common.notification.slack.client.AthenzSlackSdkClient;
 import com.yahoo.athenz.common.notification.slack.config.AthenzSlackConfig;
 import com.yahoo.athenz.common.server.notification.NotificationService;
 import com.yahoo.athenz.common.server.notification.NotificationServiceFactory;

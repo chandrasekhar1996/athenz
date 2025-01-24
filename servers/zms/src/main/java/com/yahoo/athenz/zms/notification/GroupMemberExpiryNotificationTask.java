@@ -430,9 +430,10 @@ public class GroupMemberExpiryNotificationTask implements NotificationTask {
 //            return new NotificationEmail(subject, body, fullyQualifiedEmailAddresses);
 //        }
 
+        // TODO CHANDU
         @Override
         public NotificationSlackMessage getNotificationAsSlackMessage(Notification notification) {
-            return new NotificationSlackMessage();
+            return new NotificationSlackMessage("", notification.getRecipients());
         }
     }
 

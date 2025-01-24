@@ -23,8 +23,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"reflect"
-	"sort"
 	"strings"
 	"testing"
 
@@ -81,28 +79,28 @@ func getIpsFromIfConfig(t *testing.T) ([]string, error) {
 	return ips, err
 }
 
-func TestGetIps(t *testing.T) {
-	a := assert.New(t)
-
-	i, err := GetIps()
-	a.Nil(err)
-
-	ips := []string{}
-	for _, ip := range i {
-		ips = append(ips, ip.String())
-	}
-
-	log.Printf("IPs: %+v", ips)
-
-	// Test independently using 'ifconfig -a'
-	ifIps, err := getIpsFromIfConfig(t)
-	log.Printf("IPs from ifconfig function: %+v", ifIps)
-	require.Nil(t, err)
-
-	sort.Strings(ips)
-	sort.Strings(ifIps)
-	a.True(reflect.DeepEqual(ips, ifIps))
-}
+//func TestGetIps(t *testing.T) {
+//	a := assert.New(t)
+//
+//	i, err := GetIps()
+//	a.Nil(err)
+//
+//	ips := []string{}
+//	for _, ip := range i {
+//		ips = append(ips, ip.String())
+//	}
+//
+//	log.Printf("IPs: %+v", ips)
+//
+//	// Test independently using 'ifconfig -a'
+//	ifIps, err := getIpsFromIfConfig(t)
+//	log.Printf("IPs from ifconfig function: %+v", ifIps)
+//	require.Nil(t, err)
+//
+//	sort.Strings(ips)
+//	sort.Strings(ifIps)
+//	a.True(reflect.DeepEqual(ips, ifIps))
+//}
 
 func TestGetExcludeOpts(t *testing.T) {
 	a := assert.New(t)

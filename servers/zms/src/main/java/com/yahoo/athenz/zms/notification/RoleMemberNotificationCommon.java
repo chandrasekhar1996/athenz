@@ -101,25 +101,25 @@ public class RoleMemberNotificationCommon {
             }
         }
 
-        // CHANDU TODO this is not generating notification for slack
-        for (String principal : consolidatedMembersForSlack.keySet()) {
-
-            // we're going to process the role member, update
-            // our domain admin map accordingly and return
-            // the details object that we need to send to the
-            // notification agent for processing
-
-            Map<String, String> details = processRoleReminder(domainAdminMap, consolidatedMembersForSlack.get(principal),
-                    roleMemberDetailStringer, disableRoleMemberNotificationFilter);
-            if (!details.isEmpty()) {
-                Notification notification = notificationCommon.createNotification(
-                        type, principal, details, principalNotificationToEmailConverter,
-                        principalNotificationToMetricConverter);
-                if (notification != null) {
-                    notificationList.add(notification);
-                }
-            }
-        }
+//        // CHANDU TODO this is not generating notification for slack
+//        for (String principal : consolidatedMembersForSlack.keySet()) {
+//
+//            // we're going to process the role member, update
+//            // our domain admin map accordingly and return
+//            // the details object that we need to send to the
+//            // notification agent for processing
+//
+//            Map<String, String> details = processRoleReminder(domainAdminMap, consolidatedMembersForSlack.get(principal),
+//                    roleMemberDetailStringer, disableRoleMemberNotificationFilter);
+//            if (!details.isEmpty()) {
+//                Notification notification = notificationCommon.createNotification(
+//                        type, principal, details, principalNotificationToEmailConverter,
+//                        principalNotificationToMetricConverter);
+//                if (notification != null) {
+//                    notificationList.add(notification);
+//                }
+//            }
+//        }
 
         // now we're going to send reminders to all the domain/role administrators
 

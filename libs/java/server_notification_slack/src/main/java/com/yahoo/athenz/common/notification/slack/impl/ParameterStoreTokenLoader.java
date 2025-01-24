@@ -1,7 +1,6 @@
 package com.yahoo.athenz.common.notification.slack.impl;
 
 import com.yahoo.athenz.common.notification.slack.TokenLoader;
-import io.athenz.server.aws.common.store.impl.S3ChangeLogStore;
 import io.athenz.server.aws.common.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +37,7 @@ public class ParameterStoreTokenLoader implements TokenLoader {
             // Replace with real AWS SDK code to fetch the parameter
             return "mock-token-from-parameter-store";
         } catch (Exception e) {
-            throw new TokenLoadingException("Failed to load token from Parameter Store: " + parameterName, e);
+            throw new RuntimeException("Failed to load token from Parameter Store: " + parameterName, e);
         }
     }
 
