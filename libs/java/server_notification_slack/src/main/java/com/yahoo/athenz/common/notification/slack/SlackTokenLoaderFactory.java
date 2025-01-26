@@ -1,6 +1,6 @@
 package com.yahoo.athenz.common.notification.slack;
 
-public class TokenLoaderFactory {
+public class SlackTokenLoaderFactory {
 
     /**
      * Creates an instance of TokenLoader based on the system property.

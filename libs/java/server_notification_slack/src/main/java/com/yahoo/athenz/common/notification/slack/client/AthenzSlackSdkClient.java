@@ -18,7 +18,7 @@ public class AthenzSlackSdkClient implements SlackClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AthenzSlackSdkClient.class);
     private MethodsClient slackClient;
-    private final AthenzSlackConfig athenzSlackConfig;
+    private AthenzSlackConfig athenzSlackConfig;
 
     private void initSlackClient() {
         // chandu TODO: initialize with access token
@@ -34,6 +34,10 @@ public class AthenzSlackSdkClient implements SlackClient {
     public AthenzSlackSdkClient(AthenzSlackConfig athenzSlackConfig) {
         this.athenzSlackConfig = athenzSlackConfig;
         initSlackClient();
+    }
+
+    public AthenzSlackSdkClient(MethodsClient slackClient) {
+        this.slackClient = slackClient;
     }
 
     @Override

@@ -11,21 +11,30 @@ public class SlackNotificationServiceFactory implements NotificationServiceFacto
     public static final String SLACK_NOTIFICATION_PROP_TOKEN_LOADER_FACTORY_CLASS = "athenz.zms.slack_notification_token_loader_factory_class";
     private static final Logger LOGGER = LoggerFactory.getLogger(SlackNotificationServiceFactory.class);
 
+
     @Override
     public NotificationService create(PrivateKeyStore privateKeyStore) {
-        String slackTokenLoaderFactoryClass = System.getProperty(SLACK_NOTIFICATION_PROP_TOKEN_LOADER_FACTORY_CLASS);
-        TokenLoader tokenLoader = null;
+        final String slackTokenLoaderFactoryClass = System.getProperty(SLACK_NOTIFICATION_PROP_TOKEN_LOADER_FACTORY_CLASS);
+        if (slackTokenLoaderFactoryClass == null) {
+            LOGGER.error("Slack token loader factory class is not defined");
+            throw new IllegalArgumentException("Slack token loader factory class is not defined");
+        }
+
         try {
-            TokenLoaderFactory tokenLoaderFactory = (TokenLoaderFactory) Class.forName(
+            SlackTokenLoaderFactory slackTokenLoaderFactory = (SlackTokenLoaderFactory) Class.forName(
                     slackTokenLoaderFactoryClass.trim()).getDeclaredConstructor().newInstance();
-            tokenLoader = tokenLoaderFactory.createTokenLoader();
+
+            TokenLoader tokenLoader = slackTokenLoaderFactory.createTokenLoader();
             AthenzSlackConfig slackConfig = new AthenzSlackConfig(tokenLoader);
+
             SlackClient slackClient = new SlackClientFactory().createSlackClient(slackConfig);
             return new SlackNotificationService(slackClient);
         } catch (Exception ex) {
             LOGGER.error("Invalid NotificationServiceFactory class: {}", slackTokenLoaderFactoryClass, ex);
+            throw new IllegalArgumentException("Invalid Slack token loader class", ex);
         }
 
-        return null;
     }
+
 }
+
