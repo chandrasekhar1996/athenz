@@ -5,10 +5,9 @@ import com.yahoo.athenz.common.notification.slack.config.AthenzSlackConfig;
 import com.yahoo.athenz.common.server.notification.NotificationService;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import static org.testng.Assert.assertNotNull;
-import static org.testng.Assert.assertNull;
-import static org.testng.Assert.assertTrue;
+
 import static org.mockito.Mockito.*;
+import static org.testng.Assert.*;
 
 public class SlackNotificationServiceFactoryTest {
 
@@ -33,21 +32,26 @@ public class SlackNotificationServiceFactoryTest {
 
     @Test
     public void testCreateNotificationServiceSuccess() throws Exception {
-        System.setProperty(SlackNotificationServiceFactory.SLACK_NOTIFICATION_PROP_TOKEN_LOADER_FACTORY_CLASS, "com.yahoo.athenz.common.notification.slack.SlackTokenLoaderFactory");
-
-        when(mockSlackTokenLoaderFactory.createTokenLoader()).thenReturn(mockTokenLoader);
-        when(mockSlackClientFactory.createSlackClient(any(AthenzSlackConfig.class))).thenReturn(mockSlackClient);
+        System.setProperty(SlackNotificationServiceFactory.SLACK_NOTIFICATION_PROP_TOKEN_LOADER_CLASS, "com.yahoo.athenz.common.notification.slack.impl.NoOpTokenLoader");
+        System.setProperty("slack.client.class", "com.yahoo.athenz.common.notification.slack.client.NoOpSlackClient");
 
         NotificationService notificationService = factory.create(mockPrivateKeyStore);
         assertNotNull(notificationService);
         assertTrue(notificationService instanceof SlackNotificationService);
+
+        System.clearProperty(SlackNotificationServiceFactory.SLACK_NOTIFICATION_PROP_TOKEN_LOADER_CLASS);
+        System.clearProperty("slack.client.class");
+
     }
 
     @Test
     public void testCreateNotificationServiceFailure() {
-        System.setProperty(SlackNotificationServiceFactory.SLACK_NOTIFICATION_PROP_TOKEN_LOADER_FACTORY_CLASS, "InvalidClassName");
-
-        NotificationService notificationService = factory.create(mockPrivateKeyStore);
-        assertNull(notificationService);
+        System.setProperty(SlackNotificationServiceFactory.SLACK_NOTIFICATION_PROP_TOKEN_LOADER_CLASS, "InvalidClassName");
+        try {
+            NotificationService notificationService = factory.create(mockPrivateKeyStore);
+            fail();
+        } catch (Exception ignored) {
+        }
+        System.clearProperty(SlackNotificationServiceFactory.SLACK_NOTIFICATION_PROP_TOKEN_LOADER_CLASS);
     }
 }

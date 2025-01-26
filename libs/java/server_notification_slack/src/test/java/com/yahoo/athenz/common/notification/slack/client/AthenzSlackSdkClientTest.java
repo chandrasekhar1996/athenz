@@ -24,7 +24,6 @@ import com.slack.api.methods.request.users.UsersLookupByEmailRequest;
 import com.slack.api.methods.response.chat.ChatPostMessageResponse;
 import com.slack.api.methods.response.users.UsersLookupByEmailResponse;
 import com.slack.api.model.User;
-import com.yahoo.athenz.common.server.notification.impl.EmailNotificationService;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.testng.annotations.Test;
@@ -305,12 +304,7 @@ public class AthenzSlackSdkClientTest {
         ArgumentCaptor<RequestConfigurator> captor = ArgumentCaptor.forClass(RequestConfigurator.class);
 
         AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(slackMethodsClient);
-        try {
-            athenzSlackClient.fetchUserIdFromEmail(message);
-            fail();
-        } catch (RuntimeException ignored) {
-
-        }
+        assertNull(athenzSlackClient.fetchUserIdFromEmail(message));
         Mockito.verify(slackMethodsClient, atLeastOnce()).usersLookupByEmail(captor.capture());
     }
 }

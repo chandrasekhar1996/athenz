@@ -78,18 +78,15 @@ public class AthenzSlackSdkClient implements SlackClient {
         try {
             response = slackClient
                     .usersLookupByEmail(req -> req.email(email));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (SlackApiException e) {
-            throw new RuntimeException(e);
+        } catch (Exception e) {
+            LOGGER.error("Unable to lookup user by email: {}", e.getMessage());
+            return null;
         }
 
         if (response.isOk()) {
-            // If the response is successful, return the user ID
             return response.getUser().getId();
         } else {
-            // Log or handle error based on the response's error code
-            System.err.println("Error: " + response.getError());
+            LOGGER.error("Unable to lookup user by email: {}", response.getError());
             return null;
         }
     }
