@@ -6,6 +6,7 @@ import com.yahoo.athenz.common.server.notification.NotificationService;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import static com.yahoo.athenz.common.notification.slack.SlackClientFactory.NOTIFICATION_SLACK_CLIENT_CLASS;
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
 
@@ -33,14 +34,14 @@ public class SlackNotificationServiceFactoryTest {
     @Test
     public void testCreateNotificationServiceSuccess() throws Exception {
         System.setProperty(SlackNotificationServiceFactory.SLACK_NOTIFICATION_PROP_TOKEN_LOADER_CLASS, "com.yahoo.athenz.common.notification.slack.impl.NoOpTokenLoader");
-        System.setProperty("slack.client.class", "com.yahoo.athenz.common.notification.slack.client.NoOpSlackClient");
+        System.setProperty(NOTIFICATION_SLACK_CLIENT_CLASS, "com.yahoo.athenz.common.notification.slack.client.NoOpSlackClient");
 
         NotificationService notificationService = factory.create(mockPrivateKeyStore);
         assertNotNull(notificationService);
         assertTrue(notificationService instanceof SlackNotificationService);
 
         System.clearProperty(SlackNotificationServiceFactory.SLACK_NOTIFICATION_PROP_TOKEN_LOADER_CLASS);
-        System.clearProperty("slack.client.class");
+        System.clearProperty(NOTIFICATION_SLACK_CLIENT_CLASS);
 
     }
 

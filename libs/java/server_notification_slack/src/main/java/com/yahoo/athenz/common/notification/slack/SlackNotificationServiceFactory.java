@@ -14,26 +14,9 @@ public class SlackNotificationServiceFactory implements NotificationServiceFacto
 
     @Override
     public NotificationService create(PrivateKeyStore privateKeyStore) {
-        final String slackTokenLoaderClass = System.getProperty(SLACK_NOTIFICATION_PROP_TOKEN_LOADER_CLASS);
-        if (slackTokenLoaderClass == null) {
-            LOGGER.error("Slack token loader factory class is not defined");
-            throw new IllegalArgumentException("Slack token loader factory class is not defined");
-        }
-
-        try {
-            TokenLoader slackTokenLoader = (TokenLoader) Class.forName(
-                    slackTokenLoaderClass.trim()).getDeclaredConstructor().newInstance();
-
-            AthenzSlackConfig slackConfig = new AthenzSlackConfig(slackTokenLoader);
-
-            SlackClient slackClient = new SlackClientFactory().createSlackClient(slackConfig);
-            return new SlackNotificationService(slackClient);
-        } catch (Exception ex) {
-            LOGGER.error("Invalid NotificationServiceFactory class: {}", slackTokenLoaderClass, ex);
-            throw new IllegalArgumentException("Invalid Slack token loader class", ex);
-        }
-
+        AthenzSlackConfig slackConfig = new AthenzSlackConfig(privateKeyStore);
+        SlackClient slackClient = new SlackClientFactory().createSlackClient(slackConfig);
+        return new SlackNotificationService(slackClient);
     }
-
 }
 

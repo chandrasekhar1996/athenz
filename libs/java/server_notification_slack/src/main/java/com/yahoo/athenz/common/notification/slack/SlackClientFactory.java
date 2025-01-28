@@ -3,8 +3,10 @@ package com.yahoo.athenz.common.notification.slack;
 import com.yahoo.athenz.common.notification.slack.config.AthenzSlackConfig;
 
 public class SlackClientFactory {
+
+    public static final String NOTIFICATION_SLACK_CLIENT_CLASS = "athenz.server_slack_notification.slack_client";
     public static SlackClient createSlackClient(AthenzSlackConfig slackConfig) {
-        String clientClassName = System.getProperty("slack.client.class");
+        String clientClassName = System.getProperty(NOTIFICATION_SLACK_CLIENT_CLASS);
         if (clientClassName == null || clientClassName.isEmpty()) {
             throw new RuntimeException("System property 'slack.client.class' is not set.");
         }
