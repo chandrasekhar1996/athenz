@@ -17,7 +17,15 @@ package com.yahoo.athenz.common.notification.slack;
 
 public final class SlackNotificationConsts {
 
-    public static final String SLACK_BOT_TOKEN_APP_NAME = "";
-    public static final String SLACK_BOT_TOKEN_KEYGROUP_NAME = "";
-    public static final String SLACK_BOT_TOKEN_KEY_NAME = "";
+    public static final String SLACK_BOT_TOKEN_APP_NAME = "athens.notification_slack.token_app_name";
+    public static final String SLACK_BOT_TOKEN_KEYGROUP_NAME = "athens.notification_slack.token_keygroup_name";
+    public static final String SLACK_BOT_TOKEN_KEY_NAME = "athens.notification_slack.token_key_names";
+    public static final String PROP_SLACK_FETCH_TOKEN_PERIOD_BETWEEN_EXECUTIONS = "athens.notification_slack.period_between_fetch_token_executions_seconds";
+    public static final String DEFAULT_SLACK_FETCH_TOKEN_PERIOD_BETWEEN_EXECUTIONS = "3600";
+
+    public static final String NOTIFICATION_SLACK_CLIENT_CLASS = "athenz.server_slack_notification.slack_client";
+
+    // prevent object creation
+    private SlackNotificationConsts() {
+    }
 }

@@ -1,25 +1,29 @@
 package com.yahoo.athenz.common.notification.slack;
 
-import com.yahoo.athenz.common.notification.slack.config.AthenzSlackConfig;
+import com.yahoo.athenz.auth.PrivateKeyStore;
+import com.yahoo.athenz.auth.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import static com.yahoo.athenz.common.notification.slack.SlackNotificationConsts.NOTIFICATION_SLACK_CLIENT_CLASS;
 
 public class SlackClientFactory {
 
-    public static final String NOTIFICATION_SLACK_CLIENT_CLASS = "athenz.server_slack_notification.slack_client";
-    public static SlackClient createSlackClient(AthenzSlackConfig slackConfig) {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SlackClientFactory.class);
+
+    public static SlackClient createSlackClient(PrivateKeyStore privateKeyStore) {
         String clientClassName = System.getProperty(NOTIFICATION_SLACK_CLIENT_CLASS);
-        if (clientClassName == null || clientClassName.isEmpty()) {
-            throw new RuntimeException("System property 'slack.client.class' is not set.");
+        if (StringUtils.isEmpty(clientClassName)) {
+            LOGGER.error("SlackClient class is not initialized");
+            throw new IllegalArgumentException("SlackClient class is not initialized");
         }
 
         try {
             Class<?> clientClass = Class.forName(clientClassName);
-            if (!SlackClient.class.isAssignableFrom(clientClass)) {
-                throw new RuntimeException(clientClassName + " does not implement SlackClient interface.");
-            }
-
-            return (SlackClient) clientClass.getConstructor(AthenzSlackConfig.class).newInstance(slackConfig);
+            return (SlackClient) clientClass.getDeclaredConstructor(PrivateKeyStore.class).newInstance(privateKeyStore);
         } catch (Exception e) {
-            throw new ExceptionInInitializerError(e);
+            LOGGER.error("Invalid SlackClient class: {}", clientClassName, e);
+            throw new IllegalArgumentException("Invalid SlackClient class");
         }
     }
 }

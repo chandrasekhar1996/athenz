@@ -16,6 +16,7 @@
 
 package com.yahoo.athenz.common.notification.slack;
 
+import com.yahoo.athenz.auth.PrivateKeyStore;
 import com.yahoo.athenz.common.server.notification.Notification;
 import com.yahoo.athenz.common.server.notification.NotificationService;
 import com.yahoo.athenz.common.server.notification.NotificationSlackMessage;
@@ -30,15 +31,15 @@ import java.util.Set;
 public class SlackNotificationService implements NotificationService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SlackNotificationService.class);
-
-    private static final String AT = "@";
-
     private final SlackClient slackClient;
 
-        public SlackNotificationService(SlackClient slackClient) {
-        this.slackClient = slackClient;
+    public SlackNotificationService(PrivateKeyStore privateKeyStore) {
+        this.slackClient = new SlackClientFactory().createSlackClient(privateKeyStore);
     }
 
+    public SlackNotificationService(SlackClient slackClient) {
+        this.slackClient = slackClient;
+    }
 
     @Override
     public boolean notify(Notification notification) {
@@ -71,41 +72,8 @@ public class SlackNotificationService implements NotificationService {
         }
     }
 
-//    public boolean sendEmail(Set<String> recipients, String subject, String body) {
-//        final AtomicInteger counter = new AtomicInteger();
-//        // SES imposes a limit of 50 recipients. So we convert the recipients into batches
-//        if (recipients.size() > SES_RECIPIENTS_LIMIT_PER_MESSAGE) {
-//            final Collection<List<String>> recipientsBatch = recipients.stream()
-//                    .collect(Collectors.groupingBy(it -> counter.getAndIncrement() / SES_RECIPIENTS_LIMIT_PER_MESSAGE))
-//                    .values();
-//            boolean status = true;
-//            for (List<String> recipientsSegment : recipientsBatch) {
-//                if (!sendEmailMIME(subject, body, recipientsSegment)) {
-//                    status = false;
-//                }
-//            }
-//            return status;
-//        } else {
-//            return sendEmailMIME(subject, body, new ArrayList<>(recipients));
-//        }
-//    }
-
     public boolean sendSlackMessage(Set<String> recipients, String message) {
         return slackClient.sendMessage(recipients, message);
     }
-
-
-//    private boolean sendEmailMIME(String subject, String body, Collection<String> recipients) {
-//        MimeMessage mimeMessage;
-//        try {
-//            mimeMessage = getMimeMessage(subject, body, recipients, from + AT + emailDomainFrom, logoImage);
-//        } catch (MessagingException ex) {
-//            LOGGER.error("The email could not be sent. Error message: {}", ex.getMessage());
-//            return false;
-//        }
-//
-//        return emailProvider.sendEmail(recipients, from + AT + emailDomainFrom, mimeMessage);
-//    }
-
 
 }

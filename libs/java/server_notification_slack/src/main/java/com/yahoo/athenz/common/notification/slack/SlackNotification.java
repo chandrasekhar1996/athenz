@@ -32,7 +32,7 @@ public class SlackNotification {
         return blocks;
     }
 
-    public Set<String> getFullyQualifiedRecipientsEmail() {
+    public Set<String> getFullyQualifiedRecipients() {
         return fullyQualifiedRecipients;
     }
 
@@ -47,11 +47,11 @@ public class SlackNotification {
         }
         com.yahoo.athenz.common.notification.slack.SlackNotification that = (com.yahoo.athenz.common.notification.slack.SlackNotification) o;
         return  Objects.equals(getBlocks(), that.getBlocks()) &&
-                Objects.equals(getFullyQualifiedRecipientsEmail(), that.getFullyQualifiedRecipientsEmail());
+                Objects.equals(getFullyQualifiedRecipients(), that.getFullyQualifiedRecipients());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getBlocks(), getFullyQualifiedRecipientsEmail());
+        return Objects.hash(getBlocks(), getFullyQualifiedRecipients());
     }
 }

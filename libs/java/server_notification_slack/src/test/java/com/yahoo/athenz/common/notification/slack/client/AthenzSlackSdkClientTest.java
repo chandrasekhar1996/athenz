@@ -24,6 +24,7 @@ import com.slack.api.methods.request.users.UsersLookupByEmailRequest;
 import com.slack.api.methods.response.chat.ChatPostMessageResponse;
 import com.slack.api.methods.response.users.UsersLookupByEmailResponse;
 import com.slack.api.model.User;
+import com.yahoo.athenz.auth.PrivateKeyStore;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.testng.annotations.Test;
@@ -34,6 +35,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.mock;
 import static org.testng.Assert.*;
+import static org.testng.AssertJUnit.assertNotNull;
 
 public class AthenzSlackSdkClientTest {
 //    @Test
@@ -198,6 +200,14 @@ public class AthenzSlackSdkClientTest {
 //        System.clearProperty("athenz.notification_email_domain_to");
 //        System.clearProperty("athenz.notification_email_from");
 //    }
+
+    @Test
+    public void testAthenzSlackSdkClientNotNull() {
+        PrivateKeyStore privateKeyStore = mock(PrivateKeyStore.class);
+        when(privateKeyStore.getSecret(anyString(), anyString(), anyString())).thenReturn("access-token-1".toCharArray());
+        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(privateKeyStore);
+        assertNotNull(athenzSlackClient);
+    }
 
     @Test
     public void testSendMessageSuccess() throws SlackApiException, IOException {
