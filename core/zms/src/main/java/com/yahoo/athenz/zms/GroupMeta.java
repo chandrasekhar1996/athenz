@@ -21,13 +21,13 @@ public class GroupMeta {
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     public Boolean reviewEnabled;
     @RdlOptional
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public String notifyRoles;
     @RdlOptional
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public String userAuthorityFilter;
     @RdlOptional
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public String userAuthorityExpiration;
     @RdlOptional
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
@@ -49,13 +49,22 @@ public class GroupMeta {
     public Timestamp lastReviewedDate;
     @RdlOptional
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    public Boolean selfRenewEnabled;
+    public Boolean selfRenew;
     @RdlOptional
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     public Integer selfRenewMins;
     @RdlOptional
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     public Integer maxMembers;
+    @RdlOptional
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    public ResourceGroupOwnership resourceOwnership;
+    @RdlOptional
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String principalDomainFilter;
+    @RdlOptional
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String notifyDetails;
 
     public GroupMeta setSelfServe(Boolean selfServe) {
         this.selfServe = selfServe;
@@ -134,12 +143,12 @@ public class GroupMeta {
     public Timestamp getLastReviewedDate() {
         return lastReviewedDate;
     }
-    public GroupMeta setSelfRenewEnabled(Boolean selfRenewEnabled) {
-        this.selfRenewEnabled = selfRenewEnabled;
+    public GroupMeta setSelfRenew(Boolean selfRenew) {
+        this.selfRenew = selfRenew;
         return this;
     }
-    public Boolean getSelfRenewEnabled() {
-        return selfRenewEnabled;
+    public Boolean getSelfRenew() {
+        return selfRenew;
     }
     public GroupMeta setSelfRenewMins(Integer selfRenewMins) {
         this.selfRenewMins = selfRenewMins;
@@ -154,6 +163,27 @@ public class GroupMeta {
     }
     public Integer getMaxMembers() {
         return maxMembers;
+    }
+    public GroupMeta setResourceOwnership(ResourceGroupOwnership resourceOwnership) {
+        this.resourceOwnership = resourceOwnership;
+        return this;
+    }
+    public ResourceGroupOwnership getResourceOwnership() {
+        return resourceOwnership;
+    }
+    public GroupMeta setPrincipalDomainFilter(String principalDomainFilter) {
+        this.principalDomainFilter = principalDomainFilter;
+        return this;
+    }
+    public String getPrincipalDomainFilter() {
+        return principalDomainFilter;
+    }
+    public GroupMeta setNotifyDetails(String notifyDetails) {
+        this.notifyDetails = notifyDetails;
+        return this;
+    }
+    public String getNotifyDetails() {
+        return notifyDetails;
     }
 
     @Override
@@ -196,13 +226,22 @@ public class GroupMeta {
             if (lastReviewedDate == null ? a.lastReviewedDate != null : !lastReviewedDate.equals(a.lastReviewedDate)) {
                 return false;
             }
-            if (selfRenewEnabled == null ? a.selfRenewEnabled != null : !selfRenewEnabled.equals(a.selfRenewEnabled)) {
+            if (selfRenew == null ? a.selfRenew != null : !selfRenew.equals(a.selfRenew)) {
                 return false;
             }
             if (selfRenewMins == null ? a.selfRenewMins != null : !selfRenewMins.equals(a.selfRenewMins)) {
                 return false;
             }
             if (maxMembers == null ? a.maxMembers != null : !maxMembers.equals(a.maxMembers)) {
+                return false;
+            }
+            if (resourceOwnership == null ? a.resourceOwnership != null : !resourceOwnership.equals(a.resourceOwnership)) {
+                return false;
+            }
+            if (principalDomainFilter == null ? a.principalDomainFilter != null : !principalDomainFilter.equals(a.principalDomainFilter)) {
+                return false;
+            }
+            if (notifyDetails == null ? a.notifyDetails != null : !notifyDetails.equals(a.notifyDetails)) {
                 return false;
             }
         }

@@ -22,6 +22,7 @@ const apiUtils = require('../utils/apiUtils');
 const debug = require('debug')('AthenzUI:server:handlers:api');
 const cytoscape = require('cytoscape');
 let dagre = require('cytoscape-dagre');
+const validationRegex = require('../constants');
 
 let appConfig = {};
 
@@ -49,6 +50,22 @@ const responseHandler = function (err, data) {
     } else {
         this.callback(null, data);
     }
+};
+
+const validateFields = (value, field) => {
+    let regex = validationRegex.hasOwnProperty(field)
+        ? validationRegex[field]
+        : null;
+    if (!regex) {
+        console.log('Missing regex for ' + field);
+    }
+
+    if (regex.test(value)) {
+        return true;
+    }
+
+    console.log('Validation error for ' + field + ': ' + value);
+    return false;
 };
 
 const deleteInstanceZts = (
@@ -1078,7 +1095,7 @@ Fetchr.registerService({
 });
 
 Fetchr.registerService({
-    name: 'provider',
+    name: 'access',
     read(req, resource, params, config, callback) {
         let res = {
             provider: {},
@@ -1088,29 +1105,21 @@ Fetchr.registerService({
         const service = `${params.domainName}:service.${params.serviceName}`;
         appConfig.allProviders.forEach((provider) => {
             let param = {
-                domainName: params.domainName,
-                policyName: provider.id,
+                domain: params.domainName,
+                resource: service,
+                checkPrincipal: provider.service,
+                action: 'launch',
             };
             promises.push(
                 new Promise((resolve, reject) => {
-                    req.clients.zms.getPolicy(param, (err, data) => {
+                    req.clients.zms.getAccessExt(param, (err, data) => {
                         res.provider[provider.id] = 'not';
                         if (err) {
                             if (err.status !== 404) {
                                 reject(err);
                             }
                         }
-                        if (
-                            data &&
-                            data.assertions &&
-                            data.assertions.some(
-                                (a) =>
-                                    a.resource &&
-                                    a.resource === service &&
-                                    a.action &&
-                                    a.action === 'launch'
-                            )
-                        ) {
+                        if (data && data.granted) {
                             res.provider[provider.id] = 'allow';
                         }
                         resolve();
@@ -1133,6 +1142,10 @@ Fetchr.registerService({
                 callback(errorHandler.fetcherError(err));
             });
     },
+});
+
+Fetchr.registerService({
+    name: 'provider',
     create(req, resource, params, body, config, callback) {
         req.clients.zms.putDomainTemplate(
             params,
@@ -1505,18 +1518,40 @@ Fetchr.registerService({
                 break;
             }
             case 'domain': {
-                req.clients.zms.putDomainMeta(
-                    {
-                        name: params.domainName,
-                        auditRef: params.auditRef,
-                        detail: params.detail,
-                    },
-                    responseHandler.bind({
-                        caller: 'putDomainMeta',
-                        callback,
-                        req,
-                    })
-                );
+                if (
+                    params.detail.slackChannel &&
+                    !validateFields(
+                        params.detail.slackChannel,
+                        'domainSlackChannel'
+                    )
+                ) {
+                    let validationErr = {
+                        status: '400',
+                        message: {
+                            message: 'Invalid Slack Channel format',
+                        },
+                    };
+                    callback(
+                        errorHandler.fetcherError(
+                            validationErr,
+                            'validationError'
+                        )
+                    );
+                } else {
+                    req.clients.zms.putDomainMeta(
+                        {
+                            name: params.domainName,
+                            auditRef: params.auditRef,
+                            detail: params.detail,
+                        },
+                        responseHandler.bind({
+                            caller: 'putDomainMeta',
+                            callback,
+                            req,
+                        })
+                    );
+                }
+
                 break;
             }
             case 'policy': {
@@ -1799,6 +1834,30 @@ Fetchr.registerService({
                     callback(null, 0);
                 }
             });
+    },
+});
+
+Fetchr.registerService({
+    name: 'search-services',
+    read(req, resource, params, config, callback) {
+        req.clients.zms.searchServiceIdentities(params, function (err, data) {
+            if (!err && Array.isArray(data.list)) {
+                data.list.sort((a, b) => {
+                    return a.name > b.name ? 1 : -1;
+                });
+                return callback(null, data);
+            }
+            if (err) {
+                debug(
+                    `principal: ${req.session.shortId} rid: ${
+                        req.headers.rid
+                    } Error from ZMS while calling searchServiceIdentities API: ${JSON.stringify(
+                        errorHandler.fetcherError(err)
+                    )}`
+                );
+            }
+            return callback(errorHandler.fetcherError(err));
+        });
     },
 });
 
@@ -2684,6 +2743,7 @@ Fetchr.registerService({
                         key === 'instances' ||
                         key === 'scopeonprem' ||
                         key === 'scopeaws' ||
+                        key === 'scopegcp' ||
                         key === 'scopeall'
                     ) {
                         let copyAssertionConditionData = JSON.parse(
@@ -3178,6 +3238,68 @@ Fetchr.registerService({
                         callback(null, []);
                     } else {
                         callback(null, list);
+                    }
+                }
+            }
+        );
+    },
+});
+
+Fetchr.registerService({
+    name: 'roles-review',
+    read(req, resource, params, config, callback) {
+        let principal = `${appConfig.userDomain}.${req.session.shortId}`;
+        if (req.session.shortId.indexOf('.') !== -1) {
+            principal = req.session.shortId;
+        }
+        req.clients.zms.getRolesForReview(
+            { principal: principal },
+            (err, data) => {
+                if (err) {
+                    debug(
+                        `principal: ${req.session.shortId} rid: ${
+                            req.headers.rid
+                        } Error from ZMS while calling getRolesForReview API: ${JSON.stringify(
+                            errorHandler.fetcherError(err)
+                        )}`
+                    );
+                    callback(errorHandler.fetcherError(err));
+                } else {
+                    if (!data || !data.list) {
+                        callback(null, []);
+                    } else {
+                        callback(null, data.list);
+                    }
+                }
+            }
+        );
+    },
+});
+
+Fetchr.registerService({
+    name: 'groups-review',
+    read(req, resource, params, config, callback) {
+        let principal = `${appConfig.userDomain}.${req.session.shortId}`;
+        if (req.session.shortId.indexOf('.') !== -1) {
+            principal = req.session.shortId;
+        }
+        req.clients.zms.getGroupsForReview(
+            { principal: principal },
+            (err, data) => {
+                if (err) {
+                    debug(
+                        `principal: ${req.session.shortId} rid: ${
+                            req.headers.rid
+                        } Error from ZMS while calling getGroupsForReview API: ${JSON.stringify(
+                            errorHandler.fetcherError(err)
+                        )}`
+                    );
+                    callback(errorHandler.fetcherError(err));
+                } else {
+                    if (!data || !data.list) {
+                        callback(null, []);
+                    } else {
+                        callback(null, data.list);
                     }
                 }
             }

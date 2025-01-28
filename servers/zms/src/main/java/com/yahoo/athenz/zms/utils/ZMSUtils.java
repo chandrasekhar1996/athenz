@@ -19,11 +19,15 @@ import com.yahoo.athenz.auth.Authority;
 import com.yahoo.athenz.auth.AuthorityConsts;
 import com.yahoo.athenz.auth.Principal;
 import com.yahoo.athenz.auth.impl.SimplePrincipal;
+import com.yahoo.athenz.auth.util.StringUtils;
+import com.yahoo.athenz.common.server.ServerResourceException;
 import com.yahoo.athenz.common.server.log.AuditLogMsgBuilder;
 import com.yahoo.athenz.common.server.log.AuditLogger;
 import com.yahoo.athenz.common.server.util.ResourceUtils;
 import com.yahoo.athenz.common.server.util.ServletRequestUtil;
 import com.yahoo.athenz.zms.*;
+import com.yahoo.rdl.Timestamp;
+import com.yahoo.rdl.Validator;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.jetty.util.StringUtil;
 import org.slf4j.Logger;
@@ -178,7 +182,12 @@ public class ZMSUtils {
 
         return msgBldr;
     }
-    
+
+    public static RuntimeException error(ServerResourceException ex) {
+        LOG.error("Server Common Error: {} message: {}", ex.getCode(), ex.getMessage());
+        return new ResourceException(ex.getCode(), new ResourceError().code(ex.getCode()).message(ex.getMessage()));
+    }
+
     public static RuntimeException error(int code, String msg, String caller) {
 
         LOG.error("Error: {} code: {} message: {}", caller, code, msg);
@@ -213,15 +222,18 @@ public class ZMSUtils {
     public static RuntimeException quotaLimitError(String msg, String caller) {
         return error(ResourceException.TOO_MANY_REQUESTS, msg, caller);
     }
+
+    public static RuntimeException conflictError(String msg, String caller) {
+        return error(ResourceException.CONFLICT, msg, caller);
+    }
     
     public static boolean emitMonmetricError(int errorCode, String caller) {
         if (errorCode < 1) {
             return false;
         }
-        if (caller == null || caller.isEmpty()) {
+        if (StringUtil.isEmpty(caller)) {
             return false;
         }
-        
         if (ZMSImpl.metric == null) {
             return false;
         }
@@ -250,38 +262,6 @@ public class ZMSUtils {
             boolVal = Boolean.parseBoolean(value.trim());
         }
         return boolVal;
-    }
-
-    public static Principal.Type principalType(final String memberName, final String userDomainPrefix,
-            final List<String> addlUserCheckDomainPrefixList, final String headlessUserDomainPrefix) {
-
-        if (ZMSUtils.isUserDomainPrincipal(memberName, userDomainPrefix, addlUserCheckDomainPrefixList)) {
-            return Principal.Type.USER;
-        } else if (memberName.startsWith(headlessUserDomainPrefix)) {
-            return Principal.Type.USER_HEADLESS;
-        } else if (memberName.contains(AuthorityConsts.GROUP_SEP)) {
-            return Principal.Type.GROUP;
-        } else {
-            return Principal.Type.SERVICE;
-        }
-    }
-
-    public static boolean isUserDomainPrincipal(final String memberName, final String userDomainPrefix,
-            final List<String> addlUserCheckDomainPrefixList) {
-
-        if (memberName.startsWith(userDomainPrefix)) {
-            return true;
-        }
-
-        if (addlUserCheckDomainPrefixList != null) {
-            for (String prefix : addlUserCheckDomainPrefixList) {
-                if (memberName.startsWith(prefix)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     public static String extractObjectName(String domainName, String fullName, String objType) {
@@ -315,36 +295,38 @@ public class ZMSUtils {
         return extractObjectName(domainName, fullServiceName, ".");
     }
 
-    public static boolean isUserAuthorityFilterValid(Authority userAuthority, final String filterList, final String memberName) {
+    public static boolean isUserAuthorityFilterValid(Authority userAuthority, final Set<String> filterSet,
+            final String memberName, StringBuilder failedUserAuthorityFilter) {
 
-        // in most cases we're going to have a single filter configured,
-        // so we'll optimize for that case and not create an array
-
-        if (filterList.indexOf(',') == -1) {
-            if (!userAuthority.isAttributeSet(memberName, filterList)) {
-                LOG.error("Principal {} does not satisfy user authority {} filter", memberName, filterList);
-                return false;
-            }
-        } else {
-            final String[] filterItems = filterList.split(",");
-            for (String filterItem : filterItems) {
-                if (!userAuthority.isAttributeSet(memberName, filterItem)) {
-                    LOG.error("Principal {} does not satisfy user authority {} filter", memberName, filterItem);
-                    return false;
+        for (String filterItem : filterSet) {
+            if (!userAuthority.isAttributeSet(memberName, filterItem)) {
+                LOG.error("Principal {} does not satisfy user authority {} filter", memberName, filterItem);
+                if (failedUserAuthorityFilter != null) {
+                    failedUserAuthorityFilter.append(filterItem);
                 }
+                return false;
             }
         }
         return true;
     }
 
+    public static boolean enforceUserAuthorityFilterCheck(Authority userAuthority, Set<String> userAuthorityFilterSet) {
+        for (String filterItem : userAuthorityFilterSet) {
+            if (userAuthority.isAttributeRevocable(filterItem)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static String combineUserAuthorityFilters(final String roleUserAuthorityFilter, final String domainUserAuthorityFilter) {
 
         String authorityFilter = null;
-        if (roleUserAuthorityFilter != null && !roleUserAuthorityFilter.isEmpty()) {
+        if (!StringUtil.isEmpty(roleUserAuthorityFilter)) {
             authorityFilter = roleUserAuthorityFilter;
         }
 
-        if (domainUserAuthorityFilter != null && !domainUserAuthorityFilter.isEmpty()) {
+        if (!StringUtil.isEmpty(domainUserAuthorityFilter)) {
             if (authorityFilter == null) {
                 authorityFilter = domainUserAuthorityFilter;
             } else {
@@ -405,10 +387,45 @@ public class ZMSUtils {
         return false;
     }
 
-    public static Principal createPrincipalForName(String principalName, String userDomain, String userDomainAlias) {
+    public static boolean userAuthorityAttrMissing(final Set<String> origAttrSet, final String checkAttrList) {
+
+        // if the original attr list is empty then there is nothing to check
+
+        if (origAttrSet == null) {
+            return false;
+        }
+
+        // if the check attribute list is empty then it's a failure
+        // since we know that our original attr is not empty
+
+        if (StringUtil.isEmpty(checkAttrList)) {
+            return true;
+        }
+
+        // we need to tokenize our attr values and compare. we want to
+        // make sure all original attribute values are present in the checklist
+
+        Set<String> checkValues = Set.of(checkAttrList.split(","));
+        for (String attr : origAttrSet) {
+            if (!checkValues.contains(attr)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static Principal createPrincipalForName(final String principalName, final String userDomain,
+            final String userDomainAlias) {
 
         String domain;
         String name;
+
+        // make sure we're not dealing with group principals
+
+        if (principalName.contains(AuthorityConsts.GROUP_SEP)) {
+            return null;
+        }
 
         // if we have no . in the principal name we're going to default
         // to our configured user domain
@@ -432,7 +449,7 @@ public class ZMSUtils {
         return metaValue != null && !metaValue.equals(domainValue);
     }
 
-    public static long configuredDueDateMillis(Integer domainDueDateDays, Integer roleDueDateDays) {
+    public static long configuredDueDateMillis(int serverDefaultMaxDueDateDays, Integer domainDueDateDays, Integer roleDueDateDays) {
 
         // the role expiry days settings overrides the domain one if one configured
 
@@ -442,6 +459,13 @@ public class ZMSUtils {
         } else if (domainDueDateDays != null && domainDueDateDays > 0) {
             expiryDays = domainDueDateDays;
         }
+
+        if (serverDefaultMaxDueDateDays > 0) {
+            if (expiryDays == 0 || expiryDays > serverDefaultMaxDueDateDays) {
+                expiryDays = serverDefaultMaxDueDateDays;
+            }
+        }
+
         return expiryDays == 0 ? 0 : System.currentTimeMillis() + TimeUnit.MILLISECONDS.convert(expiryDays, TimeUnit.DAYS);
     }
 
@@ -473,5 +497,91 @@ public class ZMSUtils {
 
     public static <T> List<T> emptyIfNull(final List<T> c) {
         return c == null ? Collections.emptyList() : c;
+    }
+
+    public static void validateObject(Validator validator, Object val, String type, String caller) {
+        if (val == null) {
+            throw requestError("Missing or malformed " + type, caller);
+        }
+
+        try {
+            Validator.Result result = validator.validate(val, type);
+            if (!result.valid) {
+                throw requestError("Invalid " + type + " error: " + result.error, caller);
+            }
+        } catch (Exception ex) {
+            LOG.error("Object validation exception", ex);
+            throw requestError("Invalid " + type + " error: " + ex.getMessage(), caller);
+        }
+    }
+
+    public static void validatePolicyAssertion(Validator validator, Assertion assertion,
+            boolean validateRoleName, final String caller) {
+
+        // extract the domain name from the resource
+
+        final String resource = assertion.getResource();
+        int idx = resource.indexOf(':');
+        if (idx == -1) {
+            throw ZMSUtils.requestError("Missing domain name from assertion resource: "
+                    + resource, caller);
+        }
+
+        // we need to validate our domain name with special
+        // case of * that is allowed to match any domain
+
+        final String domainName = resource.substring(0, idx);
+        if (!domainName.equals("*")) {
+            validateObject(validator, domainName, ZMSConsts.TYPE_DOMAIN_NAME, caller);
+        }
+
+        // we'll also verify that the resource does not contain
+        // any control characters since those cause issues when
+        // data is serialized/deserialized and signature is generated
+
+        if (StringUtils.containsControlCharacter(resource)) {
+            throw ZMSUtils.requestError("Assertion resource contains control characters: "
+                    + resource, caller);
+        }
+
+        // verify the action is not empty and does not contain
+        // any control characters
+
+        final String action = assertion.getAction();
+        if (action == null || action.isEmpty()) {
+            throw ZMSUtils.requestError("Assertion action cannot be empty", caller);
+        }
+
+        if (StringUtils.containsControlCharacter(action)) {
+            throw ZMSUtils.requestError("Assertion action contains control characters: "
+                    + resource, caller);
+        }
+
+        // validate role name to be a compound type if requested
+
+        if (validateRoleName) {
+            validateObject(validator, assertion.getRole(), ZMSConsts.TYPE_RESOURCE_NAME, caller);
+        }
+    }
+
+    public static Timestamp smallestExpiry(Timestamp memberExpiry, Timestamp userAuthorityExpiry) {
+
+        // if we have no user authority expiry then we'll use the member expiry
+
+        if (userAuthorityExpiry == null) {
+            return memberExpiry;
+        }
+
+        // if we have no member expiry then we'll use the user authority expiry
+
+        if (memberExpiry == null) {
+            return userAuthorityExpiry;
+        }
+
+        if (memberExpiry.millis() < userAuthorityExpiry.millis()) {
+            return memberExpiry;
+        } else {
+            return userAuthorityExpiry;
+        }
     }
 }

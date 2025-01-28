@@ -323,6 +323,9 @@ class HistoryList extends React.Component {
                     </div>
                     <div>
                         <RolesDropdown
+                            selectedDropdownValue={
+                                this.state.selectedRole?.value
+                            }
                             fluid
                             id={'roles-dd'}
                             name='roles'
@@ -417,8 +420,10 @@ const mapStateToProps = (state, props) => {
 };
 
 const mapDispatchToProps = (dispatch) => ({
-    getHistory: (domainName, startDate, endDate, roleName) =>
-        dispatch(getDomainHistory(domainName, startDate, endDate, roleName)),
+    getHistory: (domainName, startDate, endDate, _csrf, roleName) =>
+        dispatch(
+            getDomainHistory(domainName, startDate, endDate, _csrf, roleName)
+        ),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(HistoryList);

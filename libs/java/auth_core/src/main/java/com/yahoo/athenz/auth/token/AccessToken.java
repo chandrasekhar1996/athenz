@@ -15,11 +15,13 @@
  */
 package com.yahoo.athenz.auth.token;
 
+import com.nimbusds.jose.*;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
+import com.yahoo.athenz.auth.token.jwts.JwtsHelper;
 import com.yahoo.athenz.auth.token.jwts.JwtsSigningKeyResolver;
 import com.yahoo.athenz.auth.util.Crypto;
 import com.yahoo.athenz.auth.util.CryptoException;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +34,6 @@ import java.util.*;
 
 public class AccessToken extends OAuth2Token {
 
-    public static final String HDR_TOKEN_TYPE = "typ";
     public static final String HDR_TOKEN_JWT = "at+jwt";
 
     public static final String CLAIM_SCOPE = "scp";
@@ -48,7 +49,7 @@ public class AccessToken extends OAuth2Token {
 
     private static final Logger LOG = LoggerFactory.getLogger(AccessToken.class);
 
-    // by default we're going to allow the access token to be
+    // by default, we're going to allow the access token to be
     // validated by the identity/spiffe uris and not carry
     // out strict cert hash based validation only
     private static long ACCESS_TOKEN_CERT_OFFSET = -1;
@@ -202,13 +203,20 @@ public class AccessToken extends OAuth2Token {
     }
 
     void setAccessTokenFields() {
-        setClientId(body.get(CLAIM_CLIENT_ID, String.class));
-        setUserId(body.get(CLAIM_UID, String.class));
-        setProxyPrincipal(body.get(CLAIM_PROXY, String.class));
-        setScopeStd(body.get(CLAIM_SCOPE_STD, String.class));
-        setScope(body.get(CLAIM_SCOPE, List.class));
-        setConfirm(body.get(CLAIM_CONFIRM, LinkedHashMap.class));
-        setAuthorizationDetails(body.get(CLAIM_AUTHZ_DETAILS, String.class));
+
+        setClientId(JwtsHelper.getStringClaim(claimsSet, CLAIM_CLIENT_ID));
+        setUserId(JwtsHelper.getStringClaim(claimsSet, CLAIM_UID));
+        setProxyPrincipal(JwtsHelper.getStringClaim(claimsSet, CLAIM_PROXY));
+        setScopeStd(JwtsHelper.getStringClaim(claimsSet, CLAIM_SCOPE_STD));
+        setScope(JwtsHelper.getStringListClaim(claimsSet, CLAIM_SCOPE));
+        setAuthorizationDetails(JwtsHelper.getStringClaim(claimsSet, CLAIM_AUTHZ_DETAILS));
+
+        Object value = claimsSet.getClaim(CLAIM_CONFIRM);
+        if (value instanceof Map) {
+            for (Map.Entry<String, Object> entry : ((Map<String, Object>) value).entrySet()) {
+                setConfirmEntry(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
     public String getClientId() {
@@ -329,23 +337,23 @@ public class AccessToken extends OAuth2Token {
         // check if the certificate principal matches and the
         // creation time for our cert is within our configured
         // offset timeouts
-
-        if (confirmX509CertPrincipal(x509Cert, cn)) {
+        StringBuilder errorStore = new StringBuilder();
+        if (confirmX509CertPrincipal(x509Cert, cn, errorStore)) {
             return true;
         }
 
         // check if we have authorization details specified for
         // proxy access thus we can validate based on that
 
-        if (confirmX509CertPrincipalAuthzDetails(x509Cert)) {
+        if (confirmX509CertPrincipalAuthzDetails(x509Cert, errorStore)) {
             return true;
         }
         // direct comparison of certificate cn and provided hash
 
-        return confirmX509ProxyPrincipal(cn, x509CertHash, cnfHash);
+        return confirmX509ProxyPrincipal(cn, x509CertHash, cnfHash, errorStore);
     }
 
-    boolean confirmX509CertPrincipalAuthzDetails(X509Certificate cert) {
+    boolean confirmX509CertPrincipalAuthzDetails(X509Certificate cert, StringBuilder errorStore) {
 
         // make sure we have valid proxy principals specified
 
@@ -353,7 +361,7 @@ public class AccessToken extends OAuth2Token {
         try {
             spiffeUris = (List<String>) confirm.get(CLAIM_CONFIRM_PROXY_SPIFFE);
         } catch (Exception ex) {
-            LOG.error("Unable to parse proxy principal claim: {}", ex.getMessage());
+            errorStore.append("Unable to parse proxy principal claim: ").append(ex.getMessage()).append(";");
             return false;
         }
         if (spiffeUris == null) {
@@ -366,7 +374,8 @@ public class AccessToken extends OAuth2Token {
                 return true;
             }
         }
-
+        errorStore.append("confirmX509CertPrincipalAuthzDetails: cert spiffe uri: ").append(certSpiffeUri)
+                .append(" not found in access token proxy principals: ").append(spiffeUris).append(";");
         return false;
     }
 
@@ -376,34 +385,38 @@ public class AccessToken extends OAuth2Token {
         return cnfHash.equals(certHash);
     }
 
-    boolean confirmX509ProxyPrincipal(final String cn, final String certHash, final String cnfHash) {
+    boolean confirmX509ProxyPrincipal(final String cn, final String certHash, final String cnfHash, StringBuilder errorStore) {
 
         // if the proxy principal set is not null then the client
         // has specified some value so we'll enforce it (even if
         // the set is empty thus rejecting all requests)
-
         if (ACCESS_TOKEN_PROXY_PRINCIPALS != null && !ACCESS_TOKEN_PROXY_PRINCIPALS.contains(cn)) {
-            LOG.error("confirmX509ProxyPrincipal: unauthorized proxy principal: {}", cn);
+            errorStore.append("confirmX509ProxyPrincipal: unauthorized proxy principal: ").append(cn).append(";");
+            LOG.error(errorStore.toString());
             return false;
         }
-
-        return cnfHash.equals(certHash);
+        if (!cnfHash.equals(certHash)) {
+            LOG.error(errorStore.toString());
+            return false;
+        }
+        return true;
     }
 
-    boolean confirmX509CertPrincipal(X509Certificate cert, final String cn) {
+    boolean confirmX509CertPrincipal(X509Certificate cert, final String cn, StringBuilder errorStore) {
 
         // if our offset is 0 then the additional confirmation
         // check is disabled
 
         if (ACCESS_TOKEN_CERT_OFFSET == 0) {
-            LOG.error("confirmX509CertPrincipal: check disabled");
+            errorStore.append("confirmX509CertPrincipal: check disabled;");
             return false;
         }
 
         // our principal cn must be the client in the token
 
         if (!cn.equals(clientId)) {
-            LOG.error("confirmX509CertPrincipal: Principal mismatch {} vs {}", cn, clientId);
+            errorStore.append("confirmX509CertPrincipal: Principal mismatch").append(cn).append(" vs ")
+                    .append(clientId).append(";");
             return false;
         }
 
@@ -423,8 +436,8 @@ public class AccessToken extends OAuth2Token {
 
         long certIssueTime = Crypto.extractX509CertIssueTime(cert);
         if (certIssueTime < issueTime - 3600) {
-            LOG.error("confirmX509CertPrincipal: Certificate: {} issued before token: {}",
-                    certIssueTime, issueTime);
+            errorStore.append("confirmX509CertPrincipal: Certificate ").append(certIssueTime)
+                    .append(" issued before token: ").append(issueTime).append(";");
             return false;
         }
 
@@ -434,8 +447,9 @@ public class AccessToken extends OAuth2Token {
         // need to take into account that extra hour
 
         if (certIssueTime > issueTime + ACCESS_TOKEN_CERT_OFFSET - 3600) {
-            LOG.error("confirmX509CertPrincipal: Certificate: {} past configured offset {} for token: {}",
-                    certIssueTime, ACCESS_TOKEN_CERT_OFFSET, issueTime);
+            errorStore.append("confirmX509CertPrincipal: Certificate ").append(certIssueTime)
+                    .append(" past configured offset: ").append(ACCESS_TOKEN_CERT_OFFSET)
+                    .append(" for token: ").append(issueTime).append(";");
             return false;
         }
 
@@ -456,27 +470,39 @@ public class AccessToken extends OAuth2Token {
         return confirm == null ? null : confirm.get(key);
     }
 
-    public String getSignedToken(final PrivateKey key, final String keyId,
-                                 final SignatureAlgorithm keyAlg) {
+    public String getSignedToken(final PrivateKey key, final String keyId, final String sigAlg) {
 
-        return Jwts.builder().setSubject(subject)
-                .setId(jwtId)
-                .setIssuedAt(Date.from(Instant.ofEpochSecond(issueTime)))
-                .setExpiration(Date.from(Instant.ofEpochSecond(expiryTime)))
-                .setIssuer(issuer)
-                .setAudience(audience)
-                .claim(CLAIM_AUTH_TIME, authTime)
-                .claim(CLAIM_VERSION, version)
-                .claim(CLAIM_SCOPE, scope)
-                .claim(CLAIM_SCOPE_STD, scopeStd)
-                .claim(CLAIM_UID, userId)
-                .claim(CLAIM_CLIENT_ID, clientId)
-                .claim(CLAIM_CONFIRM, confirm)
-                .claim(CLAIM_PROXY, proxyPrincipal)
-                .claim(CLAIM_AUTHZ_DETAILS, authorizationDetails)
-                .setHeaderParam(HDR_KEY_ID, keyId)
-                .setHeaderParam(HDR_TOKEN_TYPE, HDR_TOKEN_JWT)
-                .signWith(key, keyAlg)
-                .compact();
+        try {
+            JWSSigner signer = JwtsHelper.getJWSSigner(key);
+            JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+                    .subject(subject)
+                    .jwtID(jwtId)
+                    .issueTime(Date.from(Instant.ofEpochSecond(issueTime)))
+                    .expirationTime(Date.from(Instant.ofEpochSecond(expiryTime)))
+                    .issuer(issuer)
+                    .audience(audience)
+                    .claim(CLAIM_AUTH_TIME, authTime)
+                    .claim(CLAIM_VERSION, version)
+                    .claim(CLAIM_SCOPE, scope)
+                    .claim(CLAIM_SCOPE_STD, scopeStd)
+                    .claim(CLAIM_UID, userId)
+                    .claim(CLAIM_CLIENT_ID, clientId)
+                    .claim(CLAIM_CONFIRM, confirm)
+                    .claim(CLAIM_PROXY, proxyPrincipal)
+                    .claim(CLAIM_AUTHZ_DETAILS, authorizationDetails)
+                    .build();
+
+            SignedJWT signedJWT = new SignedJWT(
+                    new JWSHeader.Builder(JWSAlgorithm.parse(sigAlg))
+                            .type(new JOSEObjectType(HDR_TOKEN_JWT))
+                            .keyID(keyId)
+                            .build(),
+                    claimsSet);
+            signedJWT.sign(signer);
+            return signedJWT.serialize();
+        } catch (JOSEException ex) {
+            LOG.error("Unable to sign JWT token", ex);
+            return null;
+        }
     }
 }

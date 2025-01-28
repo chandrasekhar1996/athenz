@@ -52,7 +52,7 @@ public class TopLevelDomain {
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     public Integer roleCertExpiryMins;
     @RdlOptional
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public String signAlgorithm;
     @RdlOptional
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
@@ -66,6 +66,12 @@ public class TopLevelDomain {
     @RdlOptional
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     public String azureSubscription;
+    @RdlOptional
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    public String azureTenant;
+    @RdlOptional
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    public String azureClient;
     @RdlOptional
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     public String gcpProject;
@@ -90,6 +96,21 @@ public class TopLevelDomain {
     @RdlOptional
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     public Map<String, String> contacts;
+    @RdlOptional
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String environment;
+    @RdlOptional
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    public ResourceDomainOwnership resourceOwnership;
+    @RdlOptional
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String x509CertSignerKeyId;
+    @RdlOptional
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String sshCertSignerKeyId;
+    @RdlOptional
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String slackChannel;
     public String name;
     public List<String> adminUsers;
     @RdlOptional
@@ -215,6 +236,20 @@ public class TopLevelDomain {
     public String getAzureSubscription() {
         return azureSubscription;
     }
+    public TopLevelDomain setAzureTenant(String azureTenant) {
+        this.azureTenant = azureTenant;
+        return this;
+    }
+    public String getAzureTenant() {
+        return azureTenant;
+    }
+    public TopLevelDomain setAzureClient(String azureClient) {
+        this.azureClient = azureClient;
+        return this;
+    }
+    public String getAzureClient() {
+        return azureClient;
+    }
     public TopLevelDomain setGcpProject(String gcpProject) {
         this.gcpProject = gcpProject;
         return this;
@@ -270,6 +305,41 @@ public class TopLevelDomain {
     }
     public Map<String, String> getContacts() {
         return contacts;
+    }
+    public TopLevelDomain setEnvironment(String environment) {
+        this.environment = environment;
+        return this;
+    }
+    public String getEnvironment() {
+        return environment;
+    }
+    public TopLevelDomain setResourceOwnership(ResourceDomainOwnership resourceOwnership) {
+        this.resourceOwnership = resourceOwnership;
+        return this;
+    }
+    public ResourceDomainOwnership getResourceOwnership() {
+        return resourceOwnership;
+    }
+    public TopLevelDomain setX509CertSignerKeyId(String x509CertSignerKeyId) {
+        this.x509CertSignerKeyId = x509CertSignerKeyId;
+        return this;
+    }
+    public String getX509CertSignerKeyId() {
+        return x509CertSignerKeyId;
+    }
+    public TopLevelDomain setSshCertSignerKeyId(String sshCertSignerKeyId) {
+        this.sshCertSignerKeyId = sshCertSignerKeyId;
+        return this;
+    }
+    public String getSshCertSignerKeyId() {
+        return sshCertSignerKeyId;
+    }
+    public TopLevelDomain setSlackChannel(String slackChannel) {
+        this.slackChannel = slackChannel;
+        return this;
+    }
+    public String getSlackChannel() {
+        return slackChannel;
     }
     public TopLevelDomain setName(String name) {
         this.name = name;
@@ -351,6 +421,12 @@ public class TopLevelDomain {
             if (azureSubscription == null ? a.azureSubscription != null : !azureSubscription.equals(a.azureSubscription)) {
                 return false;
             }
+            if (azureTenant == null ? a.azureTenant != null : !azureTenant.equals(a.azureTenant)) {
+                return false;
+            }
+            if (azureClient == null ? a.azureClient != null : !azureClient.equals(a.azureClient)) {
+                return false;
+            }
             if (gcpProject == null ? a.gcpProject != null : !gcpProject.equals(a.gcpProject)) {
                 return false;
             }
@@ -373,6 +449,21 @@ public class TopLevelDomain {
                 return false;
             }
             if (contacts == null ? a.contacts != null : !contacts.equals(a.contacts)) {
+                return false;
+            }
+            if (environment == null ? a.environment != null : !environment.equals(a.environment)) {
+                return false;
+            }
+            if (resourceOwnership == null ? a.resourceOwnership != null : !resourceOwnership.equals(a.resourceOwnership)) {
+                return false;
+            }
+            if (x509CertSignerKeyId == null ? a.x509CertSignerKeyId != null : !x509CertSignerKeyId.equals(a.x509CertSignerKeyId)) {
+                return false;
+            }
+            if (sshCertSignerKeyId == null ? a.sshCertSignerKeyId != null : !sshCertSignerKeyId.equals(a.sshCertSignerKeyId)) {
+                return false;
+            }
+            if (slackChannel == null ? a.slackChannel != null : !slackChannel.equals(a.slackChannel)) {
                 return false;
             }
             if (name == null ? a.name != null : !name.equals(a.name)) {

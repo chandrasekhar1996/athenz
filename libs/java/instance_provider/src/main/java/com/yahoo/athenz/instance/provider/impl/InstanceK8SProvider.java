@@ -15,6 +15,7 @@
  */
 package com.yahoo.athenz.instance.provider.impl;
 
+import com.yahoo.athenz.auth.Authorizer;
 import com.yahoo.athenz.auth.KeyStore;
 import com.yahoo.athenz.instance.provider.*;
 import com.yahoo.rdl.JSON;
@@ -33,22 +34,27 @@ public class InstanceK8SProvider implements InstanceProvider {
     static final String ZTS_PROP_K8S_CERT_VALIDITY = "athenz.zts.k8s_cert_validity";
     static final String ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS = "athenz.zts.k8s_provider_distribution_validator_factory_class";
     long certValidityTime;
-
     KubernetesDistributionValidatorFactory kubernetesDistributionValidatorFactory;
-
     Map<String, KubernetesDistributionValidator> kubernetesDistributionValidatorMap;
+    Authorizer authorizer = null;
+
     @Override
     public Scheme getProviderScheme() {
         return Scheme.CLASS;
     }
 
-    public ResourceException error(String message) {
-        return error(ResourceException.FORBIDDEN, message);
+    @Override
+    public void setAuthorizer(Authorizer authorizer) {
+        this.authorizer = authorizer;
     }
 
-    public ResourceException error(int errorCode, String message) {
+    public ProviderResourceException error(String message) {
+        return error(ProviderResourceException.FORBIDDEN, message);
+    }
+
+    public ProviderResourceException error(int errorCode, String message) {
         LOGGER.error(message);
-        return new ResourceException(errorCode, message);
+        return new ProviderResourceException(errorCode, message);
     }
 
     @Override
@@ -59,7 +65,7 @@ public class InstanceK8SProvider implements InstanceProvider {
         if (kubernetesDistributionValidatorFactory != null) {
             kubernetesDistributionValidatorFactory.initialize();
             kubernetesDistributionValidatorMap = kubernetesDistributionValidatorFactory.getSupportedDistributions();
-            kubernetesDistributionValidatorMap.forEach((key, value) -> value.initialize());
+            kubernetesDistributionValidatorMap.forEach((key, value) -> value.initialize(sslContext, authorizer));
         }
     }
 
@@ -79,7 +85,7 @@ public class InstanceK8SProvider implements InstanceProvider {
     }
 
     @Override
-    public InstanceConfirmation confirmInstance(InstanceConfirmation confirmation) {
+    public InstanceConfirmation confirmInstance(InstanceConfirmation confirmation) throws ProviderResourceException {
         IdTokenAttestationData attestationData = JSON.fromString(confirmation.getAttestationData(),
                 IdTokenAttestationData.class);
 
@@ -120,7 +126,7 @@ public class InstanceK8SProvider implements InstanceProvider {
     }
 
     @Override
-    public InstanceConfirmation refreshInstance(InstanceConfirmation confirmation) {
+    public InstanceConfirmation refreshInstance(InstanceConfirmation confirmation) throws ProviderResourceException {
         // we do not allow refresh of K8S certificates
         throw error("Generic K8S X.509 Certificates cannot be refreshed");
     }

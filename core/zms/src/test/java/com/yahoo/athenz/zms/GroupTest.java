@@ -59,9 +59,12 @@ public class GroupTest {
                 .setServiceExpiryDays(20)
                 .setDeleteProtection(false)
                 .setTags(Collections.singletonMap("tagKey", new TagValueList().setList(Collections.singletonList("tagValue"))))
-                .setSelfRenewEnabled(true)
+                .setSelfRenew(true)
                 .setSelfRenewMins(180)
-                .setMaxMembers(5);
+                .setMaxMembers(5)
+                .setResourceOwnership(new ResourceGroupOwnership().setMetaOwner("TF"))
+                .setPrincipalDomainFilter("user,+unix.test,-home")
+                .setNotifyDetails("check out https://athenz.io for details");
 
         Group r2 = new Group()
                 .setName("sys.auth:group.admin")
@@ -79,9 +82,12 @@ public class GroupTest {
                 .setServiceExpiryDays(20)
                 .setDeleteProtection(false)
                 .setTags(Collections.singletonMap("tagKey", new TagValueList().setList(Collections.singletonList("tagValue"))))
-                .setSelfRenewEnabled(true)
+                .setSelfRenew(true)
                 .setSelfRenewMins(180)
-                .setMaxMembers(5);
+                .setMaxMembers(5)
+                .setResourceOwnership(new ResourceGroupOwnership().setMetaOwner("TF"))
+                .setPrincipalDomainFilter("user,+unix.test,-home")
+                .setNotifyDetails("check out https://athenz.io for details");
 
         assertEquals(r, r2);
         assertEquals(r, r);
@@ -102,8 +108,11 @@ public class GroupTest {
         assertFalse(r.getDeleteProtection());
         assertEquals(r.getTags().get("tagKey").getList().get(0), "tagValue");
         assertEquals(r.getSelfRenewMins(), 180);
-        assertEquals(r.getSelfRenewEnabled(), Boolean.TRUE);
+        assertEquals(r.getSelfRenew(), Boolean.TRUE);
         assertEquals(r.getMaxMembers(), 5);
+        assertEquals(r.getResourceOwnership(), new ResourceGroupOwnership().setMetaOwner("TF"));
+        assertEquals(r.getPrincipalDomainFilter(), "user,+unix.test,-home");
+        assertEquals(r.getNotifyDetails(), "check out https://athenz.io for details");
 
         r2.setLastReviewedDate(Timestamp.fromMillis(123456789124L));
         assertNotEquals(r, r2);
@@ -133,11 +142,11 @@ public class GroupTest {
         r2.setReviewEnabled(false);
         assertEquals(r, r2);
 
-        r2.setSelfRenewEnabled(false);
+        r2.setSelfRenew(false);
         assertNotEquals(r, r2);
-        r2.setSelfRenewEnabled(null);
+        r2.setSelfRenew(null);
         assertNotEquals(r, r2);
-        r2.setSelfRenewEnabled(true);
+        r2.setSelfRenew(true);
         assertEquals(r, r2);
 
         r2.setSelfRenewMins(15);
@@ -195,6 +204,27 @@ public class GroupTest {
         assertNotEquals(r, r2);
         r2.setServiceExpiryDays(20);
         assertEquals(r, r2);
+
+        r2.setResourceOwnership(new ResourceGroupOwnership().setMetaOwner("TF2"));
+        assertNotEquals(r, r2);
+        r2.setResourceOwnership(null);
+        assertNotEquals(r, r2);
+        r2.setResourceOwnership(new ResourceGroupOwnership().setMetaOwner("TF"));
+        assertEquals(r, r2);
+
+        r2.setPrincipalDomainFilter("user");
+        assertNotEquals(r, r2);
+        r2.setPrincipalDomainFilter(null);
+        assertNotEquals(r, r2);
+        r2.setPrincipalDomainFilter("user,+unix.test,-home");
+        assertEquals(r, r2);
+
+        r2.setNotifyDetails("check out https://athenz.io/test for details");
+        assertNotEquals(r2, r);
+        r2.setNotifyDetails(null);
+        assertNotEquals(r2, r);
+        r2.setNotifyDetails("check out https://athenz.io for details");
+        assertEquals(r2, r);
 
         r2.setAuditLog(null);
         assertNotEquals(r, r2);
@@ -255,7 +285,9 @@ public class GroupTest {
                 .setReviewLastNotifiedTime(Timestamp.fromMillis(123456789127L))
                 .setSystemDisabled(1)
                 .setPrincipalType(1)
-                .setPendingState("ADD");
+                .setPendingState("ADD")
+                .setNotifyRoles("role1,role2")
+                .setNotifyDetails("notify details");
 
         assertEquals(rm, rm);
         assertNotEquals("data", rm);
@@ -278,6 +310,8 @@ public class GroupTest {
         assertEquals(rm.getSystemDisabled(), Integer.valueOf(1));
         assertEquals(rm.getPrincipalType(), Integer.valueOf(1));
         assertEquals(rm.getPendingState(), "ADD");
+        assertEquals(rm.getNotifyRoles(), "role1,role2");
+        assertEquals(rm.getNotifyDetails(), "notify details");
 
         GroupMember rm2 = new GroupMember()
                 .setGroupName("group1")
@@ -293,7 +327,9 @@ public class GroupTest {
                 .setReviewLastNotifiedTime(Timestamp.fromMillis(123456789127L))
                 .setSystemDisabled(1)
                 .setPrincipalType(1)
-                .setPendingState("ADD");
+                .setPendingState("ADD")
+                .setNotifyRoles("role1,role2")
+                .setNotifyDetails("notify details");
         assertEquals(rm, rm2);
 
         rm2.setRequestPrincipal("user.test2");
@@ -392,6 +428,20 @@ public class GroupTest {
         rm2.setPrincipalType(null);
         assertNotEquals(rm, rm2);
         rm2.setPrincipalType(1);
+        assertEquals(rm, rm2);
+
+        rm2.setNotifyRoles("role2,role3");
+        assertNotEquals(rm, rm2);
+        rm2.setNotifyRoles(null);
+        assertNotEquals(rm, rm2);
+        rm2.setNotifyRoles("role1,role2");
+        assertEquals(rm, rm2);
+
+        rm2.setNotifyDetails("notify details 2");
+        assertNotEquals(rm, rm2);
+        rm2.setNotifyDetails(null);
+        assertNotEquals(rm, rm2);
+        rm2.setNotifyDetails("notify details");
         assertEquals(rm, rm2);
 
         assertNotEquals(rm2, null);
@@ -526,9 +576,12 @@ public class GroupTest {
                 .setDeleteProtection(false)
                 .setTags(Collections.singletonMap("tagKey", new TagValueList().setList(Collections.singletonList("tagValue"))))
                 .setLastReviewedDate(Timestamp.fromMillis(100))
-                .setSelfRenewEnabled(true)
+                .setSelfRenew(true)
                 .setSelfRenewMins(180)
-                .setMaxMembers(5);
+                .setMaxMembers(5)
+                .setResourceOwnership(new ResourceGroupOwnership().setMetaOwner("TF"))
+                .setPrincipalDomainFilter("user,+unix.test,-home")
+                .setNotifyDetails("check out https://athenz.io for details");
 
         assertFalse(gm1.getSelfServe());
         assertEquals(gm1.getNotifyRoles(), "role1,domain:role.role2");
@@ -542,8 +595,11 @@ public class GroupTest {
         assertEquals(gm1.getTags().get("tagKey").getList().get(0), "tagValue");
         assertEquals(gm1.getLastReviewedDate(), Timestamp.fromMillis(100));
         assertEquals(gm1.getSelfRenewMins(), 180);
-        assertEquals(gm1.getSelfRenewEnabled(), Boolean.TRUE);
+        assertEquals(gm1.getSelfRenew(), Boolean.TRUE);
         assertEquals(gm1.getMaxMembers(), 5);
+        assertEquals(gm1.getResourceOwnership(), new ResourceGroupOwnership().setMetaOwner("TF"));
+        assertEquals(gm1.getPrincipalDomainFilter(), "user,+unix.test,-home");
+        assertEquals(gm1.getNotifyDetails(), "check out https://athenz.io for details");
 
         GroupMeta gm2 = new GroupMeta()
                 .setSelfServe(false)
@@ -557,9 +613,12 @@ public class GroupTest {
                 .setDeleteProtection(false)
                 .setTags(Collections.singletonMap("tagKey", new TagValueList().setList(Collections.singletonList("tagValue"))))
                 .setLastReviewedDate(Timestamp.fromMillis(100))
-                .setSelfRenewEnabled(true)
+                .setSelfRenew(true)
                 .setSelfRenewMins(180)
-                .setMaxMembers(5);
+                .setMaxMembers(5)
+                .setResourceOwnership(new ResourceGroupOwnership().setMetaOwner("TF"))
+                .setPrincipalDomainFilter("user,+unix.test,-home")
+                .setNotifyDetails("check out https://athenz.io for details");
 
         assertEquals(gm1, gm2);
         assertEquals(gm1, gm1);
@@ -587,11 +646,11 @@ public class GroupTest {
         gm2.setReviewEnabled(false);
         assertEquals(gm2, gm1);
 
-        gm2.setSelfRenewEnabled(false);
+        gm2.setSelfRenew(false);
         assertNotEquals(gm1, gm2);
-        gm2.setSelfRenewEnabled(null);
+        gm2.setSelfRenew(null);
         assertNotEquals(gm1, gm2);
-        gm2.setSelfRenewEnabled(true);
+        gm2.setSelfRenew(true);
         assertEquals(gm1, gm2);
 
         gm2.setSelfRenewMins(15);
@@ -662,6 +721,27 @@ public class GroupTest {
         gm2.setLastReviewedDate(null);
         assertNotEquals(gm2, gm1);
         gm2.setLastReviewedDate(Timestamp.fromMillis(100));
+        assertEquals(gm2, gm1);
+
+        gm2.setResourceOwnership(new ResourceGroupOwnership().setMetaOwner("TF2"));
+        assertNotEquals(gm2, gm1);
+        gm2.setResourceOwnership(null);
+        assertNotEquals(gm2, gm1);
+        gm2.setResourceOwnership(new ResourceGroupOwnership().setMetaOwner("TF"));
+        assertEquals(gm2, gm1);
+
+        gm2.setPrincipalDomainFilter("user");
+        assertNotEquals(gm2, gm1);
+        gm2.setPrincipalDomainFilter(null);
+        assertNotEquals(gm2, gm1);
+        gm2.setPrincipalDomainFilter("user,+unix.test,-home");
+        assertEquals(gm2, gm1);
+
+        gm2.setNotifyDetails("check out https://athenz.io/test for details");
+        assertNotEquals(gm2, gm1);
+        gm2.setNotifyDetails(null);
+        assertNotEquals(gm2, gm1);
+        gm2.setNotifyDetails("check out https://athenz.io for details");
         assertEquals(gm2, gm1);
 
         Schema schema = ZMSSchema.instance();

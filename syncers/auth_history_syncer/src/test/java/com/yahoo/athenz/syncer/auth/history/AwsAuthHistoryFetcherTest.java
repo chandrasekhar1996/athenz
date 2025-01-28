@@ -19,8 +19,8 @@
 package com.yahoo.athenz.syncer.auth.history;
 
 import com.yahoo.athenz.syncer.auth.history.impl.AwsAuthHistoryFetcher;
-import org.junit.Test;
 import org.mockito.Mockito;
+import org.testng.annotations.Test;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.FilterLogEventsRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.FilterLogEventsResponse;
@@ -32,8 +32,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 public class AwsAuthHistoryFetcherTest {
 
@@ -125,7 +125,7 @@ public class AwsAuthHistoryFetcherTest {
         Set<AuthHistoryDynamoDBRecord> logRecords = awsAuthHistoryFetcher.getLogs(startTime, endTime, true);
 
         // Assert we get the expected four records
-        assertEquals(4, logRecords.size());
+        assertEquals(logRecords.size(), 4);
         assertTrue(logRecords.contains(LogsParserUtils.getRecordFromLogEvent(message1)));
         assertTrue(logRecords.contains(LogsParserUtils.getRecordFromLogEvent(message3)));
         assertTrue(logRecords.contains(LogsParserUtils.getRecordFromLogEvent(message4)));

@@ -22,12 +22,10 @@ import {
     renderWithRedux,
 } from '../../../../../../tests_utils/ComponentsTestUtils';
 import MockApi from '../../../../../../mock/MockApi';
+import { listUserDomains_response } from '../../../../../../mock/MockData';
 
 describe('MemberPage', () => {
     it('should render', async () => {
-        let domains = [];
-        domains.push({ name: 'athens' });
-        domains.push({ name: 'athens.ci' });
         let query = {
             domain: 'dom',
         };
@@ -67,7 +65,7 @@ describe('MemberPage', () => {
             ...mockRolesApiCalls(),
             listUserDomains: jest.fn().mockReturnValue(
                 new Promise((resolve, reject) => {
-                    resolve(domains);
+                    resolve(listUserDomains_response);
                 })
             ),
             getDomain: jest.fn().mockReturnValue(
@@ -104,6 +102,9 @@ describe('MemberPage', () => {
                     resolve([]);
                 })
             ),
+            getReviewGroups: jest.fn().mockReturnValue([]),
+            getReviewRoles: jest.fn().mockReturnValue([]),
+            getPageFeatureFlag: jest.fn().mockResolvedValue({}),
         };
 
         MockApi.setMockApi(mockApi);

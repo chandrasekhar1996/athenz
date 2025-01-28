@@ -26,6 +26,7 @@ import org.testng.annotations.Test;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.enhanced.dynamodb.*;
+import software.amazon.awssdk.enhanced.dynamodb.model.Page;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
@@ -39,7 +40,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import static com.yahoo.athenz.syncer.auth.history.impl.DynamoDBAuthHistorySender.*;
-import static org.testng.AssertJUnit.*;
+import static org.testng.Assert.*;
 
 public class DynamoDBAuthHistorySenderTest {
 
@@ -93,22 +94,24 @@ public class DynamoDBAuthHistorySenderTest {
         dynamoDBAuthHistorySender.pushRecords(records);
 
         // Verify querying by primary ket and by the two domain indexes
-        DynamoDbTable<AuthHistoryDynamoDBRecord> nonAsynctable = getNonAsyncTable(LocalDynamoDbAsyncClientFactory.port);
-        verifyItemsByPrimaryKey(nonAsynctable, 100);
-        verifyItemsByUriDomainINdex(nonAsynctable, 100);
-        verifyItemsByPrincipalDomainINdex(nonAsynctable, 100);
+        DynamoDbTable<AuthHistoryDynamoDBRecord> nonAsyncTable = getNonAsyncTable(LocalDynamoDbAsyncClientFactory.port);
+        verifyItemsByPrimaryKey(nonAsyncTable, 100);
+        verifyItemsByUriDomainINdex(nonAsyncTable, 100);
+        verifyItemsByPrincipalDomainINdex(nonAsyncTable, 100);
 
         // Scan all items and verify all items are accounted for
         DynamoDbAsyncClient dynamoDb = dynamoDbAsyncClientFactory.create(null);
         DynamoDbEnhancedAsyncClient dynamoDbEnhancedAsyncClient = DynamoDbEnhancedAsyncClient.builder()
                 .dynamoDbClient(dynamoDb)
                 .build();
-        DynamoDbAsyncTable<AuthHistoryDynamoDBRecord> table = dynamoDbEnhancedAsyncClient.table(DynamoDBAuthHistorySender.PROP_TABLE_NAME_DEFAULT, TableSchema.fromBean(AuthHistoryDynamoDBRecord.class));
-        table.scan().items().subscribe(item -> {
-            records.remove(new AuthHistoryDynamoDBRecord(item.getPrimaryKey(), item.getUriDomain(), item.getPrincipalDomain(), item.getPrincipalName(), item.getEndpoint(), item.getTimestamp(), item.getTtl()));
-        }).get();
+        DynamoDbAsyncTable<AuthHistoryDynamoDBRecord> table = dynamoDbEnhancedAsyncClient.table(
+                DynamoDBAuthHistorySender.PROP_TABLE_NAME_DEFAULT,
+                TableSchema.fromBean(AuthHistoryDynamoDBRecord.class));
+        table.scan().items().subscribe(item -> records.remove(new AuthHistoryDynamoDBRecord(item.getPrimaryKey(),
+                item.getUriDomain(), item.getPrincipalDomain(), item.getPrincipalName(), item.getEndpoint(),
+                item.getTimestamp(), "access-token", item.getTtl()))).get();
 
-        assertEquals(0, records.size());
+        assertEquals(records.size(), 0);
         localDynamoDbAsyncClientFactory.terminate();
 
         System.clearProperty("software.amazon.awssdk.http.service.impl");
@@ -164,7 +167,7 @@ public class DynamoDBAuthHistorySenderTest {
 
             List<AuthHistoryDynamoDBRecord> records = table.query(r -> r.queryConditional(queryConditional))
                     .items().stream().collect(Collectors.toList());
-            assertEquals(1, records.size());
+            assertEquals(records.size(), 1);
             AuthHistoryDynamoDBRecord record = records.get(0);
             assertEquals(record.getPrimaryKey(), getPrimaryKeyForTest(i));
         }
@@ -179,7 +182,7 @@ public class DynamoDBAuthHistorySenderTest {
 
             List<List<AuthHistoryDynamoDBRecord>> records = index.query(r -> r.queryConditional(queryConditional))
                     .stream()
-                    .map(record -> record.items())
+                    .map(Page::items)
                     .collect(Collectors.toList());
             assertEquals(records.size(), 1);
             assertEquals(records.get(0).size(), 1);
@@ -196,7 +199,7 @@ public class DynamoDBAuthHistorySenderTest {
 
             List<List<AuthHistoryDynamoDBRecord>> records = index.query(r -> r.queryConditional(queryConditional))
                     .stream()
-                    .map(record -> record.items())
+                    .map(Page::items)
                     .collect(Collectors.toList());
             assertEquals(records.size(), 1);
             assertEquals(records.get(0).size(), 1);
@@ -209,7 +212,8 @@ public class DynamoDBAuthHistorySenderTest {
         String principalDomain = "principalDomain" + index;
         String principalName = "principalName" + index;
         String primaryKey = getPrimaryKeyForTest(index);
-        return new AuthHistoryDynamoDBRecord(primaryKey, uriDomain, principalDomain, principalName, "https://endpoint" + index + ".com", "19/Apr/2022:08:00:45", ttl);
+        return new AuthHistoryDynamoDBRecord(primaryKey, uriDomain, principalDomain, principalName,
+                "https://endpoint" + index + ".com", "19/Apr/2022:08:00:45", "access-token", ttl);
     }
 
     private String getPrimaryKeyForTest(int index) {

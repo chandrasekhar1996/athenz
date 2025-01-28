@@ -11,9 +11,6 @@ exports[`InputDropdown opens the dropdown 1`] = `
 
 .emotion-1 {
   box-sizing: border-box;
-  display: -webkit-inline-box;
-  display: -webkit-inline-flex;
-  display: -ms-inline-flexbox;
   display: inline-flex;
   -webkit-box-flex-flow: row nowrap;
   -webkit-flex-flow: row nowrap;
@@ -115,9 +112,6 @@ exports[`InputDropdown opens the dropdown 1`] = `
   -webkit-box-align: center;
   -ms-flex-align: center;
   align-items: center;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 36px;
   position: absolute;
@@ -144,6 +138,7 @@ exports[`InputDropdown opens the dropdown 1`] = `
     data-testid="input-wrapper"
   >
     <input
+      aria-activedescendant="downshift-0-item-0"
       aria-autocomplete="list"
       aria-controls="downshift-0-menu"
       aria-labelledby="downshift-0-label"
@@ -163,6 +158,7 @@ exports[`InputDropdown opens the dropdown 1`] = `
       <svg
         class="emotion-2"
         data-testid="icon"
+        data-wdio=""
         height="24px"
         id=""
         viewBox="0 0 1024 1024"
@@ -195,9 +191,6 @@ exports[`InputDropdown renders a filterable dropdown 1`] = `
 
 .emotion-1 {
   box-sizing: border-box;
-  display: -webkit-inline-box;
-  display: -webkit-inline-flex;
-  display: -ms-inline-flexbox;
   display: inline-flex;
   -webkit-box-flex-flow: row nowrap;
   -webkit-flex-flow: row nowrap;
@@ -299,9 +292,6 @@ exports[`InputDropdown renders a filterable dropdown 1`] = `
   -webkit-box-align: center;
   -ms-flex-align: center;
   align-items: center;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 36px;
   position: absolute;
@@ -343,6 +333,7 @@ exports[`InputDropdown renders a filterable dropdown 1`] = `
       <svg
         class="emotion-2"
         data-testid="icon"
+        data-wdio=""
         height="24px"
         id=""
         viewBox="0 0 1024 1024"
@@ -376,9 +367,6 @@ exports[`InputDropdown renders fluid dropdown 1`] = `
 
 .emotion-1 {
   box-sizing: border-box;
-  display: -webkit-inline-box;
-  display: -webkit-inline-flex;
-  display: -ms-inline-flexbox;
   display: inline-flex;
   -webkit-box-flex-flow: row nowrap;
   -webkit-flex-flow: row nowrap;
@@ -480,9 +468,6 @@ exports[`InputDropdown renders fluid dropdown 1`] = `
   -webkit-box-align: center;
   -ms-flex-align: center;
   align-items: center;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 36px;
   position: absolute;
@@ -525,6 +510,7 @@ exports[`InputDropdown renders fluid dropdown 1`] = `
       <svg
         class="emotion-2"
         data-testid="icon"
+        data-wdio=""
         height="24px"
         id=""
         viewBox="0 0 1024 1024"
@@ -557,9 +543,6 @@ exports[`InputDropdown renders initial (closed) state 1`] = `
 
 .emotion-1 {
   box-sizing: border-box;
-  display: -webkit-inline-box;
-  display: -webkit-inline-flex;
-  display: -ms-inline-flexbox;
   display: inline-flex;
   -webkit-box-flex-flow: row nowrap;
   -webkit-flex-flow: row nowrap;
@@ -661,9 +644,6 @@ exports[`InputDropdown renders initial (closed) state 1`] = `
   -webkit-box-align: center;
   -ms-flex-align: center;
   align-items: center;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 36px;
   position: absolute;
@@ -706,6 +686,7 @@ exports[`InputDropdown renders initial (closed) state 1`] = `
       <svg
         class="emotion-2"
         data-testid="icon"
+        data-wdio=""
         height="24px"
         id=""
         viewBox="0 0 1024 1024"
@@ -738,9 +719,6 @@ exports[`InputDropdown renders searchable input 1`] = `
 
 .emotion-1 {
   box-sizing: border-box;
-  display: -webkit-inline-box;
-  display: -webkit-inline-flex;
-  display: -ms-inline-flexbox;
   display: inline-flex;
   -webkit-box-flex-flow: row nowrap;
   -webkit-flex-flow: row nowrap;
@@ -842,9 +820,6 @@ exports[`InputDropdown renders searchable input 1`] = `
   -webkit-box-align: center;
   -ms-flex-align: center;
   align-items: center;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 36px;
   position: absolute;

@@ -2117,7 +2117,7 @@ public class DataStoreTest {
             store.init();
             fail();
         } catch (ResourceException ex) {
-            assertEquals(500, ex.getCode());
+            assertEquals(ex.getCode(), 500);
         }
     }
     
@@ -4341,6 +4341,48 @@ public class DataStoreTest {
     }
 
     @Test
+    public void testGetPubKeysByService() {
+        ChangeLogStore clogStore = new MockZMSFileChangeLogStore("/tmp/zts_server_unit_tests/zts_root",
+                pkey, "0");
+        DataStore store = new DataStore(clogStore, null, ztsMetric);
+
+        List<PublicKeyEntry> pubKeys = List.of(
+                new PublicKeyEntry().setKey(ZTS_Y64_CERT0).setId("0"),
+                new PublicKeyEntry().setKey(ZTS_Y64_CERT1).setId("1")
+        );
+
+        ServiceIdentity service = new ServiceIdentity()
+                .setName("coretech.storage")
+                .setPublicKeys(pubKeys);
+
+        List<ServiceIdentity> services = new ArrayList<>();
+        services.add(service);
+
+        DataCache dataCache = new DataCache();
+        dataCache.processServiceIdentity(service);
+
+        DomainData domainData = new DomainData();
+        domainData.setServices(services);
+        dataCache.setDomainData(domainData);
+
+        store.addDomainToCache("coretech", dataCache);
+
+        // Happy path
+        List<PublicKeyEntry> result = store.getPubKeysByService("coretech", "storage");
+        assertEquals(result.size(), 2);
+        assertListContains(result, i -> i.getId().equals("0") && i.getKey().equals(ZTS_Y64_CERT0), "cert0 not found");
+        assertListContains(result, i -> i.getId().equals("1") && i.getKey().equals(ZTS_Y64_CERT1), "cert1 not found");
+
+        // Domain not found
+        result = store.getPubKeysByService("unknown", "storage");
+        assertEquals(result.size(), 0);
+
+        // Service not found
+        result = store.getPubKeysByService("coretech", "unknown");
+        assertEquals(result.size(), 0);
+    }
+
+    @Test
     public void testProcessGroup() {
 
         ChangeLogStore clogStore = new MockZMSFileChangeLogStore("/tmp/zts_server_unit_tests/zts_root", pkey, "0");
@@ -5417,8 +5459,8 @@ public class DataStoreTest {
 
         domainMap.put("domain2", new DomainAttributes().setFetchTime(now - store.domainFetchRefreshTime - 1));
         List<String> domains = store.getDomainRefreshList();
-        assertEquals(1, domains.size());
-        assertEquals("domain2", domains.get(0));
+        assertEquals(domains.size(), 1);
+        assertEquals(domains.get(0), "domain2");
 
         // now let's add domains more than the configured limit
 
@@ -5427,6 +5469,6 @@ public class DataStoreTest {
         }
 
         domains = store.getDomainRefreshList();
-        assertEquals(store.domainFetchCount, domains.size());
+        assertEquals(domains.size(), store.domainFetchCount);
     }
 }

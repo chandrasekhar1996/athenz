@@ -4,7 +4,8 @@ ARG BUILD_DATE
 # git rev-parse --short HEAD
 ARG VCS_REF 
 
-ENV SCREWDRIVER true
+ENV SCREWDRIVER=true
+ENV GITHUB_ACTIONS=true
 
 LABEL org.label-schema.schema-version="1.0"
 LABEL org.label-schema.build-date=$BUILD_DATE
@@ -17,7 +18,7 @@ LABEL org.label-schema.vcs-ref=$VCS_REF
 WORKDIR /athenz
 COPY . .
 
-RUN mvn -B install -pl core/zms -pl core/zts -pl core/msd -pl libs/java/auth_core -pl libs/java/client_common -pl libs/java/server_common -pl libs/java/syncer_common -pl libs/java/dynamodb_client_factory -pl libs/java/instance_provider -pl libs/java/cert_refresher -pl clients/java/zms -pl servers/zms -pl clients/java/zts -pl servers/zts -pl containers/jetty -pl assembly/zms -pl assembly/zts -DskipTests -Djacoco.skip=true -DdockerBuild=true
+RUN mvn -B install -pl core/zms -pl core/zts -pl core/msd -pl libs/java/auth_core -pl libs/java/client_common -pl libs/java/cert_refresher -pl clients/java/zms -pl clients/java/zts -pl libs/java/server_common -pl libs/java/server_k8s_common -pl libs/java/dynamodb_client_factory -pl libs/java/server_aws_common -pl libs/java/syncer_common -pl libs/java/instance_provider -pl servers/zms -pl servers/zts -pl containers/jetty -pl assembly/zms -pl assembly/zts -Dmaven.test.skip=true -Djacoco.skip=true -DdockerBuild=true
 
 RUN mkdir -p /tmp/zms \
     && mkdir -p /tmp/zts \

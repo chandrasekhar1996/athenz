@@ -24,26 +24,14 @@ import org.testng.annotations.Test;
 
 import static org.mockito.Mockito.when;
 
-import static org.testng.AssertJUnit.*;
+import static org.testng.Assert.*;
 
 public class DynamoDBClientSettingsTest {
     @Test
     public void credentialsNotProvided() {
         PrivateKeyStore keyStore = Mockito.mock(PrivateKeyStore.class);
-        DynamoDBClientSettings dynamoDBClientSettings = new DynamoDBClientSettings(null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                keyStore,
-                null,
-                null,
-                null);
-
+        DynamoDBClientSettings dynamoDBClientSettings = new DynamoDBClientSettings(null, null, null, null,
+                null, null, null, null, null, keyStore, null, null, null, null, false);
         assertFalse(dynamoDBClientSettings.areCredentialsProvided());
     }
 
@@ -60,23 +48,26 @@ public class DynamoDBClientSettingsTest {
         String appName = "test.appname";
 
         PrivateKeyStore keyStore = Mockito.mock(PrivateKeyStore.class);
-        when(keyStore.getSecret(Mockito.eq("test.appname"), Mockito.eq("test.truststore.password")))
+        when(keyStore.getSecret(Mockito.eq("test.appname"), Mockito.eq(null), Mockito.eq("test.truststore.password")))
                 .thenReturn("decryptedPassword".toCharArray());
 
-        DynamoDBClientSettings dynamoDBClientSettings = new DynamoDBClientSettings(certPath, domain, role, trustStore, trustStorePassword, ztsUrl, region, keyPath, appName, keyStore, null, null, null);
+        DynamoDBClientSettings dynamoDBClientSettings = new DynamoDBClientSettings(certPath, domain, role,
+                trustStore, trustStorePassword, ztsUrl, region, keyPath, appName, keyStore, null, null,
+                null, null, false);
         assertTrue(dynamoDBClientSettings.areCredentialsProvided());
 
-        assertEquals("test.keypath", dynamoDBClientSettings.getKeyPath());
-        assertEquals("test.certpath", dynamoDBClientSettings.getCertPath());
-        assertEquals("test.domain", dynamoDBClientSettings.getDomainName());
-        assertEquals("test.region", dynamoDBClientSettings.getRegion());
-        assertEquals("test.role", dynamoDBClientSettings.getRoleName());
-        assertEquals("test.truststore", dynamoDBClientSettings.getTrustStore());
-        assertEquals("decryptedPassword", String.valueOf(dynamoDBClientSettings.getTrustStorePasswordChars()));
-        assertEquals("test.ztsurl", dynamoDBClientSettings.getZtsURL());
+        assertEquals(dynamoDBClientSettings.getKeyPath(), "test.keypath");
+        assertEquals(dynamoDBClientSettings.getCertPath(), "test.certpath");
+        assertEquals(dynamoDBClientSettings.getDomainName(), "test.domain");
+        assertEquals(dynamoDBClientSettings.getRegion(), "test.region");
+        assertEquals(dynamoDBClientSettings.getRoleName(), "test.role");
+        assertEquals(dynamoDBClientSettings.getTrustStore(), "test.truststore");
+        assertEquals(String.valueOf(dynamoDBClientSettings.getTrustStorePasswordChars()), "decryptedPassword");
+        assertEquals(dynamoDBClientSettings.getZtsURL(), "test.ztsurl");
 
         // Now verify that when keyStore isn't provided, trustStorePassword will be null
-        dynamoDBClientSettings = new DynamoDBClientSettings(certPath, domain, role, trustStore, trustStorePassword, ztsUrl, region, keyPath, appName, null, null, null, null);
+        dynamoDBClientSettings = new DynamoDBClientSettings(certPath, domain, role, trustStore,
+                trustStorePassword, ztsUrl, region, keyPath, appName, null, null, null, null, null, false);
         assertNull(dynamoDBClientSettings.getTrustStorePasswordChars());
     }
 }

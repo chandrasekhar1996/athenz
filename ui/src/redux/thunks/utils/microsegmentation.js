@@ -195,6 +195,7 @@ export const editMicrosegmentationHandler = async (
                 scopeall,
                 scopeaws,
                 scopeonprem,
+                scopegcp,
             } = condition;
             conditionsList.push({
                 enforcementstate,
@@ -203,6 +204,7 @@ export const editMicrosegmentationHandler = async (
                 scopeall,
                 scopeaws,
                 scopeonprem,
+                scopegcp,
             });
         }
     }

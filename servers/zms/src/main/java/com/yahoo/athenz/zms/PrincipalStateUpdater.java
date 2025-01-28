@@ -35,7 +35,11 @@ import static com.yahoo.athenz.zms.ZMSConsts.*;
  * in role and group memberships based on that.
  */
 public class PrincipalStateUpdater {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(PrincipalStateUpdater.class);
+
+    private static final String AUTHORITY_SYSTEM_AUDIT_REF = "Athenz User Authority Enforcer";
+
     private ScheduledExecutorService scheduledExecutor;
     private final DBService dbService;
     private final Authority principalAuthority;
@@ -91,34 +95,69 @@ public class PrincipalStateUpdater {
             return;
         }
 
+        int stateBit = Principal.State.AUTHORITY_SYSTEM_SUSPENDED.getValue();
+
         // First lets get a list of users by system disabled state from authority
 
-        List<Principal> newSystemDisabledPrincipals = principalAuthority.getPrincipals(EnumSet.of(Principal.State.AUTHORITY_SYSTEM_SUSPENDED));
-        LOGGER.info("Found suspendedPrincipals={} from Principal Authority", newSystemDisabledPrincipals);
+        List<PrincipalMember> newSystemDisabledPrincipals = getSystemDisabledPrincipals(
+                principalAuthority.getPrincipals(EnumSet.of(Principal.State.AUTHORITY_SYSTEM_SUSPENDED)));
+        LOGGER.info("Found suspendedPrincipals={} from Principal Authority",
+                logPrincipalMemberList(newSystemDisabledPrincipals));
 
         // Then get a list of system disabled principals from DB
 
-        List<Principal> existingSystemDisabledPrincipals = dbService.getPrincipals(Principal.State.AUTHORITY_SYSTEM_SUSPENDED.getValue());
-        LOGGER.info("Found existingSystemDisabledPrincipals={} from DB", existingSystemDisabledPrincipals);
+        List<PrincipalMember> existingSystemDisabledPrincipals
+                = dbService.getPrincipals(stateBit);
+        LOGGER.info("Found existingSystemDisabledPrincipals={} from DB",
+                logPrincipalMemberList(existingSystemDisabledPrincipals));
 
-        // To find out the new system disabled principals, lets remove the ones which are already marked as system disabled in DB
+        // To find out the new system disabled principals, lets remove the ones
+        // which are already marked as system disabled in DB
 
-        List<Principal> suspendedPrincipals = new ArrayList<>(newSystemDisabledPrincipals);
+        List<PrincipalMember> suspendedPrincipals = new ArrayList<>(newSystemDisabledPrincipals);
         suspendedPrincipals.removeAll(existingSystemDisabledPrincipals);
 
         // Update new system disabled in DB
 
-        dbService.updatePrincipalByStateFromAuthority(suspendedPrincipals, true);
-        LOGGER.info("Updated newSystemDisabledPrincipals={} in DB", suspendedPrincipals);
+        dbService.updatePrincipalByState(suspendedPrincipals, true, stateBit, AUTHORITY_SYSTEM_AUDIT_REF);
+        LOGGER.info("Updated newSystemDisabledPrincipals={} in DB", logPrincipalMemberList(suspendedPrincipals));
 
         // Now let's re-activate existing system disabled which are not present in new list
 
-        List<Principal> reEnabledPrincipals = new ArrayList<>(existingSystemDisabledPrincipals);
+        List<PrincipalMember> reEnabledPrincipals = new ArrayList<>(existingSystemDisabledPrincipals);
         reEnabledPrincipals.removeAll(newSystemDisabledPrincipals);
 
         // Revert back system disabled state in DB
 
-        dbService.updatePrincipalByStateFromAuthority(reEnabledPrincipals, false);
-        LOGGER.info("Updated reEnabledPrincipals={} in DB", reEnabledPrincipals);
+        dbService.updatePrincipalByState(reEnabledPrincipals, false, stateBit, AUTHORITY_SYSTEM_AUDIT_REF);
+        LOGGER.info("Updated reEnabledPrincipals={} in DB", logPrincipalMemberList(reEnabledPrincipals));
+    }
+
+    String logPrincipalMemberList(List<PrincipalMember> principalMembers) {
+        StringBuilder sb = new StringBuilder();
+        for (PrincipalMember principalMember : principalMembers) {
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append(principalMember.getPrincipalName());
+        }
+        return sb.toString();
+    }
+
+    List<PrincipalMember> getSystemDisabledPrincipals(List<Principal> principals) {
+        List<PrincipalMember> principalMembers = new ArrayList<>();
+        for (Principal principal : principals) {
+            try {
+                PrincipalMember principalMember = dbService.getPrincipal(principal.getFullName());
+                if (principalMember != null) {
+                    principalMembers.add(principalMember);
+                } else {
+                    LOGGER.error("Unknown principal: {}", principal.getFullName());
+                }
+            } catch (Exception ex) {
+                LOGGER.error("Unable to fetch principal: {} - {}", principal.getFullName(), ex.getMessage());
+            }
+        }
+        return principalMembers;
     }
 }

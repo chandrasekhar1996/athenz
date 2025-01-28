@@ -23,7 +23,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/AthenZ/athenz/libs/go/sia/aws/agent"
+	"github.com/AthenZ/athenz/libs/go/sia/agent"
 	"github.com/AthenZ/athenz/libs/go/sia/aws/meta"
 	"github.com/AthenZ/athenz/libs/go/sia/aws/options"
 	"github.com/AthenZ/athenz/libs/go/sia/host/utils"
@@ -86,11 +86,12 @@ func main() {
 		log.Fatalf("Unable to formulate options, error: %v\n", err)
 	}
 
+	opts.MetaEndPoint = *eksMetaEndPoint
 	opts.Ssh = false
 	opts.ZTSCACertFile = *ztsCACert
 	opts.ZTSServerName = *ztsServerName
-	opts.ZTSAWSDomains = strings.Split(*dnsDomains, ",")
-	spiffeNamespace, addlSanDNSEntries := utils.GetK8SHostnames("cluster.local")
+	opts.ZTSCloudDomains = strings.Split(*dnsDomains, ",")
+	spiffeNamespace, addlSanDNSEntries := utils.GetK8SHostnames("cluster.local", false)
 	opts.SpiffeNamespace = spiffeNamespace
 	if len(addlSanDNSEntries) > 0 {
 		opts.AddlSanDNSEntries = append(opts.AddlSanDNSEntries, addlSanDNSEntries...)

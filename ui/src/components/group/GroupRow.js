@@ -26,6 +26,8 @@ import { withRouter } from 'next/router';
 import { css, keyframes } from '@emotion/react';
 import { deleteGroup } from '../../redux/thunks/groups';
 import { connect } from 'react-redux';
+import { isReviewRequired } from '../utils/ReviewUtils';
+import { onClickNewTabFunction } from '../utils/PageUtils';
 
 const TDStyled = styled.td`
     background-color: ${(props) => props.color};
@@ -153,25 +155,35 @@ class GroupRow extends React.Component {
         let color = this.props.color;
         let idx = this.props.idx;
 
-        let clickMembers = this.onClickFunction.bind(
+        let clickMembers = onClickNewTabFunction.bind(
             this,
-            `/domain/${this.props.domain}/group/${this.state.name}/members`
+            `/domain/${this.props.domain}/group/${this.state.name}/members`,
+            this.props.router
         );
-        let clickSettings = this.onClickFunction.bind(
+        let clickSettings = onClickNewTabFunction.bind(
             this,
-            `/domain/${this.props.domain}/group/${this.state.name}/settings`
+            `/domain/${this.props.domain}/group/${this.state.name}/settings`,
+            this.props.router
         );
-        let clickHistory = this.onClickFunction.bind(
+        let clickHistory = onClickNewTabFunction.bind(
             this,
-            `/domain/${this.props.domain}/group/${this.state.name}/history`
+            `/domain/${this.props.domain}/group/${this.state.name}/history`,
+            this.props.router
         );
-        let clickRoles = this.onClickFunction.bind(
+        let clickRoles = onClickNewTabFunction.bind(
             this,
-            `/domain/${this.props.domain}/group/${this.state.name}/roles`
+            `/domain/${this.props.domain}/group/${this.state.name}/roles`,
+            this.props.router
         );
-        let clickTag = this.onClickFunction.bind(
+        let clickReview = onClickNewTabFunction.bind(
             this,
-            `/domain/${this.props.domain}/group/${this.state.name}/tags`
+            `/domain/${this.props.domain}/group/${this.state.name}/review`,
+            this.props.router
+        );
+        let clickTag = onClickNewTabFunction.bind(
+            this,
+            `/domain/${this.props.domain}/group/${this.state.name}/tags`,
+            this.props.router
         );
 
         let clickDelete = this.onClickDelete.bind(this, this.state.name);
@@ -209,6 +221,8 @@ class GroupRow extends React.Component {
         let newGroupAnimation =
             this.props.domain + '-' + this.state.name === this.props.newGroup;
 
+        let reviewRequired = isReviewRequired(group);
+
         rows.push(
             <TrStyled
                 key={this.state.name}
@@ -219,14 +233,14 @@ class GroupRow extends React.Component {
                     {AuditIcon}
                     {NameSpan}
                 </TDStyled>
-                <TDStyled color={color} align={center}>
+                <TDStyled color={color} align={left}>
                     {this.localDate.getLocalDate(
                         group.modified,
                         this.props.timeZone,
                         this.props.timeZone
                     )}
                 </TDStyled>
-                <TDStyled color={color} align={center}>
+                <TDStyled color={color} align={left}>
                     {group.lastReviewedDate
                         ? this.localDate.getLocalDate(
                               group.lastReviewedDate,
@@ -279,6 +293,35 @@ class GroupRow extends React.Component {
                         trigger={
                             <span>
                                 <Icon
+                                    icon={'assignment-priority'}
+                                    onClick={clickReview}
+                                    color={
+                                        reviewRequired
+                                            ? colors.red200
+                                            : colors.icons
+                                    }
+                                    isLink
+                                    size={'1.25em'}
+                                    verticalAlign={'text-bottom'}
+                                    enableTitle={false}
+                                    dataWdio={`${this.state.name}-review`}
+                                />
+                            </span>
+                        }
+                    >
+                        <MenuDiv>
+                            {reviewRequired
+                                ? 'Group Review is required'
+                                : 'Review Members'}
+                        </MenuDiv>
+                    </Menu>
+                </TDStyled>
+                <TDStyled color={color} align={center}>
+                    <Menu
+                        placement='bottom-start'
+                        trigger={
+                            <span>
+                                <Icon
                                     icon={'tag'}
                                     onClick={clickTag}
                                     color={colors.icons}
@@ -298,6 +341,7 @@ class GroupRow extends React.Component {
                         trigger={
                             <span>
                                 <Icon
+                                    id={`group-settings-icon-${this.state.name}`}
                                     icon={'setting'}
                                     onClick={clickSettings}
                                     color={colors.icons}
@@ -317,6 +361,7 @@ class GroupRow extends React.Component {
                         trigger={
                             <span>
                                 <Icon
+                                    id={`group-history-icon-${this.state.name}`}
                                     icon={'time-history'}
                                     onClick={clickHistory}
                                     color={colors.icons}
@@ -336,6 +381,7 @@ class GroupRow extends React.Component {
                         trigger={
                             <span>
                                 <Icon
+                                    id={`delete-group-icon-${this.state.name}`}
                                     icon={'trash'}
                                     onClick={clickDelete}
                                     color={colors.icons}

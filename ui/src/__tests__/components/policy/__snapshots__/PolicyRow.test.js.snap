@@ -5,10 +5,7 @@ exports[`PolicyRow should render 1`] = `
   box-sizing: border-box;
   margin-top: 10px;
   box-shadow: 0 1px 4px #d9d9d9;
-  box-shadow: 0 1px 4px #d9d9d9;
   border: 1px solid #fff;
-  -webkit-border-image: none;
-  border-image: none;
   -webkit-border-image: initial;
   border-image: initial;
   padding: 5px 0 5px 15px;
@@ -243,6 +240,7 @@ exports[`PolicyRow should render 1`] = `
     <svg
       class="emotion-19"
       data-testid="icon"
+      data-wdio="sections-rules"
       height="1.25em"
       id=""
       viewBox="0 0 1024 1024"
@@ -263,6 +261,7 @@ exports[`PolicyRow should render 1`] = `
     <svg
       class="emotion-19"
       data-testid="icon"
+      data-wdio=""
       height="1.25em"
       id=""
       viewBox="0 0 1024 1024"
@@ -286,6 +285,7 @@ exports[`PolicyRow should render 1`] = `
     <svg
       class="emotion-25"
       data-testid="icon"
+      data-wdio=""
       height="1.25em"
       id=""
       viewBox="0 0 48 48"
@@ -306,6 +306,7 @@ exports[`PolicyRow should render 1`] = `
     <svg
       class="emotion-25"
       data-testid="icon"
+      data-wdio=""
       height="1.25em"
       id=""
       viewBox="0 0 48 48"

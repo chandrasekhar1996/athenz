@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.cert.*;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateEncodingException;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPublicKeySpec;
@@ -34,6 +35,11 @@ import javax.security.auth.x500.X500Principal;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.bouncycastle.asn1.*;
+import org.bouncycastle.asn1.x500.X500NameBuilder;
+import org.bouncycastle.asn1.x509.*;
+import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.cert.jcajce.JcaX509ExtensionUtils;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,15 +48,6 @@ import org.bouncycastle.asn1.x500.RDN;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x500.style.BCStyle;
 import org.bouncycastle.asn1.x500.style.IETFUtils;
-import org.bouncycastle.asn1.x509.BasicConstraints;
-import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
-import org.bouncycastle.asn1.x509.Extension;
-import org.bouncycastle.asn1.x509.Extensions;
-import org.bouncycastle.asn1.x509.ExtensionsGenerator;
-import org.bouncycastle.asn1.x509.GeneralName;
-import org.bouncycastle.asn1.x509.GeneralNames;
-import org.bouncycastle.asn1.x509.KeyPurposeId;
-import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.asn1.pkcs.Attribute;
 import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 import org.bouncycastle.asn1.x9.ECNamedCurveTable;
@@ -98,15 +95,20 @@ import org.bouncycastle.util.io.pem.PemObject;
 public class Crypto {
 
     private static final Logger LOG = LoggerFactory.getLogger(Crypto.class);
+
     static final String ATHENZ_CRYPTO_ALGO_RSA = "athenz.crypto.algo_rsa";
-    private static final String RSA = "RSA";
-    private static final String RSA_SHA1 = "SHA1withRSA";
-    private static final String RSA_SHA256 = "SHA256withRSA";
     static final String ATHENZ_CRYPTO_ALGO_ECDSA = "athenz.crypto.algo_ecdsa";
-    private static final String EC = "EC";
-    private static final String ECDSA = "ECDSA";
-    private static final String ECDSA_SHA1 = "SHA1withECDSA";
-    private static final String ECDSA_SHA256 = "SHA256withECDSA";
+
+    public static final String RSA = "RSA";
+    public static final String RSA_SHA1 = "SHA1withRSA";
+    public static final String RSA_SHA256 = "SHA256withRSA";
+    public static final String EC = "EC";
+    public static final String ECDSA = "ECDSA";
+    public static final String ECDSA_SHA1 = "SHA1withECDSA";
+    public static final String ECDSA_SHA256 = "SHA256withECDSA";
+
+    public static final String ES256 = "ES256";
+    public static final String RS256 = "RS256";
 
     public static final String SHA1 = "SHA1";
     public static final String SHA256 = "SHA256";
@@ -115,14 +117,27 @@ public class Crypto {
 
     static final String ATHENZ_CRYPTO_KEY_FACTORY_PROVIDER = "athenz.crypto.key_factory_provider";
     static final String ATHENZ_CRYPTO_SIGNATURE_PROVIDER = "athenz.crypto.signature_provider";
+    static final String ATHENZ_CRYPTO_X509_CERTIFICATE_SIGNATURE_PROVIDER = "athenz.crypto.x509_certificate_signature_provider";
     private static final String BC_PROVIDER = "BC";
+
+    static final String ATHENZ_CRYPTO_X509_KEY_USAGE_CRITICAL = "athenz.crypto.key_usage_critical";
+    static final String ATHENZ_CRYPTO_X509_EXTENDED_KEY_USAGE_CRITICAL = "athenz.crypto.x509_extended_key_usage_critical";
+    static final boolean KEY_USAGE_CRITICAL;
+    static final boolean EXTENDED_KEY_USAGE_CRITICAL;
 
     public static final String CERT_RESTRICTED_SUFFIX = ":restricted";
     public static final String CERT_SPIFFE_URI = "spiffe://";
 
+    static final String ATHENZ_CRYPTO_AUTHORITY_KEY_IDENTIFIER = "athenz.crypto.authority_key_identifier";
+
     static final SecureRandom RANDOM;
     static final ObjectMapper JSON_MAPPER;
     static {
+        KEY_USAGE_CRITICAL = Boolean.parseBoolean(
+                System.getProperty(ATHENZ_CRYPTO_X509_KEY_USAGE_CRITICAL, "false"));
+        EXTENDED_KEY_USAGE_CRITICAL = Boolean.parseBoolean(
+                System.getProperty(ATHENZ_CRYPTO_X509_EXTENDED_KEY_USAGE_CRITICAL, "false"));
+
         Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
         SecureRandom r;
         try {
@@ -144,6 +159,10 @@ public class Crypto {
 
     private static String getSignatureProvider() {
         return System.getProperty(ATHENZ_CRYPTO_SIGNATURE_PROVIDER, BC_PROVIDER);
+    }
+
+    private static String getX509CertificateSignatureProvider() {
+        return System.getProperty(ATHENZ_CRYPTO_X509_CERTIFICATE_SIGNATURE_PROVIDER, BC_PROVIDER);
     }
 
     private static String getECDSAAlgo() {
@@ -1130,8 +1149,8 @@ public class Crypto {
         return convertToPEMFormat(publicKey);
     }
 
-    public static String generateX509CSR(PrivateKey privateKey, String x500Principal,
-                                         GeneralName[] sanArray) throws OperatorCreationException, IOException {
+    public static String generateX509CSR(PrivateKey privateKey, String x500Principal, GeneralName[] sanArray)
+            throws OperatorCreationException, IOException, NoSuchAlgorithmException {
         final PublicKey publicKey = extractPublicKey(privateKey);
         if (publicKey == null) {
             throw new CryptoException("Unable to extract public key from private key");
@@ -1139,8 +1158,8 @@ public class Crypto {
         return generateX509CSR(privateKey, publicKey, x500Principal, sanArray);
     }
 
-    public static String generateX509CSR(PrivateKey privateKey, PublicKey publicKey,
-                                         String x500Principal, GeneralName[] sanArray) throws OperatorCreationException, IOException {
+    public static String generateX509CSR(PrivateKey privateKey, PublicKey publicKey, String x500Principal,
+            GeneralName[] sanArray) throws OperatorCreationException, IOException, NoSuchAlgorithmException {
 
         // Create Distinguished Name
 
@@ -1148,7 +1167,8 @@ public class Crypto {
 
         // Create ContentSigner
 
-        JcaContentSignerBuilder csBuilder = new JcaContentSignerBuilder(Crypto.RSA_SHA256);
+        JcaContentSignerBuilder csBuilder = new JcaContentSignerBuilder(
+                getSignatureAlgorithm(privateKey.getAlgorithm(), SHA256));
         ContentSigner signer = csBuilder.build(privateKey);
 
         // Create the CSR
@@ -1368,13 +1388,38 @@ public class Crypto {
         return convertToPEMFormat(publicKey);
     }
 
+    public static X500Name utf8DEREncodedIssuer(final String issuer) {
+
+        X500NameBuilder builder = new X500NameBuilder(BCStyle.INSTANCE);
+        X500Name x500Name = new X500Name(issuer);
+        RDN[] rdns = x500Name.getRDNs();
+
+        // for compatibility with openssl generated certificates
+        // we're going to make sure all the RDNs in the issuer
+        // field are encoded as UTF8Strings except for C field
+        // which is encoded as a PrintableString
+
+        for (int i = rdns.length - 1; i >= 0; i--) {
+            ASN1ObjectIdentifier asn1ObjectIdentifier = rdns[i].getFirst().getType();
+            ASN1Encodable value = (asn1ObjectIdentifier == BCStyle.C) ?
+                new DERPrintableString(IETFUtils.valueToString(rdns[i].getFirst().getValue())) :
+                new DERUTF8String(IETFUtils.valueToString(rdns[i].getFirst().getValue()));
+            builder.addRDN(asn1ObjectIdentifier, value);
+        }
+        return builder.build();
+    }
+
     public static X509Certificate generateX509Certificate(PKCS10CertificationRequest certReq,
             PrivateKey caPrivateKey, X509Certificate caCertificate, int validityTimeout,
             boolean basicConstraints) {
-
-        return generateX509Certificate(certReq, caPrivateKey,
-                X500Name.getInstance(caCertificate.getSubjectX500Principal().getEncoded()),
-                validityTimeout, basicConstraints);
+        X500Name issuer;
+        try {
+            issuer = new JcaX509CertificateHolder(caCertificate).getSubject();
+        } catch (CertificateEncodingException ex) {
+            LOG.error("generateX509Certificate: Caught CertificateEncodingException when get subject from CA Certificate", ex) ;
+            throw new CryptoException(ex);
+        }
+        return generateX509Certificate(certReq, caPrivateKey, issuer, validityTimeout, basicConstraints);
     }
 
     public static X509Certificate generateX509Certificate(PKCS10CertificationRequest certReq,
@@ -1396,15 +1441,33 @@ public class Crypto {
             JcaPKCS10CertificationRequest jcaPKCS10CertificationRequest = new JcaPKCS10CertificationRequest(certReq);
             PublicKey publicKey = jcaPKCS10CertificationRequest.getPublicKey();
 
-            X509v3CertificateBuilder caBuilder = new JcaX509v3CertificateBuilder(
-                    issuer, BigInteger.valueOf(System.currentTimeMillis()),
-                    notBefore, notAfter, certReq.getSubject(), publicKey)
-                    .addExtension(Extension.basicConstraints, false,
+            SecureRandom random = new SecureRandom();
+            BigInteger serial = new BigInteger(160, random);
+
+            X509v3CertificateBuilder caBuilder = new JcaX509v3CertificateBuilder(issuer, serial,
+                        notBefore, notAfter, certReq.getSubject(), publicKey)
+                    .addExtension(Extension.basicConstraints, basicConstraints,
                             new BasicConstraints(basicConstraints))
-                    .addExtension(Extension.keyUsage, true,
+                    .addExtension(Extension.extendedKeyUsage, EXTENDED_KEY_USAGE_CRITICAL,
+                            new ExtendedKeyUsage(new KeyPurposeId[]
+                                    { KeyPurposeId.id_kp_clientAuth, KeyPurposeId.id_kp_serverAuth }));
+
+            boolean authorityKeyIdentifier = Boolean.parseBoolean(System.getProperty(ATHENZ_CRYPTO_AUTHORITY_KEY_IDENTIFIER, "true"));
+
+            if (basicConstraints) {
+                caBuilder = caBuilder.addExtension(Extension.keyUsage, KEY_USAGE_CRITICAL,
+                        new X509KeyUsage(X509KeyUsage.digitalSignature | X509KeyUsage.keyEncipherment |
+                                X509KeyUsage.keyCertSign | X509KeyUsage.cRLSign));
+            } else if (authorityKeyIdentifier) {
+                final PublicKey caPublicKey = extractPublicKey(caPrivateKey);
+                caBuilder = caBuilder.addExtension(Extension.keyUsage, KEY_USAGE_CRITICAL,
                             new X509KeyUsage(X509KeyUsage.digitalSignature | X509KeyUsage.keyEncipherment))
-                    .addExtension(Extension.extendedKeyUsage, true,
-                            new ExtendedKeyUsage(new KeyPurposeId[]{ KeyPurposeId.id_kp_clientAuth, KeyPurposeId.id_kp_serverAuth }));
+                        .addExtension(Extension.authorityKeyIdentifier, false,
+                            new JcaX509ExtensionUtils().createAuthorityKeyIdentifier(caPublicKey));
+            } else {
+                caBuilder = caBuilder.addExtension(Extension.keyUsage, KEY_USAGE_CRITICAL,
+                            new X509KeyUsage(X509KeyUsage.digitalSignature | X509KeyUsage.keyEncipherment));
+            }
 
             // see if we have the dns/rfc822/ip address extensions specified in the csr
 
@@ -1437,28 +1500,24 @@ public class Crypto {
 
             String signatureAlgorithm = getSignatureAlgorithm(caPrivateKey.getAlgorithm(), SHA256);
             ContentSigner caSigner = new JcaContentSignerBuilder(signatureAlgorithm)
-                    .setProvider(BC_PROVIDER).build(caPrivateKey);
+                    .setProvider(getX509CertificateSignatureProvider()).build(caPrivateKey);
 
             JcaX509CertificateConverter converter = new JcaX509CertificateConverter().setProvider(BC_PROVIDER);
             cert = converter.getCertificate(caBuilder.build(caSigner));
         } catch (CertificateException ex) {
-            LOG.error("generateX509Certificate: Caught CertificateException when generating certificate: "
-                    + ex.getMessage());
+            LOG.error("generateX509Certificate: Caught CertificateException when generating certificate", ex);
             throw new CryptoException(ex);
         } catch (OperatorCreationException ex) {
-            LOG.error("generateX509Certificate: Caught OperatorCreationException when creating JcaContentSignerBuilder: "
-                    + ex.getMessage());
+            LOG.error("generateX509Certificate: Caught OperatorCreationException when creating JcaContentSignerBuilder", ex);
             throw new CryptoException(ex);
         } catch (InvalidKeyException ex) {
-            LOG.error("generateX509Certificate: Caught InvalidKeySpecException, invalid key spec is being used: "
-                    + ex.getMessage());
+            LOG.error("generateX509Certificate: Caught InvalidKeySpecException, invalid key spec is being used", ex);
             throw new CryptoException(ex);
         } catch (NoSuchAlgorithmException ex) {
-            LOG.error("generateX509Certificate: Caught NoSuchAlgorithmException, check to make sure the algorithm is supported by the provider: "
-                    + ex.getMessage());
+            LOG.error("generateX509Certificate: Caught NoSuchAlgorithmException, check to make sure the algorithm is supported by the provider", ex) ;
             throw new CryptoException(ex);
         } catch (Exception ex) {
-            LOG.error("generateX509Certificate: unable to generate X509 Certificate: {}", ex.getMessage());
+            LOG.error("generateX509Certificate: unable to generate X509 Certificate", ex);
             throw new CryptoException("Unable to generate X509 Certificate");
         }
         return cert;

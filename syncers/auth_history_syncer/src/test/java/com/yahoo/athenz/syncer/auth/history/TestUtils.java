@@ -18,14 +18,14 @@
 
 package com.yahoo.athenz.syncer.auth.history;
 
-import static org.junit.Assert.assertEquals;
+import static org.testng.Assert.assertEquals;
 
 public class TestUtils {
     public static void assertRecordMatch(AuthHistoryDynamoDBRecord recordFromLogEvent, String message) {
-        assertEquals("home.testuser:user:testprincipal", recordFromLogEvent.getPrimaryKey());
-        assertEquals("home.testuser", recordFromLogEvent.getUriDomain());
-        assertEquals("user", recordFromLogEvent.getPrincipalDomain());
-        assertEquals("testprincipal", recordFromLogEvent.getPrincipalName());
-        assertEquals("19/Apr/2022:08:00:45", recordFromLogEvent.getTimestamp());
+        assertEquals(recordFromLogEvent.getPrimaryKey(), "home.testuser:user:testprincipal");
+        assertEquals(recordFromLogEvent.getUriDomain(), "home.testuser");
+        assertEquals(recordFromLogEvent.getPrincipalDomain(), "user");
+        assertEquals(recordFromLogEvent.getPrincipalName(), "testprincipal");
+        assertEquals(recordFromLogEvent.getTimestamp(), "19/Apr/2022:08:00:45");
     }
 }

@@ -16,104 +16,19 @@
 
 package com.yahoo.athenz.zts.store;
 
-import static com.yahoo.athenz.common.ServerCommonConsts.ZTS_PROP_AWS_PUBLIC_CERT;
-import static com.yahoo.athenz.common.ServerCommonConsts.ZTS_PROP_AWS_REGION_NAME;
 import static org.testng.Assert.*;
 
-import java.util.Date;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-
+import com.yahoo.athenz.common.server.ServerResourceException;
 import com.yahoo.rdl.Timestamp;
-import org.eclipse.jetty.client.HttpClient;
-import org.eclipse.jetty.client.api.ContentResponse;
+import io.athenz.server.aws.common.creds.impl.TempCredsProvider;
 import org.mockito.Mockito;
 import org.testng.annotations.Test;
 
-import com.amazonaws.auth.BasicSessionCredentials;
-import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
-import com.amazonaws.services.securitytoken.model.AssumeRoleResult;
-import com.amazonaws.services.securitytoken.model.Credentials;
 import com.yahoo.athenz.zts.AWSTemporaryCredentials;
 import com.yahoo.athenz.zts.ResourceException;
 import com.yahoo.athenz.zts.ZTSConsts;
 
 public class CloudStoreTest {
-
-    private final static String AWS_INSTANCE_DOCUMENT = "{\n"
-            + "  \"devpayProductCodes\" : null,\n"
-            + "  \"availabilityZone\" : \"us-west-2a\",\n"
-            + "  \"privateIp\" : \"10.10.10.10\",\n"
-            + "  \"version\" : \"2010-08-31\",\n"
-            + "  \"instanceId\" : \"i-056921225f1fbb47a\",\n"
-            + "  \"billingProducts\" : null,\n"
-            + "  \"instanceType\" : \"t2.micro\",\n"
-            + "  \"accountId\" : \"111111111111\",\n"
-            + "  \"pendingTime\" : \"2016-04-26T05:37:23Z\",\n"
-            + "  \"imageId\" : \"ami-c229c0a2\",\n"
-            + "  \"architecture\" : \"x86_64\",\n"
-            + "  \"kernelId\" : null,\n"
-            + "  \"ramdiskId\" : null,\n"
-            + "  \"region\" : \"us-west-2\"\n"
-            + "}";
-
-    private final static String AWS_IAM_ROLE_INFO = "{\n"
-            + "\"Code\" : \"Success\",\n"
-            + "\"LastUpdated\" : \"2016-04-26T05:37:04Z\",\n"
-            + "\"InstanceProfileArn\" : \"arn:aws:iam::111111111111:instance-profile/athenz.zts,athenz\",\n"
-            + "\"InstanceProfileId\" : \"AIPAJAVNLUGEWFWTIDPRA\"\n"
-            + "}";
-
-    @Test
-    public void testGetS3ClientNullCreds() {
-        CloudStore store = new CloudStore();
-        store.awsEnabled = true;
-        store.credentials = null;
-        try {
-            store.getS3Client();
-            fail();
-        } catch (ResourceException ex) {
-            assertEquals(500, ex.getCode());
-        }
-        store.close();
-    }
-
-    @Test
-    public void testGetS3ClientAWSNotEnabled() {
-        CloudStore store = new CloudStore();
-        store.credentials = null;
-        try {
-            store.getS3Client();
-            fail();
-        } catch (ResourceException ex) {
-            assertEquals(500, ex.getCode());
-        }
-        store.close();
-    }
-
-    @Test
-    public void testGetS3Client() {
-
-        System.setProperty(ZTS_PROP_AWS_PUBLIC_CERT, "src/test/resources/aws_public.crt");
-        CloudStore store = new CloudStore();
-        store.credentials = new BasicSessionCredentials("accessKey", "secretKey", "token");
-        store.awsEnabled = true;
-        store.awsRegion = "us-west-2";
-        assertNotNull(store.getS3Client());
-
-        assertNotNull(store.getS3Client());
-        store.close();
-    }
-
-    @Test
-    public void testGetTokenServiceClient() {
-        CloudStore store = new CloudStore();
-        store.credentials = new BasicSessionCredentials("accessKey", "secretKey", "token");
-        store.awsEnabled = true;
-        store.awsRegion = "us-west-2";
-        assertNotNull(store.getTokenServiceClient());
-        store.close();
-    }
 
     @Test
     public void testUpdateAccountUpdate() {
@@ -124,12 +39,12 @@ public class CloudStoreTest {
         // set the account to 1234
 
         store.updateAwsAccount("iaas", "1234");
-        assertEquals("1234", store.getAwsAccount("iaas"));
+        assertEquals(store.getAwsAccount("iaas"), "1234");
 
         // update the account value
 
         store.updateAwsAccount("iaas", "1235");
-        assertEquals("1235", store.getAwsAccount("iaas"));
+        assertEquals(store.getAwsAccount("iaas"), "1235");
         store.close();
     }
 
@@ -141,7 +56,7 @@ public class CloudStoreTest {
         // set the account to 1234
 
         store.updateAwsAccount("iaas", "1234");
-        assertEquals("1234", store.getAwsAccount("iaas"));
+        assertEquals(store.getAwsAccount("iaas"), "1234");
 
         // delete the account with null
 
@@ -151,592 +66,13 @@ public class CloudStoreTest {
         // update the account value
 
         store.updateAwsAccount("iaas", "1235");
-        assertEquals("1235", store.getAwsAccount("iaas"));
+        assertEquals(store.getAwsAccount("iaas"), "1235");
 
         // delete the account with empty string
 
         store.updateAwsAccount("iaas", "");
         assertNull(store.getAwsAccount("iaas"));
         store.close();
-    }
-
-    @Test
-    public void testGetAssumeRoleRequest() {
-
-        CloudStore store = new CloudStore();
-        AssumeRoleRequest req = store.getAssumeRoleRequest("1234", "admin", null, null);
-        assertEquals("arn:aws:iam::1234:role/admin", req.getRoleArn());
-        assertEquals("athenz-zts-service", req.getRoleSessionName());
-        assertNull(req.getDurationSeconds());
-        assertNull(req.getExternalId());
-
-        req = store.getAssumeRoleRequest("12345", "adminuser", 101, "external");
-        assertEquals("arn:aws:iam::12345:role/adminuser", req.getRoleArn());
-        assertEquals("athenz-zts-service", req.getRoleSessionName());
-        assertEquals(Integer.valueOf(101), req.getDurationSeconds());
-        assertEquals("external", req.getExternalId());
-        store.close();
-    }
-
-    @Test
-    public void testParseInstanceInfo() {
-        CloudStore store = new CloudStore();
-        assertTrue(store.parseInstanceInfo(AWS_INSTANCE_DOCUMENT));
-        assertEquals(store.awsRegion, "us-west-2");
-        store.close();
-    }
-
-    @Test
-    public void testParseInstanceInfoInvalid() {
-
-        CloudStore store = new CloudStore();
-        assertFalse(store.parseInstanceInfo("some_invalid_doc"));
-        store.close();
-    }
-
-    @Test
-    public void testParseInstanceInfoRegion() {
-
-        // first this should fail since we have no region
-        // override and the document has no region
-
-        CloudStore store = new CloudStore();
-        assertFalse(store.parseInstanceInfo("{\"accountId\":\"012345678901\"}"));
-
-        // now we're going to use the same doc with override
-
-        System.setProperty(ZTS_PROP_AWS_REGION_NAME, "us-west-3");
-        store.close();
-
-        store = new CloudStore();
-        assertTrue(store.parseInstanceInfo("{\"accountId\":\"012345678901\"}"));
-        assertEquals(store.awsRegion, "us-west-3");
-        System.clearProperty(ZTS_PROP_AWS_REGION_NAME);
-        store.close();
-    }
-
-    @Test
-    public void testParseIamRoleInfoInvalid() {
-
-        CloudStore store = new CloudStore();
-        assertFalse(store.parseIamRoleInfo("some_invalid_doc"));
-        store.close();
-    }
-
-    @Test
-    public void testParseIamRoleInfoMissingInstanceProfile() {
-
-        CloudStore store = new CloudStore();
-        assertFalse(store.parseIamRoleInfo("{\"accountId\":\"012345678901\"}"));
-        assertFalse(store.parseIamRoleInfo("{\"accountId\":\"012345678901\",\"InstanceProfileArn\":\"\"}"));
-        store.close();
-    }
-
-    @Test
-    public void testParseIamRoleInfoInvalidInstanceProfile() {
-
-        CloudStore store = new CloudStore();
-        assertFalse(store.parseIamRoleInfo("{\"accountId\":\"012345678901\"}"));
-        assertFalse(store.parseIamRoleInfo("{\"accountId\":\"012345678901\",\"InstanceProfileArn\":\"invalid\"}"));
-        store.close();
-    }
-
-    @Test
-    public void testParseIamRoleInfo() {
-        CloudStore store = new CloudStore();
-        assertTrue(store.parseIamRoleInfo(AWS_IAM_ROLE_INFO));
-        assertEquals(store.awsRole, "athenz.zts");
-        store.close();
-    }
-
-    @Test
-    public void testParseInstanceProfileArn() {
-
-        CloudStore store = new CloudStore();
-        assertTrue(store.parseInstanceProfileArn("arn:aws:iam::111111111111:instance-profile/athenz.zts,athenz"));
-        assertEquals(store.awsRole, "athenz.zts");
-        store.close();
-    }
-
-    @Test
-    public void testParseInstanceProfileArnInvalidPrefix() {
-
-        CloudStore store = new CloudStore();
-
-        // invalid starting prefix
-
-        assertFalse(store.parseInstanceProfileArn("arn:aws:iam:111111111111:instance-profile/athenz.zts,athenz"));
-        assertFalse(store.parseInstanceProfileArn("arn:aws:iam2:111111111111:instance-profile/athenz.zts,athenz"));
-        assertFalse(store.parseInstanceProfileArn("instance-profile/athenz.zts,athenz"));
-        store.close();
-    }
-
-    @Test
-    public void testParseInstanceProfileArnInvalidProfile() {
-
-        CloudStore store = new CloudStore();
-
-        // missing instance-profile part
-
-        assertFalse(store.parseInstanceProfileArn("arn:aws:iam::111111111111:instance-profile2/athenz.zts,athenz"));
-        assertFalse(store.parseInstanceProfileArn("arn:aws:iam::111111111111:instance/athenz.zts,athenz"));
-        store.close();
-    }
-
-    @Test
-    public void testParseInstanceProfileArnInvalidNoProfile() {
-
-        CloudStore store = new CloudStore();
-
-        // no profile name
-
-        assertFalse(store.parseInstanceProfileArn("arn:aws:iam::111111111111:instance-profile/"));
-        store.close();
-    }
-
-    @Test
-    public void testParseInstanceProfileArnCloud() {
-
-        CloudStore store = new CloudStore();
-        // cloud name is optional for backwards compatibility
-        assertTrue(store.parseInstanceProfileArn("arn:aws:iam::111111111111:instance-profile/athenz.zts"));
-        assertEquals(store.awsRole, "athenz.zts");
-        assertTrue(store.parseInstanceProfileArn("arn:aws:iam::111111111111:instance-profile/athenz.proxy,athenz,test"));
-        assertEquals(store.awsRole, "athenz.proxy");
-        store.close();
-    }
-
-    @Test
-    public void testGetMetaDataExceptions() throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/exc1")).thenThrow(InterruptedException.class);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/exc2")).thenThrow(ExecutionException.class);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/exc3")).thenThrow(TimeoutException.class);
-
-        assertNull(store.getMetaData("/exc1"));
-        assertNull(store.getMetaData("/exc2"));
-        assertNull(store.getMetaData("/exc3"));
-        store.close();
-    }
-
-    @Test
-    public void testGetMetaDataFailureStatus() throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-        ContentResponse response = Mockito.mock(ContentResponse.class);
-        Mockito.when(response.getStatus()).thenReturn(404);
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/iam-info")).thenReturn(response);
-
-        assertNull(store.getMetaData("/iam-info"));
-        store.close();
-    }
-
-    @Test
-    public void testGetMetaDataNullResponse() throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-        ContentResponse response = Mockito.mock(ContentResponse.class);
-        Mockito.when(response.getStatus()).thenReturn(200);
-        Mockito.when(response.getContentAsString()).thenReturn(null);
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/iam-info")).thenReturn(response);
-
-        assertNull(store.getMetaData("/iam-info"));
-        store.close();
-    }
-
-    @Test
-    public void testGetMetaDataEmptyResponse() throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-        ContentResponse response = Mockito.mock(ContentResponse.class);
-        Mockito.when(response.getStatus()).thenReturn(200);
-        Mockito.when(response.getContentAsString()).thenReturn("");
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/iam-info")).thenReturn(response);
-
-        assertNull(store.getMetaData("/iam-info"));
-        store.close();
-    }
-
-    @Test
-    public void testGetMetaDataValidResponse() throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-        ContentResponse response = Mockito.mock(ContentResponse.class);
-        Mockito.when(response.getStatus()).thenReturn(200);
-        Mockito.when(response.getContentAsString()).thenReturn("json-document");
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/iam-info")).thenReturn(response);
-
-        assertEquals(store.getMetaData("/iam-info"), "json-document");
-        store.close();
-    }
-
-    @Test
-    public void testLoadBootMetaDataInvalidDocumentGet() throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-        ContentResponse response = Mockito.mock(ContentResponse.class);
-        Mockito.when(response.getStatus()).thenReturn(404);
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/document")).thenReturn(response);
-
-        assertFalse(store.loadBootMetaData());
-        store.close();
-    }
-
-    @Test
-    public void testLoadBootMetaDataInvalidDocumentParse() throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-        ContentResponse response = Mockito.mock(ContentResponse.class);
-        Mockito.when(response.getStatus()).thenReturn(200);
-        Mockito.when(response.getContentAsString()).thenReturn("{\"accountId\":\"012345678901\"}");
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/document")).thenReturn(response);
-
-        assertFalse(store.loadBootMetaData());
-        store.close();
-    }
-
-    @Test
-    public void testLoadBootMetaDataInvalidDocumentException() throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-        ContentResponse response = Mockito.mock(ContentResponse.class);
-        Mockito.when(response.getStatus()).thenReturn(200);
-        Mockito.when(response.getContentAsString()).thenReturn("json-document");
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/document")).thenReturn(response);
-
-        assertFalse(store.loadBootMetaData());
-        store.close();
-    }
-
-    @Test
-    public void testLoadBootMetaDataInvalidSignature() throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-        ContentResponse responseDoc = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseDoc.getStatus()).thenReturn(200);
-        Mockito.when(responseDoc.getContentAsString()).thenReturn(AWS_INSTANCE_DOCUMENT);
-
-        ContentResponse responseSig = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseSig.getStatus()).thenReturn(404);
-
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/document")).thenReturn(responseDoc);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/pkcs7")).thenReturn(responseSig);
-
-        assertFalse(store.loadBootMetaData());
-        store.close();
-    }
-
-    @Test
-    public void testLoadBootMetaDataInvalidIamInfoGet() throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-
-        ContentResponse responseDoc = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseDoc.getStatus()).thenReturn(200);
-        Mockito.when(responseDoc.getContentAsString()).thenReturn(AWS_INSTANCE_DOCUMENT);
-
-        ContentResponse responseSig = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseSig.getStatus()).thenReturn(200);
-        Mockito.when(responseSig.getContentAsString()).thenReturn("pkcs7-signature");
-
-        ContentResponse responseInfo = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseInfo.getStatus()).thenReturn(404);
-
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/document")).thenReturn(responseDoc);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/pkcs7")).thenReturn(responseSig);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/meta-data/iam/info")).thenReturn(responseInfo);
-
-        assertFalse(store.loadBootMetaData());
-        store.close();
-    }
-
-    @Test
-    public void testLoadBootMetaDataInvalidIamInfoException() throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-
-        ContentResponse responseDoc = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseDoc.getStatus()).thenReturn(200);
-        Mockito.when(responseDoc.getContentAsString()).thenReturn(AWS_INSTANCE_DOCUMENT);
-
-        ContentResponse responseSig = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseSig.getStatus()).thenReturn(200);
-        Mockito.when(responseSig.getContentAsString()).thenReturn("pkcs7-signature");
-
-        ContentResponse responseInfo = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseInfo.getStatus()).thenReturn(200);
-        Mockito.when(responseInfo.getContentAsString()).thenReturn("invalid-info");
-
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/document")).thenReturn(responseDoc);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/pkcs7")).thenReturn(responseSig);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/meta-data/iam/info")).thenReturn(responseInfo);
-
-        assertFalse(store.loadBootMetaData());
-        store.close();
-    }
-
-    @Test
-    public void testLoadBootMetaDataInvalidIamInfoParse() throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-
-        ContentResponse responseDoc = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseDoc.getStatus()).thenReturn(200);
-        Mockito.when(responseDoc.getContentAsString()).thenReturn(AWS_INSTANCE_DOCUMENT);
-
-        ContentResponse responseSig = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseSig.getStatus()).thenReturn(200);
-        Mockito.when(responseSig.getContentAsString()).thenReturn("pkcs7-signature");
-
-        ContentResponse responseInfo = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseInfo.getStatus()).thenReturn(200);
-        Mockito.when(responseInfo.getContentAsString()).thenReturn("{\"accountId\":\"012345678901\",\"InstanceProfileArn\":\"invalid\"}");
-
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/document")).thenReturn(responseDoc);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/pkcs7")).thenReturn(responseSig);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/meta-data/iam/info")).thenReturn(responseInfo);
-
-        assertFalse(store.loadBootMetaData());
-        store.close();
-    }
-
-    @Test
-    public void testLoadBootMetaData() throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-
-        ContentResponse responseDoc = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseDoc.getStatus()).thenReturn(200);
-        Mockito.when(responseDoc.getContentAsString()).thenReturn(AWS_INSTANCE_DOCUMENT);
-
-        ContentResponse responseSig = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseSig.getStatus()).thenReturn(200);
-        Mockito.when(responseSig.getContentAsString()).thenReturn("pkcs7-signature");
-
-        ContentResponse responseInfo = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseInfo.getStatus()).thenReturn(200);
-        Mockito.when(responseInfo.getContentAsString()).thenReturn(AWS_IAM_ROLE_INFO);
-
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/document")).thenReturn(responseDoc);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/pkcs7")).thenReturn(responseSig);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/meta-data/iam/info")).thenReturn(responseInfo);
-
-        assertTrue(store.loadBootMetaData());
-        assertEquals(store.awsRole, "athenz.zts");
-        assertEquals(store.awsRegion, "us-west-2");
-        store.close();
-    }
-
-    @Test
-    public void testFetchRoleCredentialsNoRole() {
-
-        CloudStore store = new CloudStore();
-
-        store.awsRole = null;
-        assertFalse(store.fetchRoleCredentials());
-
-        store.awsRole = "";
-        assertFalse(store.fetchRoleCredentials());
-        store.close();
-    }
-
-    @Test
-    public void testFetchRoleCredentialsNoCreds() throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        store.awsRole = "athenz.zts";
-
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-        ContentResponse response = Mockito.mock(ContentResponse.class);
-        Mockito.when(response.getStatus()).thenReturn(404);
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/meta-data/iam/security-credentials/athenz.zts")).thenReturn(response);
-
-        assertFalse(store.fetchRoleCredentials());
-        store.close();
-    }
-
-    @Test
-    public void testFetchRoleCredentialInvalidCreds() throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        store.awsRole = "athenz.zts";
-
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-        ContentResponse response = Mockito.mock(ContentResponse.class);
-        Mockito.when(response.getStatus()).thenReturn(200);
-        Mockito.when(response.getContentAsString()).thenReturn("invalid-creds");
-
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/meta-data/iam/security-credentials/athenz.zts")).thenReturn(response);
-
-        assertFalse(store.fetchRoleCredentials());
-        store.close();
-    }
-
-    @Test
-    public void testFetchRoleCredential() throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        store.awsRole = "athenz.zts";
-
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-        ContentResponse response = Mockito.mock(ContentResponse.class);
-        Mockito.when(response.getStatus()).thenReturn(200);
-        Mockito.when(response.getContentAsString()).thenReturn("{\"AccessKeyId\":\"id\",\"SecretAccessKey\":\"key\",\"Token\":\"token\"}");
-
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/meta-data/iam/security-credentials/athenz.zts")).thenReturn(response);
-
-        assertTrue(store.fetchRoleCredentials());
-        store.close();
-    }
-
-    @Test
-    public void testInitializeAwsSupportInvalidDocument()  throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-
-        ContentResponse responseDoc = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseDoc.getStatus()).thenReturn(200);
-        Mockito.when(responseDoc.getContentAsString()).thenReturn("invalid-document");
-
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/document")).thenReturn(responseDoc);
-
-        try {
-            store.awsEnabled = true;
-            store.initializeAwsSupport();
-            fail();
-        } catch (ResourceException ex) {
-            assertEquals(ex.getCode(), 500);
-        }
-        store.close();
-    }
-
-    @Test
-    public void testInitializeAwsSupportInvalidCreds()  throws InterruptedException, ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-
-        ContentResponse responseDoc = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseDoc.getStatus()).thenReturn(200);
-        Mockito.when(responseDoc.getContentAsString()).thenReturn(AWS_INSTANCE_DOCUMENT);
-
-        ContentResponse responseSig = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseSig.getStatus()).thenReturn(200);
-        Mockito.when(responseSig.getContentAsString()).thenReturn("pkcs7-signature");
-
-        ContentResponse responseInfo = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseInfo.getStatus()).thenReturn(200);
-        Mockito.when(responseInfo.getContentAsString()).thenReturn(AWS_IAM_ROLE_INFO);
-
-        ContentResponse responseCreds = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseCreds.getStatus()).thenReturn(200);
-        Mockito.when(responseCreds.getContentAsString()).thenReturn("invalid-creds");
-
-        store.setHttpClient(httpClient);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/document")).thenReturn(responseDoc);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/pkcs7")).thenReturn(responseSig);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/meta-data/iam/info")).thenReturn(responseInfo);
-        Mockito.when(httpClient.GET("http://169.254.169.254/latest/meta-data/iam/security-credentials/athenz.zts")).thenReturn(responseCreds);
-
-        try {
-            store.awsEnabled = true;
-            store.initializeAwsSupport();
-            fail();
-        } catch (ResourceException ex) {
-            assertEquals(ex.getCode(), 500);
-        }
-        store.close();
-    }
-
-    @Test
-    public void testInitializeAwsSupport()  throws ExecutionException, TimeoutException {
-
-        CloudStore store = new CloudStore();
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-
-        ContentResponse responseDoc = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseDoc.getStatus()).thenReturn(200);
-        Mockito.when(responseDoc.getContentAsString()).thenReturn(AWS_INSTANCE_DOCUMENT);
-
-        ContentResponse responseSig = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseSig.getStatus()).thenReturn(200);
-        Mockito.when(responseSig.getContentAsString()).thenReturn("pkcs7-signature");
-
-        ContentResponse responseInfo = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseInfo.getStatus()).thenReturn(200);
-        Mockito.when(responseInfo.getContentAsString()).thenReturn(AWS_IAM_ROLE_INFO);
-
-        ContentResponse responseCreds = Mockito.mock(ContentResponse.class);
-        Mockito.when(responseCreds.getStatus()).thenReturn(200);
-        Mockito.when(responseCreds.getContentAsString()).thenReturn("{\"AccessKeyId\":\"id\",\"SecretAccessKey\":\"key\",\"Token\":\"token\"}");
-
-        store.setHttpClient(httpClient);
-        try {
-            Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/document")).thenReturn(responseDoc);
-        } catch (InterruptedException ignored) {
-        }
-        try {
-            Mockito.when(httpClient.GET("http://169.254.169.254/latest/dynamic/instance-identity/pkcs7")).thenReturn(responseSig);
-        } catch (InterruptedException ignored) {
-        }
-        try {
-            Mockito.when(httpClient.GET("http://169.254.169.254/latest/meta-data/iam/info")).thenReturn(responseInfo);
-        } catch (InterruptedException ignored) {
-        }
-        try {
-            Mockito.when(httpClient.GET("http://169.254.169.254/latest/meta-data/iam/security-credentials/athenz.zts")).thenReturn(responseCreds);
-        } catch (InterruptedException ignored) {
-        }
-
-        // set creds update time every second
-
-        System.setProperty(ZTSConsts.ZTS_PROP_AWS_CREDS_UPDATE_TIMEOUT, "1");
-
-        store.awsEnabled = true;
-        store.initializeAwsSupport();
-
-        // sleep a couple of seconds for the background thread to run
-        // before we try to shutting it down
-
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException ignored) {
-        }
-        store.close();
-
-        System.clearProperty(ZTSConsts.ZTS_PROP_AWS_CREDS_UPDATE_TIMEOUT);
     }
 
     @Test
@@ -753,69 +89,12 @@ public class CloudStoreTest {
     }
 
     @Test
-    public void testAssumeAWSRole() {
-        MockCloudStore cloudStore = new MockCloudStore();
-        cloudStore.awsEnabled = true;
-        AssumeRoleResult mockResult = Mockito.mock(AssumeRoleResult.class);
-        Credentials creds = Mockito.mock(Credentials.class);
-        Mockito.when(creds.getAccessKeyId()).thenReturn("accesskeyid");
-        Mockito.when(creds.getSecretAccessKey()).thenReturn("secretaccesskey");
-        Mockito.when(creds.getSessionToken()).thenReturn("sessiontoken");
-        Mockito.when(creds.getExpiration()).thenReturn(new Date());
-        Mockito.when(mockResult.getCredentials()).thenReturn(creds);
-        cloudStore.setAssumeRoleResult(mockResult);
-        cloudStore.setReturnSuperAWSRole(true);
-
-        StringBuilder errorMessage = new StringBuilder();
-        AWSTemporaryCredentials awsCreds = cloudStore.assumeAWSRole("account", "syncer", "athenz.syncer", null, null, errorMessage);
-        assertNotNull(awsCreds);
-        assertEquals(awsCreds.getAccessKeyId(), "accesskeyid");
-        assertEquals(awsCreds.getSessionToken(), "sessiontoken");
-        assertEquals(awsCreds.getSecretAccessKey(), "secretaccesskey");
-        cloudStore.close();
-    }
-
-    @Test
-    public void testAssumeAWSRoleFailedCreds() {
-        MockCloudStore cloudStore = new MockCloudStore();
-        cloudStore.awsEnabled = true;
-        AssumeRoleResult mockResult = Mockito.mock(AssumeRoleResult.class);
-        Credentials creds = Mockito.mock(Credentials.class);
-        Mockito.when(creds.getAccessKeyId()).thenReturn("accesskeyid");
-        Mockito.when(creds.getSecretAccessKey()).thenReturn("secretaccesskey");
-        Mockito.when(creds.getSessionToken()).thenReturn("sessiontoken");
-        Mockito.when(creds.getExpiration()).thenReturn(new Date());
-        Mockito.when(mockResult.getCredentials()).thenReturn(creds);
-        cloudStore.setAssumeRoleResult(mockResult);
-        cloudStore.setReturnSuperAWSRole(true);
-
-        // add our key to the invalid cache
-
-        cloudStore.putInvalidCacheCreds(cloudStore.getCacheKey("account", "syncer", "athenz.syncer", null, null));
-        StringBuilder errorMessage = new StringBuilder();
-        assertNull(cloudStore.assumeAWSRole("account", "syncer", "athenz.syncer", null, null, errorMessage));
-        errorMessage.setLength(0);
-        assertNull(cloudStore.assumeAWSRole("account", "syncer", "athenz.syncer", null, null, errorMessage));
-
-        // now set the timeout to 1 second and sleep that long and after
-        // that our test case should work as before
-
-        cloudStore.invalidCacheTimeout = 1;
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException ignored) {
-        }
-        errorMessage.setLength(0);
-        assertNotNull(cloudStore.assumeAWSRole("account", "syncer", "athenz.syncer", null, null, errorMessage));
-        cloudStore.close();
-    }
-
-    @Test
-    public void testAssumeAWSRoleFailedCredsCache() {
+    public void testAssumeAWSRoleFailedCredsCacheAllErrorsDisabled() throws ServerResourceException {
         MockCloudStore cloudStore = new MockCloudStore();
         cloudStore.awsEnabled = true;
         cloudStore.setReturnSuperAWSRole(true);
         cloudStore.invalidCacheTimeout = 120;
+        cloudStore.invalidCacheAllErrors = false;
 
         // first we're going to return a regular exception
         // in which case we won't cache the failed creds
@@ -825,7 +104,7 @@ public class CloudStoreTest {
         assertNull(cloudStore.assumeAWSRole("account", "syncer", "athenz.syncer", null, null, errorMessage));
         assertNull(cloudStore.awsInvalidCredsCache.get(cloudStore.getCacheKey("account", "syncer", "athenz.syncer", null, null)));
 
-        // now we're going to return aamazon service exception
+        // now we're going to return amazon service exception
         // but with 401 error code which means against no
         // caching of failed credentials
 
@@ -835,7 +114,41 @@ public class CloudStoreTest {
         assertNull(cloudStore.awsInvalidCredsCache.get(cloudStore.getCacheKey("account", "syncer", "athenz.syncer", null, null)));
 
         // finally we're going to return access denied - 403
-        // amazon exception and we should cache the failed creds
+        // amazon exception, and we should cache the failed creds
+
+        cloudStore.setGetServiceException(403, true);
+        errorMessage.setLength(0);
+        assertNull(cloudStore.assumeAWSRole("account", "syncer", "athenz.syncer", null, null, errorMessage));
+        assertNotNull(cloudStore.awsInvalidCredsCache.get(cloudStore.getCacheKey("account", "syncer", "athenz.syncer", null, null)));
+
+        cloudStore.close();
+    }
+
+    @Test
+    public void testAssumeAWSRoleFailedCredsCacheAllErrorsEnabled() throws ServerResourceException {
+        MockCloudStore cloudStore = new MockCloudStore();
+        cloudStore.awsEnabled = true;
+        cloudStore.setReturnSuperAWSRole(true);
+        cloudStore.invalidCacheTimeout = 120;
+        cloudStore.invalidCacheAllErrors = true;
+
+        // in all cases we must cache the errors
+
+        // first we're going to return a regular exception
+
+        cloudStore.setGetServiceException(403, false);
+        StringBuilder errorMessage = new StringBuilder();
+        assertNull(cloudStore.assumeAWSRole("account", "syncer", "athenz.syncer", null, null, errorMessage));
+        assertNotNull(cloudStore.awsInvalidCredsCache.get(cloudStore.getCacheKey("account", "syncer", "athenz.syncer", null, null)));
+
+        // now we're going to return amazon service exception but with 401 error
+
+        cloudStore.setGetServiceException(401, true);
+        errorMessage.setLength(0);
+        assertNull(cloudStore.assumeAWSRole("account", "syncer", "athenz.syncer", null, null, errorMessage));
+        assertNotNull(cloudStore.awsInvalidCredsCache.get(cloudStore.getCacheKey("account", "syncer", "athenz.syncer", null, null)));
+
+        // finally we're going to return access denied - 403 amazon exception
 
         cloudStore.setGetServiceException(403, true);
         errorMessage.setLength(0);
@@ -998,7 +311,7 @@ public class CloudStoreTest {
         assertTrue(cloudStore.isFailedTempCredsRequest("cacheKey"));
         assertFalse(cloudStore.isFailedTempCredsRequest("unknown-key"));
 
-        // now set the timeout to only 1 second
+        // now set the timeout to only 1-second
         // and sleep so our records are expired
 
         cloudStore.invalidCacheTimeout = 1;
@@ -1040,46 +353,23 @@ public class CloudStoreTest {
     }
 
     @Test
-    public void testSetupHttpClient() throws Exception {
-
-        CloudStore cloudStore = new CloudStore();
-        HttpClient client = Mockito.mock(HttpClient.class);
-        Mockito.doThrow(new Exception("Invalid client")).when(client).start();
-
-        try {
-            cloudStore.setupHttpClient(client);
-            fail();
-        } catch (ResourceException ex) {
-            assertEquals(ex.getCode(), 500);
-        }
-        cloudStore.close();
-    }
-
-    @Test
     public void testAWSCredentialsUpdaterExceptions () {
 
         CloudStore cloudStore = Mockito.mock(CloudStore.class);
+        cloudStore.tempCredsProvider = Mockito.mock(TempCredsProvider.class);
 
         // we're going to test exceptions from three components
         // and make sure our run does not throw any
 
         // first operation - all return true
-        // second operation - fetchRoleCredentials throws exception
-        // third operation - removeExpiredCredentials throws exception
-        // forth opreation - removeExpiredInvalidCredentials throws exception
+        // second operation - removeExpiredCredentials throws exception
+        // third opreation - removeExpiredInvalidCredentials throws exception
 
-        Mockito.when(cloudStore.fetchRoleCredentials())
-                .thenReturn(true)
-                .thenThrow(new NullPointerException("invalid state"))
-                .thenReturn(true)
-                .thenReturn(true);
         Mockito.when(cloudStore.removeExpiredCredentials())
-                .thenReturn(true)
                 .thenReturn(true)
                 .thenThrow(new NullPointerException("invalid state"))
                 .thenReturn(true);
         Mockito.when(cloudStore.removeExpiredInvalidCredentials())
-                .thenReturn(true)
                 .thenReturn(true)
                 .thenReturn(true)
                 .thenThrow(new NullPointerException("invalid state"));
@@ -1095,10 +385,27 @@ public class CloudStoreTest {
     public void testGetAzureSubscription() {
         CloudStore cloudStore = new CloudStore();
         assertNull(cloudStore.getAzureSubscription("athenz"));
-        cloudStore.updateAzureSubscription("athenz", "12345");
-        assertEquals("12345", cloudStore.getAzureSubscription("athenz"));
-        cloudStore.updateAzureSubscription("athenz", "");
+
+        cloudStore.updateAzureSubscription("athenz", "12345", "321", "999");
+        assertEquals(cloudStore.getAzureSubscription("athenz"), "12345");
+        assertEquals(cloudStore.getAzureTenant("athenz"), "321");
+        assertEquals(cloudStore.getAzureClient("athenz"), "999");
+
+        cloudStore.updateAzureSubscription("athenz", "", "", "");
         assertNull(cloudStore.getAzureSubscription("athenz"));
+        assertNull(cloudStore.getAzureTenant("athenz"));
+        assertNull(cloudStore.getAzureClient("athenz"));
+
+        cloudStore.updateAzureSubscription("athenz", "12345", null, "888");
+        assertEquals(cloudStore.getAzureSubscription("athenz"), "12345");
+        assertNull(cloudStore.getAzureTenant("athenz"));
+        assertEquals(cloudStore.getAzureClient("athenz"), "888");
+
+        cloudStore.updateAzureSubscription("athenz", "12345", "777", null);
+        assertEquals(cloudStore.getAzureSubscription("athenz"), "12345");
+        assertEquals(cloudStore.getAzureTenant("athenz"), "777");
+        assertEquals(cloudStore.getAzureClient("athenz"), "888");
+
         cloudStore.close();
     }
 

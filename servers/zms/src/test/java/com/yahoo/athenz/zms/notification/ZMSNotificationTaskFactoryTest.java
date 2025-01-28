@@ -25,16 +25,17 @@ import org.testng.annotations.Test;
 import java.util.List;
 
 import static com.yahoo.athenz.common.ServerCommonConsts.USER_DOMAIN_PREFIX;
-import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.Assert.assertEquals;
 
 public class ZMSNotificationTaskFactoryTest {
 
     @Test
     public void testNotificationTasksOrdering() {
         DBService dbsvc = Mockito.mock(DBService.class);
-        ZMSNotificationTaskFactory zmsNotificationTaskFactory = new ZMSNotificationTaskFactory(dbsvc, USER_DOMAIN_PREFIX, new NotificationToEmailConverterCommon(null));
+        ZMSNotificationTaskFactory zmsNotificationTaskFactory = new ZMSNotificationTaskFactory(dbsvc,
+                USER_DOMAIN_PREFIX, new NotificationToEmailConverterCommon(null));
         List<NotificationTask> notificationTasks = zmsNotificationTaskFactory.getNotificationTasks();
-        assertEquals(5, notificationTasks.size());
+        assertEquals(notificationTasks.size(), 5);
         assertEquals(notificationTasks.get(0).getDescription(), "pending role membership approvals reminders");
         assertEquals(notificationTasks.get(1).getDescription(), "pending group membership approvals reminders");
         assertEquals(notificationTasks.get(2).getDescription(), "membership expiration reminders");

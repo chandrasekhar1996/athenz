@@ -16,9 +16,10 @@
 
 package com.yahoo.athenz.zms.notification;
 
+import com.yahoo.athenz.common.server.ServerResourceException;
 import com.yahoo.athenz.common.server.notification.*;
 import com.yahoo.athenz.zms.*;
-import com.yahoo.athenz.zms.store.AthenzDomain;
+import com.yahoo.athenz.common.server.store.AthenzDomain;
 import com.yahoo.rdl.Timestamp;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -32,16 +33,16 @@ import static com.yahoo.athenz.zms.notification.ZMSNotificationManagerTest.getNo
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
-import static org.testng.AssertJUnit.assertEquals;
 
 public class PutGroupMembershipNotificationTaskTest {
     private final NotificationToEmailConverterCommon notificationToEmailConverterCommon = new NotificationToEmailConverterCommon(null);
     
     @Test
-    public void testGenerateAndSendPostPutGroupMembershipNotification() {
+    public void testGenerateAndSendPostPutGroupMembershipNotification() throws ServerResourceException {
         DBService dbsvc = Mockito.mock(DBService.class);
         NotificationService mockNotificationService =  Mockito.mock(NotificationService.class);
-        NotificationServiceFactory testfact = () -> mockNotificationService;
+        NotificationServiceFactory testfact = Mockito.mock(NotificationServiceFactory.class);
+        Mockito.when(testfact.create(any())).thenReturn(mockNotificationService);
         NotificationManager notificationManager = getNotificationManager(dbsvc, testfact);
         notificationManager.shutdown();
         Map<String, String> details = new HashMap<>();
@@ -99,7 +100,7 @@ public class PutGroupMembershipNotificationTaskTest {
                 notifyGroup, details, dbsvc, USER_DOMAIN_PREFIX, notificationToEmailConverterCommon).getNotifications();
         notificationManager.sendNotifications(notifications);
 
-        Notification notification = new Notification();
+        Notification notification = new Notification(Notification.Type.GROUP_MEMBER_APPROVAL);
         notification.addRecipient("user.domapprover1")
                 .addRecipient("user.domapprover2")
                 .addRecipient("user.orgapprover1")
@@ -121,10 +122,11 @@ public class PutGroupMembershipNotificationTaskTest {
     }
 
     @Test
-    public void testGenerateAndSendPostPutGroupMembershipNotificationNullDomainGroup() {
+    public void testGenerateAndSendPostPutGroupMembershipNotificationNullDomainGroup() throws ServerResourceException {
         DBService dbsvc = Mockito.mock(DBService.class);
         NotificationService mockNotificationService =  Mockito.mock(NotificationService.class);
-        NotificationServiceFactory testfact = () -> mockNotificationService;
+        NotificationServiceFactory testfact = Mockito.mock(NotificationServiceFactory.class);
+        Mockito.when(testfact.create(any())).thenReturn(mockNotificationService);
         NotificationManager notificationManager = getNotificationManager(dbsvc, testfact);
         notificationManager.shutdown();
         Map<String, String> details = new HashMap<>();
@@ -160,7 +162,7 @@ public class PutGroupMembershipNotificationTaskTest {
                 notifyGroup, details, dbsvc, USER_DOMAIN_PREFIX, notificationToEmailConverterCommon).getNotifications();
         notificationManager.sendNotifications(notifications);
 
-        Notification notification = new Notification();
+        Notification notification = new Notification(Notification.Type.GROUP_MEMBER_APPROVAL);
         notification
                 .addRecipient("user.orgapprover1")
                 .addRecipient("user.orgapprover2");
@@ -181,10 +183,11 @@ public class PutGroupMembershipNotificationTaskTest {
     }
 
     @Test
-    public void testGenerateAndSendPostPutGroupMembershipNotificationNullOrgGroup() {
+    public void testGenerateAndSendPostPutGroupMembershipNotificationNullOrgGroup() throws ServerResourceException {
         DBService dbsvc = Mockito.mock(DBService.class);
         NotificationService mockNotificationService =  Mockito.mock(NotificationService.class);
-        NotificationServiceFactory testfact = () -> mockNotificationService;
+        NotificationServiceFactory testfact = Mockito.mock(NotificationServiceFactory.class);
+        Mockito.when(testfact.create(any())).thenReturn(mockNotificationService);
         NotificationManager notificationManager = getNotificationManager(dbsvc, testfact);
         notificationManager.shutdown();
         Map<String, String> details = new HashMap<>();
@@ -220,7 +223,7 @@ public class PutGroupMembershipNotificationTaskTest {
                 notifyGroup, details, dbsvc, USER_DOMAIN_PREFIX, notificationToEmailConverterCommon).getNotifications();
         notificationManager.sendNotifications(notifications);
 
-        Notification notification = new Notification();
+        Notification notification = new Notification(Notification.Type.GROUP_MEMBER_APPROVAL);
         notification
                 .addRecipient("user.domapprover1")
                 .addRecipient("user.domapprover2");
@@ -241,10 +244,11 @@ public class PutGroupMembershipNotificationTaskTest {
     }
 
     @Test
-    public void testGenerateAndSendPostPutGroupMembershipNotificationSelfserve() {
+    public void testGenerateAndSendPostPutGroupMembershipNotificationSelfserve() throws ServerResourceException {
         DBService dbsvc = Mockito.mock(DBService.class);
         NotificationService mockNotificationService =  Mockito.mock(NotificationService.class);
-        NotificationServiceFactory testfact = () -> mockNotificationService;
+        NotificationServiceFactory testfact = Mockito.mock(NotificationServiceFactory.class);
+        Mockito.when(testfact.create(any())).thenReturn(mockNotificationService);
         NotificationManager notificationManager = getNotificationManager(dbsvc, testfact);
         notificationManager.shutdown();
         Map<String, String> details = new HashMap<>();
@@ -280,7 +284,7 @@ public class PutGroupMembershipNotificationTaskTest {
                 notifyGroup, details, dbsvc, USER_DOMAIN_PREFIX, notificationToEmailConverterCommon).getNotifications();
         notificationManager.sendNotifications(notifications);
 
-        Notification notification = new Notification();
+        Notification notification = new Notification(Notification.Type.GROUP_MEMBER_APPROVAL);
         notification
                 .addRecipient("user.domadmin1")
                 .addRecipient("user.domadmin2");
@@ -301,10 +305,11 @@ public class PutGroupMembershipNotificationTaskTest {
     }
 
     @Test
-    public void testGenerateAndSendPostPutGroupMembershipNotificationNotifyGroups() {
+    public void testGenerateAndSendPostPutGroupMembershipNotificationNotifyGroups() throws ServerResourceException {
         DBService dbsvc = Mockito.mock(DBService.class);
         NotificationService mockNotificationService =  Mockito.mock(NotificationService.class);
-        NotificationServiceFactory testfact = () -> mockNotificationService;
+        NotificationServiceFactory testfact = Mockito.mock(NotificationServiceFactory.class);
+        Mockito.when(testfact.create(any())).thenReturn(mockNotificationService);
         NotificationManager notificationManager = getNotificationManager(dbsvc, testfact);
         notificationManager.shutdown();
         Map<String, String> details = new HashMap<>();
@@ -363,7 +368,7 @@ public class PutGroupMembershipNotificationTaskTest {
                 notifyGroup, details, dbsvc, USER_DOMAIN_PREFIX, notificationToEmailConverterCommon).getNotifications();
         notificationManager.sendNotifications(notifications);
 
-        Notification notification = new Notification();
+        Notification notification = new Notification(Notification.Type.GROUP_MEMBER_APPROVAL);
         notification.addRecipient("user.domapprover1")
                 .addRecipient("user.domapprover2")
                 .addRecipient("user.approver1")
@@ -386,13 +391,14 @@ public class PutGroupMembershipNotificationTaskTest {
     }
 
     @Test
-    public void testGenerateAndSendPostPutGroupMembershipNotificationInvalidType() {
+    public void testGenerateAndSendPostPutGroupMembershipNotificationInvalidType() throws ServerResourceException {
 
         DBService dbsvc = Mockito.mock(DBService.class);
         Mockito.when(dbsvc.getPendingMembershipApproverRoles(1)).thenReturn(Collections.emptySet());
 
         NotificationService mockNotificationService =  Mockito.mock(NotificationService.class);
-        NotificationServiceFactory testfact = () -> mockNotificationService;
+        NotificationServiceFactory testfact = Mockito.mock(NotificationServiceFactory.class);
+        Mockito.when(testfact.create(any())).thenReturn(mockNotificationService);
         NotificationManager notificationManager = getNotificationManager(dbsvc, testfact);
         notificationManager.shutdown();
         Group notifyGroup = new Group().setAuditEnabled(false).setSelfServe(false);
@@ -403,12 +409,13 @@ public class PutGroupMembershipNotificationTaskTest {
     }
 
     @Test
-    public void testGenerateAndSendPostPutGroupMembershipNotificationNullNotificationSvc() {
+    public void testGenerateAndSendPostPutGroupMembershipNotificationNullNotificationSvc() throws ServerResourceException {
 
         DBService dbsvc = Mockito.mock(DBService.class);
         Mockito.when(dbsvc.getPendingMembershipApproverRoles(1)).thenReturn(Collections.emptySet());
 
-        NotificationServiceFactory testfact = () -> null;
+        NotificationServiceFactory testfact = Mockito.mock(NotificationServiceFactory.class);
+        Mockito.when(testfact.create(any())).thenReturn(null);
         NotificationService mockNotificationService =  Mockito.mock(NotificationService.class);
         NotificationManager notificationManager = getNotificationManager(dbsvc, testfact);
         notificationManager.shutdown();
@@ -427,7 +434,7 @@ public class PutGroupMembershipNotificationTaskTest {
                         new HashMap<>(), dbsvc, USER_DOMAIN_PREFIX, notificationToEmailConverterCommon);
 
         String description = putGroupMembershipNotificationTask.getDescription();
-        assertEquals("Group Membership Approval Notification", description);
+        assertEquals(description, "Group Membership Approval Notification");
     }
 
     @Test
@@ -444,7 +451,7 @@ public class PutGroupMembershipNotificationTaskTest {
         details.put("reason", "test reason");
         details.put("requester", "user.requester");
 
-        Notification notification = new Notification();
+        Notification notification = new Notification(Notification.Type.GROUP_MEMBER_APPROVAL);
         notification.setDetails(details);
         PutGroupMembershipNotificationTask.PutGroupMembershipNotificationToEmailConverter converter =
                 new PutGroupMembershipNotificationTask.PutGroupMembershipNotificationToEmailConverter(new NotificationToEmailConverterCommon(null));
@@ -472,7 +479,7 @@ public class PutGroupMembershipNotificationTaskTest {
 
     @Test
     public void getEmailSubject() {
-        Notification notification = new Notification();
+        Notification notification = new Notification(Notification.Type.GROUP_MEMBER_APPROVAL);
         PutGroupMembershipNotificationTask.PutGroupMembershipNotificationToEmailConverter converter =
                 new PutGroupMembershipNotificationTask.PutGroupMembershipNotificationToEmailConverter(notificationToEmailConverterCommon);
         NotificationEmail notificationAsEmail = converter.getNotificationAsEmail(notification);
@@ -489,7 +496,7 @@ public class PutGroupMembershipNotificationTaskTest {
         details.put("reason", "test reason");
         details.put("requester", "user.requester");
 
-        Notification notification = new Notification();
+        Notification notification = new Notification(Notification.Type.GROUP_MEMBER_APPROVAL);
         notification.setDetails(details);
 
         PutGroupMembershipNotificationTask.PutGroupMembershipNotificationToMetricConverter converter =

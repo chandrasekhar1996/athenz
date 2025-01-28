@@ -40,6 +40,14 @@ type TransportPolicyScope Enum {
 type TransportPolicySubject Struct {
     TransportPolicySubjectDomainName domainName; // Name of the domain
     TransportPolicySubjectServiceName serviceName; // Name of the service
+    TransportPolicySubjectExternal externalPeer (optional); // External peer ( not in Athenz )
+}
+
+// A subject selector requirement is a selector that contains value, a key, and an operator that relates the key and value.
+type TransportPolicySubjectSelectorRequirement Struct {
+    String key; //key that the selector applies to
+    String operator; //Operator that is applied to the key and value
+    String value; //Value that the selector applies to
 }
 
 // Transport policy condition. Used to specify additional restrictions for the subject of a transport policy
@@ -47,6 +55,7 @@ type TransportPolicyCondition Struct {
     TransportPolicyEnforcementState enforcementState; // State of transport policy enforcement ( ENFORCE / REPORT )
     Array<String> instances (optional); // Acts as restrictions. If present, this transport policy should be restricted to only mentioned instances.
     Array<TransportPolicyScope> scope (optional); // Scope of transport policy
+    Array<TransportPolicySubjectSelectorRequirement> additionalConditions (optional); // List of any additional conditions
 }
 
 // generic policy port. Will be used by TransportPolicyPort and NetworkPolicyPort structs
@@ -82,6 +91,7 @@ type TransportPolicyEntitySelector Struct {
 // Transport policy ingress rule
 type TransportPolicyIngressRule Struct {
     Int64 id; // Assertion id associated with this transport policy
+    EntityName identifier (optional); //Policy Identifier
     Timestamp lastModified; // Last modification timestamp of this transport policy
     TransportPolicyEntitySelector entitySelector; // Entity to which this transport policy applies
     TransportPolicyPeer from (optional); // Source of network traffic
@@ -90,6 +100,7 @@ type TransportPolicyIngressRule Struct {
 // Transport policy egress rule
 type TransportPolicyEgressRule Struct {
     Int64 id; // Assertion id associated with this transport policy
+    EntityName identifier (optional); //Policy Identifier
     Timestamp lastModified; // Last modification timestamp of this transport policy
     TransportPolicyEntitySelector entitySelector; // Entity to which this transport policy applies
     TransportPolicyPeer to (optional); // Destination of network traffic
@@ -122,19 +133,12 @@ type TransportPolicyValidationResponseList Struct {
     Array<TransportPolicyValidationResponse> responseList; //list of transport policy validation response
 }
 
-// A subject selector requirement is a selector that contains value, a key, and an operator that relates the key and value.
-type TransportPolicySubjectSelectorRequirement Struct {
-    String key; //key that the selector applies to
-    String operator; //Operator that is applied to the key and value
-    String value; //Value that the selector applies to
-}
-
 // Input to create a transport policy
 type TransportPolicyRequest Struct {
     TransportPolicyTrafficDirection direction; //Direction of network traffic
     EntityName identifier; //Policy Identifier
     TransportPolicySubject subject; //Subject for the policy
-    Array<TransportPolicySubjectSelectorRequirement> conditions (optional); //List of subject selector conditions
+    Array<TransportPolicyCondition> conditions (optional); //List of transport policy conditions
     Array<TransportPolicyPort> sourcePorts; //List of source network traffic ports
     Array<TransportPolicyPort> destinationPorts; //List of destination network traffic ports
     Array<TransportPolicySubject> peers (optional); //Source or destination of the policy depending on direction

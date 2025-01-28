@@ -16,9 +16,10 @@
 
 package com.yahoo.athenz.zms.notification;
 
+import com.yahoo.athenz.common.server.ServerResourceException;
 import com.yahoo.athenz.common.server.notification.*;
 import com.yahoo.athenz.zms.*;
-import com.yahoo.athenz.zms.store.AthenzDomain;
+import com.yahoo.athenz.common.server.store.AthenzDomain;
 import com.yahoo.rdl.Timestamp;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -32,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.yahoo.athenz.common.ServerCommonConsts.USER_DOMAIN_PREFIX;
 import static com.yahoo.athenz.common.server.notification.NotificationServiceConstants.NOTIFICATION_PROP_SERVICE_FACTORY_CLASS;
+import static org.mockito.ArgumentMatchers.any;
 import static org.testng.Assert.*;
 
 public class ZMSNotificationManagerTest {
@@ -55,7 +57,7 @@ public class ZMSNotificationManagerTest {
     @Test
     public void testSendNotification() {
         DBService dbsvc = Mockito.mock(DBService.class);
-        Notification notification = new Notification();
+        Notification notification = new Notification(Notification.Type.ROLE_MEMBER_EXPIRY);
         Set<String> recipients = new HashSet<>();
         recipients.add("user.joe");
         notification.setRecipients(recipients);
@@ -73,22 +75,25 @@ public class ZMSNotificationManagerTest {
         return getNotificationManagerMultipleServices(dbsvc, notificationServiceFactories);
     }
 
-    public static NotificationManager getNotificationManagerMultipleServices(DBService dbsvc, List<NotificationServiceFactory> notificationServiceFactories) {
-        ZMSNotificationTaskFactory zmsNotificationTaskFactory = new ZMSNotificationTaskFactory(dbsvc, USER_DOMAIN_PREFIX, new NotificationToEmailConverterCommon(null));
+    public static NotificationManager getNotificationManagerMultipleServices(DBService dbsvc,
+            List<NotificationServiceFactory> notificationServiceFactories) {
+        ZMSNotificationTaskFactory zmsNotificationTaskFactory = new ZMSNotificationTaskFactory(dbsvc,
+                USER_DOMAIN_PREFIX, new NotificationToEmailConverterCommon(null));
         List<NotificationTask> notificationTasks = zmsNotificationTaskFactory.getNotificationTasks();
 
         if (notificationServiceFactories == null) {
-            return new NotificationManager(notificationTasks, null);
+            return new NotificationManager(notificationTasks, null, null, null);
         }
-        return new NotificationManager(notificationServiceFactories, notificationTasks, null);
+        return new NotificationManager(notificationServiceFactories, notificationTasks, null, null);
     }
 
     @Test
-    public void testSendNotificationNullService() {
+    public void testSendNotificationNullService() throws ServerResourceException {
 
         DBService dbsvc = Mockito.mock(DBService.class);
-        NotificationServiceFactory testfact = () -> null;
-        Notification notification = new Notification();
+        NotificationServiceFactory testfact = Mockito.mock(NotificationServiceFactory.class);
+        Mockito.when(testfact.create(any())).thenReturn(null);
+        Notification notification = new Notification(Notification.Type.ROLE_MEMBER_EXPIRY);
         Set<String> recipients = new HashSet<>();
         recipients.add("user.joe");
         notification.setRecipients(recipients);
@@ -155,7 +160,8 @@ public class ZMSNotificationManagerTest {
         NotificationCommon notificationCommon = new NotificationCommon(domainRoleMembersFetcher, USER_DOMAIN_PREFIX);
         PutRoleMembershipNotificationTask.PutMembershipNotificationToEmailConverter converter = new PutRoleMembershipNotificationTask.PutMembershipNotificationToEmailConverter(notificationToEmailConverterCommon);
         PutRoleMembershipNotificationTask.PutMembershipNotificationToMetricConverter metricConverter = new PutRoleMembershipNotificationTask.PutMembershipNotificationToMetricConverter();
-        Notification notification = notificationCommon.createNotification(recipients, details, converter, metricConverter);
+        Notification notification = notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
+                recipients, details, converter, metricConverter);
         assertNotNull(notification);
 
         // Assert service is not a receipient
@@ -179,8 +185,10 @@ public class ZMSNotificationManagerTest {
 
         DomainRoleMembersFetcher domainRoleMembersFetcher = new DomainRoleMembersFetcher(dbsvc, USER_DOMAIN_PREFIX);
         NotificationCommon notificationCommon = new NotificationCommon(domainRoleMembersFetcher, USER_DOMAIN_PREFIX);
-        assertNull(notificationCommon.createNotification((Set<String>) null, null, null, null));
-        assertNull(notificationCommon.createNotification(Collections.emptySet(), null, null, null));
+        assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
+                (Set<String>) null, null, null, null));
+        assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
+                Collections.emptySet(), null, null, null));
     }
 
     @Test
@@ -211,7 +219,8 @@ public class ZMSNotificationManagerTest {
         NotificationCommon notificationCommon = new NotificationCommon(domainRoleMembersFetcher, USER_DOMAIN_PREFIX);
         PendingRoleMembershipApprovalNotificationTask.PendingRoleMembershipApprovalNotificationToEmailConverter converter = new PendingRoleMembershipApprovalNotificationTask.PendingRoleMembershipApprovalNotificationToEmailConverter(notificationToEmailConverterCommon);
         PendingRoleMembershipApprovalNotificationTask.PendingRoleMembershipApprovalNotificationToMetricConverter metricConverter = new PendingRoleMembershipApprovalNotificationTask.PendingRoleMembershipApprovalNotificationToMetricConverter();
-        Notification notification = notificationCommon.createNotification(recipients, null, converter, metricConverter);
+        Notification notification = notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
+                recipients, null, converter, metricConverter);
         assertNull(notification);
     }
 
@@ -242,20 +251,22 @@ public class ZMSNotificationManagerTest {
     }
 
     @Test
-    public void testNotificationManagerServiceNull() {
+    public void testNotificationManagerServiceNull() throws ServerResourceException {
         DBService dbsvc = Mockito.mock(DBService.class);
         Mockito.when(dbsvc.getPendingMembershipApproverRoles(1)).thenReturn(Collections.emptySet());
 
-        NotificationServiceFactory testfact = () -> null;
+        NotificationServiceFactory testfact = Mockito.mock(NotificationServiceFactory.class);
+        Mockito.when(testfact.create(any())).thenReturn(null);
         NotificationManager notificationManager = getNotificationManager(dbsvc, testfact);
         notificationManager.shutdown();
     }
 
     @Test
-    public void testSendPendingMembershipApprovalRemindersException() {
+    public void testSendPendingMembershipApprovalRemindersException() throws ServerResourceException {
         DBService dbsvc = Mockito.mock(DBService.class);
         NotificationService mockNotificationService =  Mockito.mock(NotificationService.class);
-        NotificationServiceFactory testfact = () -> mockNotificationService;
+        NotificationServiceFactory testfact = Mockito.mock(NotificationServiceFactory.class);
+        Mockito.when(testfact.create(any())).thenReturn(mockNotificationService);
         Mockito.when(dbsvc.getPendingMembershipApproverRoles(1)).thenThrow(new ResourceException(400));
         NotificationManager notificationManager = getNotificationManager(dbsvc, testfact);
         // wait for 2 seconds for scheduler to throw an exception
@@ -273,21 +284,25 @@ public class ZMSNotificationManagerTest {
         // run during init call and then the real data for the second
         // call
 
-        Mockito.when(dbsvc.getRoleExpiryMembers(1, false)).thenReturn(null);
+        Mockito.when(dbsvc.getRoleExpiryMembers(1)).thenReturn(null);
         DomainRoleMembersFetcher domainRoleMembersFetcher = new DomainRoleMembersFetcher(dbsvc, USER_DOMAIN_PREFIX);
         NotificationCommon notificationCommon = new NotificationCommon(domainRoleMembersFetcher, USER_DOMAIN_PREFIX);
 
         Map<String, String> details = new HashMap<>();
         PendingRoleMembershipApprovalNotificationTask.PendingRoleMembershipApprovalNotificationToEmailConverter converter = new PendingRoleMembershipApprovalNotificationTask.PendingRoleMembershipApprovalNotificationToEmailConverter(notificationToEmailConverterCommon);
         PendingRoleMembershipApprovalNotificationTask.PendingRoleMembershipApprovalNotificationToMetricConverter metricConverter = new PendingRoleMembershipApprovalNotificationTask.PendingRoleMembershipApprovalNotificationToMetricConverter();
-        assertNull(notificationCommon.createNotification((String) null, details, converter, metricConverter));
-        assertNull(notificationCommon.createNotification("", details, converter, metricConverter));
-        assertNull(notificationCommon.createNotification("athenz", details, converter, metricConverter));
+        assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
+                (String) null, details, converter, metricConverter));
+        assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
+                "", details, converter, metricConverter));
+        assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
+                "athenz", details, converter, metricConverter));
 
         // valid service name but we have no valid domain so we're still
         // going to get null notification
 
-        assertNull(notificationCommon.createNotification("athenz.service", details, converter, metricConverter));
+        assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
+                "athenz.service", details, converter, metricConverter));
     }
 
     @Test

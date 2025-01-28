@@ -21,6 +21,7 @@ import com.yahoo.athenz.auth.Principal;
 import com.yahoo.athenz.auth.impl.SimplePrincipal;
 import com.yahoo.athenz.common.config.AuthzDetailsEntity;
 import com.yahoo.athenz.common.config.AuthzDetailsField;
+import com.yahoo.athenz.common.server.ServerResourceException;
 import com.yahoo.athenz.zms.*;
 import com.yahoo.rdl.Struct;
 import com.yahoo.rdl.Timestamp;
@@ -384,11 +385,11 @@ public class AuthzHelperTest {
 
     @Test
     public void testRetrieveResourceDomainA() {
-        assertEquals("trustdomain", AuthzHelper.retrieveResourceDomain("resource", "assume_role", "trustdomain"));
-        assertEquals("domain1", AuthzHelper.retrieveResourceDomain("domain1:resource", "assume_role", null));
-        assertEquals("domain1", AuthzHelper.retrieveResourceDomain("domain1:resource", "read", null));
-        assertEquals("domain1", AuthzHelper.retrieveResourceDomain("domain1:resource", "read", "trustdomain"));
-        assertEquals("domain1", AuthzHelper.retrieveResourceDomain("domain1:a:b:c:d:e", "read", "trustdomain"));
+        assertEquals(AuthzHelper.retrieveResourceDomain("resource", "assume_role", "trustdomain"), "trustdomain");
+        assertEquals(AuthzHelper.retrieveResourceDomain("domain1:resource", "assume_role", null), "domain1");
+        assertEquals(AuthzHelper.retrieveResourceDomain("domain1:resource", "read", null), "domain1");
+        assertEquals(AuthzHelper.retrieveResourceDomain("domain1:resource", "read", "trustdomain"), "domain1");
+        assertEquals(AuthzHelper.retrieveResourceDomain("domain1:a:b:c:d:e", "read", "trustdomain"), "domain1");
         assertNull(AuthzHelper.retrieveResourceDomain("domain1-invalid", "read", null));
     }
 
@@ -887,7 +888,7 @@ public class AuthzHelperTest {
     }
 
     @Test
-    public void testConvertEntityToAuthzDetailsEntity() throws JsonProcessingException {
+    public void testConvertEntityToAuthzDetailsEntity() throws JsonProcessingException, ServerResourceException {
 
         Entity entity = new Entity();
         entity.setName("athenz:entity.zts.authorization_details_set1");

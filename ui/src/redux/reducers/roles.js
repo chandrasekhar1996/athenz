@@ -18,6 +18,7 @@ import {
     DELETE_ROLE_FROM_STORE,
     LOAD_ROLE,
     LOAD_ROLES,
+    LOAD_ROLES_TO_REVIEW,
     MAKE_ROLES_EXPIRES,
     MARKS_ROLE_AS_NEED_REFRESH,
     RETURN_ROLES,
@@ -64,9 +65,17 @@ export const roles = (state = {}, action) => {
             return newState;
         }
         case LOAD_ROLE: {
-            const { roleData, roleName } = payload;
+            return produce(state, (draft) => {
+                if (!!!draft.roles) {
+                    draft.roles = {};
+                }
+                draft.roles[payload.roleName] = payload.roleData;
+            });
+        }
+        case LOAD_ROLES_TO_REVIEW: {
+            const { rolesToReview } = payload;
             let newState = produce(state, (draft) => {
-                draft.roles[roleName] = roleData;
+                draft.rolesToReview = rolesToReview;
             });
             return newState;
         }

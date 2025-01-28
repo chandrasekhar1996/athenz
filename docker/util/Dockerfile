@@ -4,7 +4,8 @@ ARG BUILD_DATE
 # git rev-parse --short HEAD
 ARG VCS_REF
 
-ENV SCREWDRIVER true
+ENV SCREWDRIVER=true
+ENV GITHUB_ACTIONS=true
 
 LABEL org.label-schema.schema-version="1.0"
 LABEL org.label-schema.build-date=$BUILD_DATE
@@ -21,14 +22,11 @@ ARG UID=10001
 RUN apt-get update && apt-get -y install build-essential
 
 # get latest go from its own image
-COPY --from=golang:1.21-bullseye /usr/local/go/ /usr/local/go/
+COPY --from=golang:1.22-bullseye /usr/local/go/ /usr/local/go/
 
 ENV GOPATH="/root/go"
 WORKDIR ${GOPATH}/src/github.com/AthenZ/athenz
 COPY . .
-
-# cache maven dependency
-# RUN mvn dependency:go-offline -DexcludeGroupIds="com.yahoo.athenz"
 
 RUN mkdir -p "${GOPATH}/bin"
 
@@ -39,19 +37,18 @@ RUN addgroup --system --gid ${GID} athenz-utils && \
   adduser --system --disabled-password --no-create-home --shell /sbin/nologin --uid ${UID} --ingroup athenz-utils athenz-utils
 
 # fix to have rdl binary available to be used by client generators.
-RUN GO111MODULE=off go get -u github.com/ardielle/ardielle-tools/... \
+RUN go install github.com/ardielle/ardielle-tools/...@latest \
     && mkdir -p /root/go/src/github.com/AthenZ/athenz/clients/go/zms/bin && cp /root/go/bin/rdl /root/go/src/github.com/AthenZ/athenz/clients/go/zms/bin \
     && mkdir -p /root/go/src/github.com/AthenZ/athenz/clients/go/zts/bin && cp /root/go/bin/rdl /root/go/src/github.com/AthenZ/athenz/clients/go/zts/bin \
     && mkdir -p /root/go/src/github.com/AthenZ/athenz/clients/go/msd/bin && cp /root/go/bin/rdl /root/go/src/github.com/AthenZ/athenz/clients/go/msd/bin
 
-RUN GO111MODULE=on \
-  CGO_ENABLED=0 \
+RUN CGO_ENABLED=0 \
   CGO_CXXFLAGS="-g -Ofast -march=native" \
   CGO_FFLAGS="-g -Ofast -march=native" \
   CGO_LDFLAGS="-g -Ofast -march=native" \
   GOOS=$(go env GOOS) \
   GOARCH=$(go env GOARCH) \
-  mvn -B install -DskipTests -Djacoco.skip=true -DdockerBuild=true \
+  mvn -B install -Dmaven.test.skip=true -Djacoco.skip=true -DdockerBuild=true \
   -pl core/zms \
   -pl core/zts \
   -pl core/msd \
@@ -83,7 +80,7 @@ LABEL org.label-schema.description="athenz-utils CLIs"
 LABEL org.label-schema.url="https://www.athenz.io/"
 LABEL org.label-schema.vcs-url="https://github.com/AthenZ/athenz"
 LABEL org.label-schema.vcs-ref=$VCS_REF
-ENV APP_NAME athenz-utils
+ENV APP_NAME=athenz-utils
 COPY --from=mvn /root/go/src/github.com/AthenZ/athenz/utils/zms-cli/target/linux/zms-cli /usr/bin/zms-cli
 COPY --from=mvn /root/go/src/github.com/AthenZ/athenz/utils/zts-accesstoken/target/linux/zts-accesstoken /usr/bin/zts-accesstoken
 COPY --from=mvn /root/go/src/github.com/AthenZ/athenz/utils/zts-svccert/target/linux/zts-svccert /usr/bin/zts-svccert

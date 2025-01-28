@@ -28,6 +28,8 @@ func (cli Zms) dumpDomain(buf *bytes.Buffer, domain *zms.Domain) {
 	dumpStringValue(buf, indentLevel1, "description", domain.Description)
 	dumpStringValue(buf, indentLevel1, "aws_account", domain.Account)
 	dumpStringValue(buf, indentLevel1, "azure_subscription", domain.AzureSubscription)
+	dumpStringValue(buf, indentLevel1, "azure_tenant", domain.AzureTenant)
+	dumpStringValue(buf, indentLevel1, "azure_client", domain.AzureClient)
 	dumpStringValue(buf, indentLevel1, "gcp_project", domain.GcpProject)
 	dumpStringValue(buf, indentLevel1, "gcp_project_number", domain.GcpProjectNumber)
 	dumpStringValue(buf, indentLevel1, "application_id", domain.ApplicationId)
@@ -124,7 +126,7 @@ func (cli Zms) displayObjectName(buf *bytes.Buffer, fullResourceName string, obj
 	if cli.Verbose || objType == "" {
 		buf.WriteString(fullResourceName)
 	} else {
-		buf.WriteString(localName(fullResourceName, objType))
+		buf.WriteString(LocalName(fullResourceName, objType))
 	}
 	buf.WriteString("\n")
 }
@@ -192,7 +194,7 @@ func (cli Zms) dumpRole(buf *bytes.Buffer, role zms.Role, auditLog bool, indent1
 	}
 }
 
-func (cli Zms) dumpTags(buf *bytes.Buffer, indentFirst bool, indent1, indent2 string, tags map[zms.CompoundName]*zms.TagValueList) {
+func (cli Zms) dumpTags(buf *bytes.Buffer, indentFirst bool, indent1, indent2 string, tags map[zms.TagKey]*zms.TagValueList) {
 	if tags != nil {
 		if indentFirst {
 			buf.WriteString(indent2)
@@ -216,7 +218,7 @@ func (cli Zms) dumpRoles(buf *bytes.Buffer, dn string, tagKey string, tagValue s
 	buf.WriteString(indentLevel1)
 	buf.WriteString("roles:\n")
 	members := true
-	roles, err := cli.Zms.GetRoles(zms.DomainName(dn), &members, zms.CompoundName(tagKey), zms.CompoundName(tagValue))
+	roles, err := cli.Zms.GetRoles(zms.DomainName(dn), &members, zms.TagKey(tagKey), zms.TagCompoundValue(tagValue))
 	if err != nil {
 		log.Fatalf("Unable to get role list - error: %v", err)
 	}
@@ -229,7 +231,7 @@ func (cli Zms) dumpGroups(buf *bytes.Buffer, dn string, tagKey string, tagValue 
 	buf.WriteString(indentLevel1)
 	buf.WriteString("groups:\n")
 	members := true
-	groups, err := cli.Zms.GetGroups(zms.DomainName(dn), &members, zms.CompoundName(tagKey), zms.CompoundName(tagValue))
+	groups, err := cli.Zms.GetGroups(zms.DomainName(dn), &members, zms.TagKey(tagKey), zms.TagCompoundValue(tagValue))
 	if err != nil {
 		log.Fatalf("Unable to get group list - error: %v", err)
 	}
@@ -284,15 +286,6 @@ func (cli Zms) dumpGroup(buf *bytes.Buffer, group zms.Group, auditLog bool, inde
 	}
 }
 
-func localName(fullResourceName string, prefix string) string {
-	idx := strings.Index(fullResourceName, prefix)
-	s := fullResourceName
-	if idx != -1 {
-		s = fullResourceName[idx+len(prefix):]
-	}
-	return s
-}
-
 func (cli Zms) dumpAssertion(buf *bytes.Buffer, assertion *zms.Assertion, dn string, indent1 string) {
 	showFullResourceName := cli.Verbose
 	buf.WriteString(indent1)
@@ -310,7 +303,7 @@ func (cli Zms) dumpAssertion(buf *bytes.Buffer, assertion *zms.Assertion, dn str
 	if showFullResourceName {
 		buf.WriteString(assertion.Role)
 	} else {
-		buf.WriteString(localName(assertion.Role, ":role."))
+		buf.WriteString(LocalName(assertion.Role, ":role."))
 	}
 	buf.WriteString(" on ")
 	if showFullResourceName {
@@ -358,7 +351,7 @@ func (cli Zms) dumpPolicies(buf *bytes.Buffer, dn string, tagkey string, tagValu
 	buf.WriteString("policies:\n")
 	assertions := true
 	versions := false
-	policies, err := cli.Zms.GetPolicies(zms.DomainName(dn), &assertions, &versions, zms.CompoundName(tagkey), zms.CompoundName(tagValue))
+	policies, err := cli.Zms.GetPolicies(zms.DomainName(dn), &assertions, &versions, zms.TagKey(tagkey), zms.TagCompoundValue(tagValue))
 	if err != nil {
 		log.Fatalf("Unable to get policy list - error: %v", err)
 	}
@@ -456,7 +449,7 @@ func (cli Zms) dumpObjectList(buf *bytes.Buffer, list []string, dn string, objec
 func (cli Zms) dumpServices(buf *bytes.Buffer, dn string, tagKey string, tagValue string) {
 	publickeys := true
 	hosts := true
-	services, err := cli.Zms.GetServiceIdentities(zms.DomainName(dn), &publickeys, &hosts, zms.CompoundName(tagKey), zms.CompoundName(tagValue))
+	services, err := cli.Zms.GetServiceIdentities(zms.DomainName(dn), &publickeys, &hosts, zms.TagKey(tagKey), zms.TagCompoundValue(tagValue))
 	if err != nil {
 		log.Fatalf("Unable to get service list - error: %v", err)
 	}
@@ -573,6 +566,18 @@ func (cli Zms) dumpSignedDomain(buf *bytes.Buffer, signedDomain *zms.SignedDomai
 			buf.WriteString(indentLevel1)
 			buf.WriteString("azure_subscription: ")
 			buf.WriteString(domainData.AzureSubscription)
+			buf.WriteString("\n")
+		}
+		if domainData.AzureTenant != "" {
+			buf.WriteString(indentLevel1)
+			buf.WriteString("azure_tenant: ")
+			buf.WriteString(domainData.AzureTenant)
+			buf.WriteString("\n")
+		}
+		if domainData.AzureClient != "" {
+			buf.WriteString(indentLevel1)
+			buf.WriteString("azure_client: ")
+			buf.WriteString(domainData.AzureClient)
 			buf.WriteString("\n")
 		}
 		if domainData.GcpProject != "" {

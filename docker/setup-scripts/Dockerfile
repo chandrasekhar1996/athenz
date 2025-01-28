@@ -1,6 +1,6 @@
 FROM athenz/athenz-cli-util AS athenz-utils
 
-FROM eclipse-temurin:11-jre-focal
+FROM eclipse-temurin:17-jre-focal
 # date -u +'%Y-%m-%dT%H:%M:%SZ'
 ARG BUILD_DATE
 # git rev-parse --short HEAD
@@ -25,7 +25,8 @@ COPY --from=athenz-utils /usr/bin/zts-rolecert /usr/bin/zts-rolecert
 RUN apt-get update && \
     apt-get -y install coreutils libncurses5-dev libncursesw5-dev \
     git curl tree openssl jq && \
-    rm -rf /var/cache/apt/*
+    rm -rf /var/cache/apt/* && \
+    git config --system --add safe.directory /athenz
 
 # RUN mkdir /athenz
 WORKDIR /athenz

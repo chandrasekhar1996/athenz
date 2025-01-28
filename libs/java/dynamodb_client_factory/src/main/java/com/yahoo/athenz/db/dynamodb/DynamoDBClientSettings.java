@@ -34,20 +34,14 @@ public class DynamoDBClientSettings {
     private final String externalId;
     private final Integer minExpiryTime;
     private final Integer maxExpiryTime;
+    private final String keyGroupName;
+    private final boolean isAsyncClient;
 
-    public DynamoDBClientSettings(String certPath,
-                                  String domainName,
-                                  String roleName,
-                                  String trustStore,
-                                  String trustStorePassword,
-                                  String ztsURL,
-                                  String region,
-                                  String keyPath,
-                                  String appName,
-                                  PrivateKeyStore keyStore,
-                                  String externalId,
-                                  Integer minExpiryTime,
-                                  Integer maxExpiryTime) {
+    public DynamoDBClientSettings(String certPath, String domainName, String roleName, String trustStore,
+            String trustStorePassword, String ztsURL, String region, String keyPath, String appName,
+            PrivateKeyStore keyStore, String externalId, Integer minExpiryTime, Integer maxExpiryTime,
+            String keyGroupName, boolean isAsyncClient) {
+
         this.certPath = certPath;
         this.domainName = domainName;
         this.roleName = roleName;
@@ -61,6 +55,8 @@ public class DynamoDBClientSettings {
         this.externalId = externalId;
         this.minExpiryTime = minExpiryTime;
         this.maxExpiryTime = maxExpiryTime;
+        this.keyGroupName = keyGroupName;
+        this.isAsyncClient = isAsyncClient;
     }
 
     public boolean areCredentialsProvided() {
@@ -115,16 +111,15 @@ public class DynamoDBClientSettings {
         return maxExpiryTime;
     }
 
-    @Deprecated
-    public String getTrustStorePassword() {
-        return String.valueOf(getTrustStorePasswordChars());
-    }
-
-    char[] getTrustStorePasswordChars() {
+    public char[] getTrustStorePasswordChars() {
         if (keyStore == null) {
             return null;
         }
 
-        return keyStore.getSecret(appName, trustStorePassword);
+        return keyStore.getSecret(appName, keyGroupName, trustStorePassword);
+    }
+
+    public boolean isAsyncClient() {
+        return isAsyncClient;
     }
 }

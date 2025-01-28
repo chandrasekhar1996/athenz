@@ -16,27 +16,22 @@
 
 package com.yahoo.athenz.zts.store;
 
-import com.amazonaws.AmazonServiceException;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClient;
-import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
-import com.amazonaws.services.securitytoken.model.AssumeRoleResult;
-import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest;
-import com.amazonaws.services.securitytoken.model.GetCallerIdentityResult;
+import com.yahoo.athenz.common.server.ServerResourceException;
 import com.yahoo.athenz.zts.AWSTemporaryCredentials;
+import io.athenz.server.aws.common.creds.impl.TempCredsProvider;
 import org.mockito.Mockito;
+
+import static org.mockito.ArgumentMatchers.any;
 
 public class MockCloudStore extends CloudStore {
     private String account = null;
     private String roleName = null;
     private String principal = null;
     private boolean returnSuperAWSRole = false;
-    private AssumeRoleResult assumeRoleResult = null;
-    private GetCallerIdentityResult callerIdentityResult = null;
-    private int exceptionStatusCode = 0;
-    private boolean amazonException = true;
 
     public MockCloudStore() {
         super();
+        tempCredsProvider = Mockito.mock(TempCredsProvider.class);
     }
 
     @Override
@@ -50,39 +45,13 @@ public class MockCloudStore extends CloudStore {
         this.principal = principal;
     }
 
-    void setAssumeRoleResult(AssumeRoleResult assumeRoleResult) {
-        this.assumeRoleResult = assumeRoleResult;
-    }
-
-    void setGetCallerIdentityResult(GetCallerIdentityResult callerIdentityResult) {
-        this.callerIdentityResult = callerIdentityResult;
-    }
-
-    @Override
-    public AWSSecurityTokenServiceClient getTokenServiceClient() {
-        if (exceptionStatusCode != 0) {
-            if (amazonException) {
-                AmazonServiceException ex = new AmazonServiceException("Error");
-                ex.setStatusCode(exceptionStatusCode);
-                throw ex;
-            } else {
-                throw new IllegalArgumentException("Error");
-            }
-        } else {
-            AWSSecurityTokenServiceClient client = Mockito.mock(AWSSecurityTokenServiceClient.class);
-            Mockito.when(client.assumeRole(Mockito.any(AssumeRoleRequest.class))).thenReturn(assumeRoleResult);
-            Mockito.when(client.getCallerIdentity(Mockito.any(GetCallerIdentityRequest.class))).thenReturn(callerIdentityResult);
-            return client;
-        }
-    }
-
     void setReturnSuperAWSRole(boolean returnSuperAWSRole) {
         this.returnSuperAWSRole = returnSuperAWSRole;
     }
 
     @Override
     public AWSTemporaryCredentials assumeAWSRole(String account, String roleName, String principal,
-                                                 Integer durationSeconds, String externalId, StringBuilder errorMessage) {
+            Integer durationSeconds, String externalId, StringBuilder errorMessage) {
 
         if (!returnSuperAWSRole) {
             AWSTemporaryCredentials tempCreds = null;
@@ -97,8 +66,10 @@ public class MockCloudStore extends CloudStore {
         }
     }
 
-    public void setGetServiceException(int statusCode, boolean amazonException) {
-        this.exceptionStatusCode = statusCode;
-        this.amazonException = amazonException;
+    public void setGetServiceException(int statusCode, boolean amazonException) throws ServerResourceException {
+        int exStatusCode = amazonException ? statusCode : 400;
+        Mockito.reset(tempCredsProvider);
+        Mockito.when(tempCredsProvider.getTemporaryCredentials(any(), any(), any(), any(), any(), any()))
+                .thenThrow(new ServerResourceException(exStatusCode, "error"));
     }
 }

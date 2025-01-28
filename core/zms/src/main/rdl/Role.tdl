@@ -34,30 +34,40 @@ type RoleMember Struct {
     String pendingState (optional); //for pending membership requests, the request state - e.g. add, delete
 }
 
+//The representation of the role ownership object
+type ResourceRoleOwnership Struct {
+    SimpleName metaOwner (optional); //owner of the object's meta attribute
+    SimpleName membersOwner (optional); //owner of the object's members attribute
+    SimpleName objectOwner (optional); //owner of the object itself - checked for object deletion
+}
+
 //Set of metadata attributes that all roles may have and can be changed by domain admins.
 type RoleMeta Struct {
     Bool selfServe (optional, default=false); //Flag indicates whether or not role allows self service. Users can add themselves in the role, but it has to be approved by domain admins to be effective.
     Int32 memberExpiryDays (optional); //all user members in the role will have specified max expiry days
     Int32 tokenExpiryMins (optional); //tokens issued for this role will have specified max timeout in mins
     Int32 certExpiryMins (optional); //certs issued for this role will have specified max timeout in mins
-    SimpleName signAlgorithm (optional); //rsa or ec signing algorithm to be used for tokens
+    String signAlgorithm (optional, x_allowempty="true"); //rsa or ec signing algorithm to be used for tokens
     Int32 serviceExpiryDays (optional); //all services in the role will have specified max expiry days
     Int32 memberReviewDays (optional); //all user members in the role will have specified max review days
     Int32 serviceReviewDays (optional); //all services in the role will have specified max review days
     Bool reviewEnabled (optional, default=false); //Flag indicates whether or not role updates require another review and approval
-    String notifyRoles (optional); //list of roles whose members should be notified for member review/approval
-    String userAuthorityFilter (optional); //membership filtered based on user authority configured attributes
-    String userAuthorityExpiration (optional); //expiration enforced by a user authority configured attribute
+    String notifyRoles (optional, x_allowempty="true"); //list of roles whose members should be notified for member review/approval
+    String userAuthorityFilter (optional, x_allowempty="true"); //membership filtered based on user authority configured attributes
+    String userAuthorityExpiration (optional, x_allowempty="true"); //expiration enforced by a user authority configured attribute
     Int32 groupExpiryDays (optional); //all groups in the domain roles will have specified max expiry days
     Int32 groupReviewDays (optional); //all groups in the domain roles will have specified max review days
-    Map<CompoundName,TagValueList> tags (optional); //key-value pair tags, tag might contain multiple values
-    String description (optional); //a description of the role
+    Map<TagKey,TagValueList> tags (optional); //key-value pair tags, tag might contain multiple values
+    String description (optional, x_allowempty="true"); //a description of the role
     Bool auditEnabled (optional, default=false); //Flag indicates whether or not role updates should be approved by GRC. If true, the auditRef parameter must be supplied(not empty) for any API defining it.
     Bool deleteProtection (optional, default=false); //If true, ask for delete confirmation in audit and review enabled roles.
     Timestamp lastReviewedDate (optional); //last review timestamp of the role
-    Bool selfRenewEnabled (optional, default=false); //Flag indicates whether to allow expired members to renew their membership
+    Bool selfRenew (optional); //Flag indicates whether to allow expired members to renew their membership
     Int32 selfRenewMins (optional); //Number of minutes members can renew their membership if self review option is enabled
     Int32 maxMembers (optional); //Maximum number of members allowed in the group
+    ResourceRoleOwnership resourceOwnership (optional); //ownership information for the role (read-only attribute)
+    String principalDomainFilter (optional, x_allowempty="true"); //membership filtered based on configured principal domains
+    String notifyDetails (optional, x_allowempty="true"); //additional details included in the notifications
 }
 
 //The representation for a Role with set of members.
@@ -114,6 +124,8 @@ type MemberRole Struct {
     Int32 systemDisabled (optional); //user disabled by system based on configured role setting
     String pendingState (optional); //for pending membership requests, the request state - e.g. add, delete
     ResourceName trustRoleName (optional); //name of the role that handles the membership delegation for the role specified in roleName
+    String notifyRoles (optional); //list of roles whose members should be notified for member review/approval/expiry
+    String notifyDetails (optional); //additional details included in the notifications
 }
 
 type DomainRoleMember Struct {

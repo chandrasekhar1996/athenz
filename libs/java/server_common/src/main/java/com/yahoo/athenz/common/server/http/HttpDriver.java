@@ -19,21 +19,31 @@ package com.yahoo.athenz.common.server.http;
 import com.oath.auth.KeyRefresher;
 import com.oath.auth.KeyRefresherException;
 import com.oath.auth.Utils;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.config.Registry;
-import org.apache.http.config.RegistryBuilder;
-import org.apache.http.conn.socket.ConnectionSocketFactory;
-import org.apache.http.conn.socket.PlainConnectionSocketFactory;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.HttpRequestRetryStrategy;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.config.ConnectionConfig;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.config.TlsConfig;
+import org.apache.hc.client5.http.entity.UrlEncodedFormEntity;
+import org.apache.hc.client5.http.impl.DefaultHttpRequestRetryStrategy;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.DefaultClientTlsStrategy;
+import org.apache.hc.client5.http.ssl.TlsSocketStrategy;
+import org.apache.hc.core5.http.NameValuePair;
+import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.message.StatusLine;
+import org.apache.hc.core5.http.ssl.TLS;
+import org.apache.hc.core5.pool.PoolConcurrencyPolicy;
+import org.apache.hc.core5.pool.PoolReusePolicy;
+import org.apache.hc.core5.ssl.SSLContexts;
+import org.apache.hc.core5.util.TimeValue;
+import org.apache.hc.core5.util.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,9 +51,13 @@ import javax.net.ssl.SSLContext;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.InterruptedIOException;
+import java.net.NoRouteToHostException;
+import java.net.URISyntaxException;
+import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * HttpDriver warps CloseableHttpClient and a PoolingHttpClientConnectionManager
@@ -59,19 +73,10 @@ public class HttpDriver implements Closeable {
     private static final int DEFAULT_CLIENT_CONNECT_TIMEOUT_MS = 5000;
     private static final int DEFAULT_CLIENT_READ_TIMEOUT_MS = 5000;
 
-    private final String baseUrl;
-    private final int maxPoolPerRoute;
-    private final int maxPoolTotal;
-    private final int clientRetryIntervalMs;
-    private final int clientMaxRetries;
-    private final int clientConnectTimeoutMs;
-    private final int clientReadTimeoutMs;
-
     private CloseableHttpClient client;
     private final PoolingHttpClientConnectionManager connManager;
 
     public static class Builder {
-        private final String baseUrl;
         private String truststorePath = null;
         private char[] truststorePassword = null;
         private String certPath = null;
@@ -81,21 +86,20 @@ public class HttpDriver implements Closeable {
         // Optional Parameters
         private int maxPoolPerRoute = DEFAULT_MAX_POOL_PER_ROUTE;
         private int maxPoolTotal = DEFAULT_MAX_POOL_TOTAL;
-        private int clientRetryIntervalMs = DEFAULT_CLIENT_INTERVAL_MS;
         private int clientMaxRetries = DEFAULT_CLIENT_MAX_RETRIES;
-        private int clientConnectTimeoutMs = DEFAULT_CLIENT_CONNECT_TIMEOUT_MS;
-        private int clientReadTimeoutMs = DEFAULT_CLIENT_READ_TIMEOUT_MS;
+        private long clientRetryIntervalMs = DEFAULT_CLIENT_INTERVAL_MS;
+        private long clientConnectTimeoutMs = DEFAULT_CLIENT_CONNECT_TIMEOUT_MS;
+        private long clientReadTimeoutMs = DEFAULT_CLIENT_READ_TIMEOUT_MS;
+        private long clientInactiveValidateTimeoutMs = 0;
 
-        public Builder(String baseUrl, String trustorePath, char[] trustorePassword, String certPath, String keyPath) {
-            this.baseUrl = baseUrl;
-            this.truststorePath = trustorePath;
-            this.truststorePassword = trustorePassword;
+        public Builder(String trustStorePath, char[] trustStorePassword, String certPath, String keyPath) {
+            this.truststorePath = trustStorePath;
+            this.truststorePassword = trustStorePassword;
             this.certPath = certPath;
             this.keyPath = keyPath;
         }
 
-        public Builder(String baseUrl, SSLContext sslContext) {
-            this.baseUrl = baseUrl;
+        public Builder(SSLContext sslContext) {
             this.sslContext = sslContext;
         }
 
@@ -109,7 +113,7 @@ public class HttpDriver implements Closeable {
             return this;
         }
 
-        public Builder clientRetryIntervalMs(int value) {
+        public Builder clientRetryIntervalMs(long value) {
             clientRetryIntervalMs = value;
             return this;
         }
@@ -119,13 +123,18 @@ public class HttpDriver implements Closeable {
             return this;
         }
 
-        public Builder clientConnectTimeoutMs(int value) {
+        public Builder clientConnectTimeoutMs(long value) {
             clientConnectTimeoutMs = value;
             return this;
         }
 
-        public Builder clientReadTimeoutMs(int value) {
+        public Builder clientReadTimeoutMs(long value) {
             clientReadTimeoutMs = value;
+            return this;
+        }
+
+        public Builder clientInactiveValidateTimeoutMs(long value) {
+            clientInactiveValidateTimeoutMs = value;
             return this;
         }
 
@@ -135,18 +144,12 @@ public class HttpDriver implements Closeable {
     }
 
      public HttpDriver(Builder builder) {
-        baseUrl = builder.baseUrl;
-        maxPoolPerRoute = builder.maxPoolPerRoute;
-        maxPoolTotal = builder.maxPoolTotal;
-        clientRetryIntervalMs = builder.clientRetryIntervalMs;
-        clientMaxRetries = builder.clientMaxRetries;
-        clientConnectTimeoutMs = builder.clientConnectTimeoutMs;
-        clientReadTimeoutMs = builder.clientReadTimeoutMs;
 
         SSLContext sslContext = builder.sslContext;
         if (sslContext == null && builder.keyPath != null && builder.certPath != null) {
             try {
-                sslContext = createSSLContext(builder.truststorePath, builder.truststorePassword, builder.certPath, builder.keyPath);
+                sslContext = createSSLContext(builder.truststorePath, builder.truststorePassword,
+                        builder.certPath, builder.keyPath);
             } catch (IOException | InterruptedException | KeyRefresherException e) {
                 //This is hard failure.
                 LOGGER.error("Unable to create TLS/SSL context.", e);
@@ -154,19 +157,19 @@ public class HttpDriver implements Closeable {
             }
         }
 
-        connManager = createConnectionPooling(sslContext);
-        client = createHttpClient(clientConnectTimeoutMs, clientReadTimeoutMs, sslContext, connManager);
+        connManager = createConnectionPooling(builder, sslContext);
+        client = createHttpClient(builder, connManager);
 
-        LOGGER.info("initialized HttpDriver with base url: {} connectionTimeoutMs: {} readTimeoutMs: {}",
-                baseUrl, clientConnectTimeoutMs, clientReadTimeoutMs);
+        LOGGER.info("initialized HttpDriver with connectionTimeoutMs: {} readTimeoutMs: {}",
+                builder.clientConnectTimeoutMs, builder.clientReadTimeoutMs);
     }
 
     public void setHttpClient(CloseableHttpClient httpClient) {
         client = httpClient;
     }
 
-    public static SSLContext createSSLContext(String trustStorePath, char[] trustStorePassword, String certPath, String keyPath)
-            throws IOException, InterruptedException, KeyRefresherException {
+    public static SSLContext createSSLContext(String trustStorePath, char[] trustStorePassword, String certPath,
+            String keyPath) throws IOException, InterruptedException, KeyRefresherException {
 
         if (trustStorePath == null) {
             return null;
@@ -178,35 +181,47 @@ public class HttpDriver implements Closeable {
                 keyRefresher.getTrustManagerProxy());
     }
 
-    protected PoolingHttpClientConnectionManager createConnectionPooling(SSLContext sslContext) {
-        if (sslContext == null) {
-            return null;
-        }
-        Registry<ConnectionSocketFactory> registry = RegistryBuilder.<ConnectionSocketFactory>create()
-                .register("https", new SSLConnectionSocketFactory(sslContext))
-                .register("http", new PlainConnectionSocketFactory())
-                .build();
-        PoolingHttpClientConnectionManager poolingHttpClientConnectionManager = new PoolingHttpClientConnectionManager(registry);
+    protected PoolingHttpClientConnectionManager createConnectionPooling(Builder clientBuilder, SSLContext sslContext) {
 
-        //route is host + port.  Since we have only one, set the max and the route the same
-        poolingHttpClientConnectionManager.setDefaultMaxPerRoute(maxPoolPerRoute);
-        poolingHttpClientConnectionManager.setMaxTotal(maxPoolTotal);
-        return poolingHttpClientConnectionManager;
+        if (sslContext == null) {
+            sslContext = SSLContexts.createDefault();
+        }
+
+        final TlsSocketStrategy tlsStrategy = new DefaultClientTlsStrategy(sslContext);
+
+        return PoolingHttpClientConnectionManagerBuilder.create()
+                .setTlsSocketStrategy(tlsStrategy)
+                .setDefaultTlsConfig(TlsConfig.custom()
+                        .setSupportedProtocols(TLS.V_1_2, TLS.V_1_3)
+                        .build())
+                .setPoolConcurrencyPolicy(PoolConcurrencyPolicy.STRICT)
+                .setConnPoolPolicy(PoolReusePolicy.LIFO)
+                .setDefaultConnectionConfig(ConnectionConfig.custom()
+                        .setSocketTimeout(Timeout.ofMilliseconds(clientBuilder.clientReadTimeoutMs))
+                        .setConnectTimeout(Timeout.ofMilliseconds(clientBuilder.clientConnectTimeoutMs))
+                        .setValidateAfterInactivity(TimeValue.ofMilliseconds(clientBuilder.clientInactiveValidateTimeoutMs))
+                        .build())
+                .setMaxConnPerRoute(clientBuilder.maxPoolPerRoute)
+                .setMaxConnTotal(clientBuilder.maxPoolTotal)
+                .build();
     }
 
-    protected CloseableHttpClient createHttpClient(int connTimeoutMs, int readTimeoutMs, SSLContext sslContext,
+    protected CloseableHttpClient createHttpClient(Builder clientBuilder,
             PoolingHttpClientConnectionManager poolingHttpClientConnectionManager) {
 
-        //apache http client expects in milliseconds
+        HttpRequestRetryStrategy retryStrategy = null;
+        if (clientBuilder.clientMaxRetries > 0) {
+            retryStrategy = new CustomRequestRetryStrategy(clientBuilder.clientMaxRetries,
+                    TimeValue.ofMilliseconds(clientBuilder.clientRetryIntervalMs));
+        }
+
         RequestConfig config = RequestConfig.custom()
-                .setConnectTimeout(connTimeoutMs)
-                .setSocketTimeout(readTimeoutMs)
                 .setRedirectsEnabled(false)
                 .build();
         return HttpClients.custom()
                 .setConnectionManager(poolingHttpClientConnectionManager)
                 .setDefaultRequestConfig(config)
-                .setSSLContext(sslContext)
+                .setRetryStrategy(retryStrategy)
                 .build();
     }
 
@@ -254,54 +269,50 @@ public class HttpDriver implements Closeable {
             }
         }
 
-        // Retry when IOException occurs
-        for (int i = 0; i < clientMaxRetries; i++) {
-            try (CloseableHttpResponse response = client.execute(httpGet)) {
-                if (response != null) {
-                    int statusCode = response.getStatusLine().getStatusCode();
-                    if (statusCode == 200) {
-                        String data = EntityUtils.toString(response.getEntity());
-                        LOGGER.debug("Data received: {}, from: {}", data, url);
-                        return data;
-                    }
+        try (CloseableHttpResponse response = client.execute(httpGet)) {
+            if (response != null) {
+                int statusCode = response.getCode();
+                if (statusCode == 200) {
+                    String data = EntityUtils.toString(response.getEntity());
+                    LOGGER.debug("Data received: {}, from: {}", data, url);
+                    return data;
+                }
 
-                    LOGGER.error("Received bad status: {} from: {}", statusCode, url);
-                    response.getEntity().getContent().close();
-                    return "";
-                }
-            } catch (IOException ex) {
-                LOGGER.error("Failed to get response from server {} retry: {}/{}, exception: ", url, i, clientMaxRetries, ex);
-                try {
-                    TimeUnit.MILLISECONDS.sleep(clientRetryIntervalMs);
-                } catch (InterruptedException ignored) {
-                }
+                LOGGER.error("Received bad status: {} from: {}", statusCode, url);
+                response.getEntity().getContent().close();
+                return "";
             }
+        } catch (IOException | ParseException ex) {
+            LOGGER.error("Failed to get response from server {}, exception: ", url, ex);
         }
         throw new IOException("Failed to get response from server: " + url);
     }
 
+    protected String getRequestUri(HttpPost httpPost) {
+        try {
+            return httpPost.getUri().toString();
+        } catch (URISyntaxException e) {
+            return httpPost.getRequestUri();
+        }
+    }
+
     public HttpDriverResponse doPostHttpResponse(HttpPost httpPost) throws IOException {
-        String url = httpPost.getURI().toString();
+        final String url = getRequestUri(httpPost);
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Requesting from {} with query {}", url, getPostQuery(httpPost));
         }
-        // Retry when IOException occurs
-        for (int i = 0; i <  clientMaxRetries;  i++) {
-            try (CloseableHttpResponse response = this.client.execute(httpPost)) {
-                if (response != null) {
-                    int statusCode = response.getStatusLine().getStatusCode();
-                    String out = EntityUtils.toString(response.getEntity());
-                    LOGGER.debug("StatusCode: {} Data received: {}", statusCode, out);
-                    return new HttpDriverResponse(statusCode, out, response.getStatusLine());
-                }
-            } catch (IOException ex) {
-                LOGGER.error("Failed to get response from {} for query: {} retry: {}/{}, exception: ", url, getPostQuery(httpPost), i, clientMaxRetries, ex);
-                try {
-                    TimeUnit.MILLISECONDS.sleep(clientRetryIntervalMs);
-                } catch (InterruptedException ignored) {
-                }
+
+        try (CloseableHttpResponse response = this.client.execute(httpPost)) {
+            if (response != null) {
+                int statusCode = response.getCode();
+                String out = EntityUtils.toString(response.getEntity());
+                LOGGER.debug("StatusCode: {} Data received: {}", statusCode, out);
+                return new HttpDriverResponse(statusCode, out, new StatusLine(response));
             }
+        } catch (IOException | ParseException ex) {
+            LOGGER.error("Failed to get response from {} for query: {}, exception: ", url, getPostQuery(httpPost), ex);
         }
+
         throw new IOException("Failed to get response from server: " + url);
     }
 
@@ -320,9 +331,9 @@ public class HttpDriver implements Closeable {
                 LOGGER.debug("Data received: {}", out);
                 return out;
             default:
-                //received bad statuscode, don't bother resending request.
-                String url = httpPost.getURI().toString();
-                LOGGER.error("Received bad status code: {} from: {} reason: {}", httpDriverResponse.getStatusCode(), url, httpDriverResponse.getStatusLine());
+                //received bad status code, don't bother resending request.
+                LOGGER.error("Received bad status code: {} from: {} reason: {}", httpDriverResponse.getStatusCode(),
+                        getRequestUri(httpPost), httpDriverResponse.getStatusLine());
                 return "";
         }
     }
@@ -349,5 +360,13 @@ public class HttpDriver implements Closeable {
         } catch (IOException ignored) {
         }
         return "";
+    }
+
+    static class CustomRequestRetryStrategy extends DefaultHttpRequestRetryStrategy {
+        public CustomRequestRetryStrategy(int maxRetries, TimeValue defaultRetryInterval) {
+            super(maxRetries, defaultRetryInterval,
+                    Arrays.asList(InterruptedIOException.class, UnknownHostException.class, NoRouteToHostException.class),
+                    Arrays.asList(429, 503));
+        }
     }
 }

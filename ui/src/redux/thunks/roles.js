@@ -20,8 +20,10 @@ import {
     addRoleToStore,
     deleteRoleFromStore,
     loadRoles,
+    loadRolesToReview,
     marksRoleInStoreAsNeedRefresh,
     returnRoles,
+    returnRolesToReview,
     reviewRoleToStore,
 } from '../actions/roles';
 import {
@@ -29,7 +31,11 @@ import {
     getRoleApiCall,
     getRolesApiCall,
 } from './utils/roles';
-import { thunkSelectRole, thunkSelectRoles } from '../selectors/roles';
+import {
+    thunkSelectRole,
+    thunkSelectRoles,
+    selectUserReviewRoles,
+} from '../selectors/roles';
 import {
     buildErrorForDoesntExistCase,
     buildErrorForDuplicateCase,
@@ -42,6 +48,11 @@ import {
     addMemberToStore,
     deleteMemberFromStore,
 } from '../actions/collections';
+import {
+    loadingFailed,
+    loadingInProcess,
+    loadingSuccess,
+} from '../actions/loading';
 
 export const addRole =
     (roleName, auditRef, role, _csrf, overrideIfExists = false) =>
@@ -225,6 +236,16 @@ export const reviewRole =
             reviewedRole.rolePendingMembers = pendingMembers;
 
             dispatch(reviewRoleToStore(reviewedRole.name, reviewedRole));
+            let rolesToReview = selectUserReviewRoles(getState());
+            rolesToReview = rolesToReview.filter(
+                (r) => r.domainName + ':role.' + r.name !== reviewedRole.name
+            );
+            if (
+                rolesToReview.length !==
+                selectUserReviewRoles(getState()).length
+            ) {
+                dispatch(loadRolesToReview(rolesToReview));
+            }
             dispatch(marksRoleAsNeedRefresh(domainName, role.name));
             return Promise.resolve();
         } catch (error) {
@@ -263,3 +284,21 @@ export const getRoleHistory =
             return Promise.reject(error);
         }
     };
+
+export const getReviewRoles = () => async (dispatch, getState) => {
+    try {
+        if (!getState().roles.rolesToReview) {
+            dispatch(loadingInProcess('getReviewRoles'));
+            const reviewRoles = await API().getReviewRoles();
+            dispatch(loadRolesToReview(reviewRoles));
+            dispatch(loadingSuccess('getReviewRoles'));
+        } else {
+            dispatch(returnRolesToReview());
+        }
+    } catch (error) {
+        // if error, set rolesToReview to empty array
+        dispatch(loadRolesToReview([]));
+        dispatch(loadingFailed('getReviewRoles'));
+        throw error;
+    }
+};

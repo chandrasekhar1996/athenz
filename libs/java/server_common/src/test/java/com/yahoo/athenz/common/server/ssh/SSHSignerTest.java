@@ -16,6 +16,7 @@
 package com.yahoo.athenz.common.server.ssh;
 
 import com.yahoo.athenz.auth.Principal;
+import com.yahoo.athenz.common.server.ServerResourceException;
 import com.yahoo.athenz.zts.*;
 import org.mockito.*;
 import org.testng.annotations.*;
@@ -25,7 +26,7 @@ import static org.testng.Assert.*;
 public class SSHSignerTest {
 
     @Test
-    public void testSSHSignerFactory() {
+    public void testSSHSignerFactory() throws ServerResourceException {
 
         SSHSigner signer = Mockito.mock(SSHSigner.class);
 
@@ -36,34 +37,34 @@ public class SSHSignerTest {
     }
 
     @Test
-    public void testSSHSignerDefaultMethods() {
+    public void testSSHSignerDefaultMethods() throws ServerResourceException {
 
         SSHSigner signer = new SSHSigner() {
         };
 
-        assertNull(signer.generateCertificate(null, null, null, "client"));
-        assertNull(signer.getSignerCertificate("host"));
+        assertNull(signer.generateCertificate(null, null, null, "client", "keyid"));
+        assertNull(signer.getSignerCertificate("host", "keyid"));
         signer.setAuthorizer(null);
         signer.close();
     }
 
     @Test
-    public void testSSHSigner() {
+    public void testSSHSigner() throws ServerResourceException {
 
         SSHSigner signer = Mockito.mock(SSHSigner.class);
         SSHCertRequest certRequest = new SSHCertRequest();
         Principal principal = Mockito.mock(Principal.class);
         SSHCertificates certs = new SSHCertificates();
-        Mockito.when(signer.generateCertificate(principal, certRequest, null, "user")).thenReturn(certs);
-        Mockito.when(signer.getSignerCertificate("user")).thenReturn("ssh-cert");
+        Mockito.when(signer.generateCertificate(principal, certRequest, null, "user", "keyid")).thenReturn(certs);
+        Mockito.when(signer.getSignerCertificate("user", "keyid")).thenReturn("ssh-cert-keyid");
 
         SSHSignerFactory factory = () -> signer;
 
         SSHSigner testSigner = factory.create();
         assertNotNull(testSigner);
 
-        assertEquals(certs, testSigner.generateCertificate(principal, certRequest, null, "user"));
-        assertEquals("ssh-cert", testSigner.getSignerCertificate("user"));
+        assertEquals(testSigner.generateCertificate(principal, certRequest, null, "user", "keyid"), certs);
+        assertEquals(testSigner.getSignerCertificate("user", "keyid"), "ssh-cert-keyid");
         testSigner.close();
     }
 }

@@ -52,9 +52,12 @@ public class RoleTest {
                 .setDescription("test role")
                 .setTags(Collections.singletonMap("tagKey", new TagValueList().setList(Collections.singletonList("tagValue"))))
                 .setLastReviewedDate(Timestamp.fromMillis(100))
-                .setSelfRenewEnabled(true)
+                .setSelfRenew(true)
                 .setSelfRenewMins(180)
-                .setMaxMembers(5);
+                .setMaxMembers(5)
+                .setResourceOwnership(new ResourceRoleOwnership().setMetaOwner("TF"))
+                .setPrincipalDomainFilter("user,+unix.test,-home")
+                .setNotifyDetails("check out https://athenz.io for details");
 
         assertFalse(rm1.getSelfServe());
         assertEquals(rm1.getMemberExpiryDays(), Integer.valueOf(30));
@@ -76,8 +79,11 @@ public class RoleTest {
         assertEquals(rm1.getDescription(), "test role");
         assertEquals(rm1.getLastReviewedDate(), Timestamp.fromMillis(100));
         assertEquals(rm1.getSelfRenewMins(), 180);
-        assertEquals(rm1.getSelfRenewEnabled(), Boolean.TRUE);
+        assertEquals(rm1.getSelfRenew(), Boolean.TRUE);
         assertEquals(rm1.getMaxMembers(), 5);
+        assertEquals(rm1.getResourceOwnership(), new ResourceRoleOwnership().setMetaOwner("TF"));
+        assertEquals(rm1.getPrincipalDomainFilter(), "user,+unix.test,-home");
+        assertEquals(rm1.getNotifyDetails(), "check out https://athenz.io for details");
 
         RoleMeta rm2 = new RoleMeta()
                 .setMemberExpiryDays(30)
@@ -99,9 +105,12 @@ public class RoleTest {
                 .setDescription("test role")
                 .setTags(Collections.singletonMap("tagKey", new TagValueList().setList(Collections.singletonList("tagValue"))))
                 .setLastReviewedDate(Timestamp.fromMillis(100))
-                .setSelfRenewEnabled(true)
+                .setSelfRenew(true)
                 .setSelfRenewMins(180)
-                .setMaxMembers(5);
+                .setMaxMembers(5)
+                .setResourceOwnership(new ResourceRoleOwnership().setMetaOwner("TF"))
+                .setPrincipalDomainFilter("user,+unix.test,-home")
+                .setNotifyDetails("check out https://athenz.io for details");
 
         assertEquals(rm1, rm2);
         assertEquals(rm1, rm1);
@@ -115,11 +124,11 @@ public class RoleTest {
         rm2.setMaxMembers(5);
         assertEquals(rm1, rm2);
 
-        rm2.setSelfRenewEnabled(false);
+        rm2.setSelfRenew(false);
         assertNotEquals(rm1, rm2);
-        rm2.setSelfRenewEnabled(null);
+        rm2.setSelfRenew(null);
         assertNotEquals(rm1, rm2);
-        rm2.setSelfRenewEnabled(true);
+        rm2.setSelfRenew(true);
         assertEquals(rm1, rm2);
 
         rm2.setSelfRenewMins(15);
@@ -262,6 +271,27 @@ public class RoleTest {
         rm2.setLastReviewedDate(Timestamp.fromMillis(100));
         assertEquals(rm2, rm1);
 
+        rm2.setResourceOwnership(new ResourceRoleOwnership().setMetaOwner("ZTS"));
+        assertNotEquals(rm2, rm1);
+        rm2.setResourceOwnership(null);
+        assertNotEquals(rm2, rm1);
+        rm2.setResourceOwnership(new ResourceRoleOwnership().setMetaOwner("TF"));
+        assertEquals(rm2, rm1);
+
+        rm2.setPrincipalDomainFilter("user");
+        assertNotEquals(rm2, rm1);
+        rm2.setPrincipalDomainFilter(null);
+        assertNotEquals(rm2, rm1);
+        rm2.setPrincipalDomainFilter("user,+unix.test,-home");
+        assertEquals(rm2, rm1);
+
+        rm2.setNotifyDetails("check out https://athenz.io/test for details");
+        assertNotEquals(rm2, rm1);
+        rm2.setNotifyDetails(null);
+        assertNotEquals(rm2, rm1);
+        rm2.setNotifyDetails("check out https://athenz.io for details");
+        assertEquals(rm2, rm1);
+
         Schema schema = ZMSSchema.instance();
         Validator validator = new Validator(schema);
         Validator.Result result = validator.validate(rm1, "RoleMeta");
@@ -309,9 +339,12 @@ public class RoleTest {
                 .setUserAuthorityFilter("attr2,attr3")
                 .setDescription("test role")
                 .setTags(Collections.singletonMap("tagKey", new TagValueList().setList(Collections.singletonList("tagValue"))))
-                .setSelfRenewEnabled(true)
+                .setSelfRenew(true)
                 .setSelfRenewMins(180)
-                .setMaxMembers(5);
+                .setMaxMembers(5)
+                .setResourceOwnership(new ResourceRoleOwnership().setMetaOwner("TF"))
+                .setPrincipalDomainFilter("user,+unix.test,-home")
+                .setNotifyDetails("check out https://athenz.io for details");
 
         assertEquals(r.getName(), "sys.auth:role.admin");
         assertEquals(r.getModified(), Timestamp.fromMillis(123456789123L));
@@ -338,9 +371,12 @@ public class RoleTest {
         assertEquals(r.getUserAuthorityFilter(), "attr2,attr3");
         assertEquals(r.getTags().get("tagKey").getList().get(0), "tagValue");
         assertEquals(r.getDescription(), "test role");
-        assertEquals(r.getSelfRenewEnabled(), Boolean.TRUE);
+        assertEquals(r.getSelfRenew(), Boolean.TRUE);
         assertEquals(r.getSelfRenewMins(), 180);
         assertEquals(r.getMaxMembers(), 5);
+        assertEquals(r.getResourceOwnership(), new ResourceRoleOwnership().setMetaOwner("TF"));
+        assertEquals(r.getPrincipalDomainFilter(), "user,+unix.test,-home");
+        assertEquals(r.getNotifyDetails(), "check out https://athenz.io for details");
 
         Role r2 = new Role()
                 .setName("sys.auth:role.admin")
@@ -368,9 +404,12 @@ public class RoleTest {
                 .setUserAuthorityFilter("attr2,attr3")
                 .setDescription("test role")
                 .setTags(Collections.singletonMap("tagKey", new TagValueList().setList(Collections.singletonList("tagValue"))))
-                .setSelfRenewEnabled(true)
+                .setSelfRenew(true)
                 .setSelfRenewMins(180)
-                .setMaxMembers(5);
+                .setMaxMembers(5)
+                .setResourceOwnership(new ResourceRoleOwnership().setMetaOwner("TF"))
+                .setPrincipalDomainFilter("user,+unix.test,-home")
+                .setNotifyDetails("check out https://athenz.io for details");
 
         assertEquals(r, r2);
         assertEquals(r, r);
@@ -396,11 +435,11 @@ public class RoleTest {
         r2.setMaxMembers(5);
         assertEquals(r, r2);
 
-        r2.setSelfRenewEnabled(false);
+        r2.setSelfRenew(false);
         assertNotEquals(r, r2);
-        r2.setSelfRenewEnabled(null);
+        r2.setSelfRenew(null);
         assertNotEquals(r, r2);
-        r2.setSelfRenewEnabled(true);
+        r2.setSelfRenew(true);
         assertEquals(r, r2);
 
         r2.setSelfRenewMins(15);
@@ -521,6 +560,27 @@ public class RoleTest {
         assertNotEquals(r, r2);
         r2.setUserAuthorityFilter("attr2,attr3");
         assertEquals(r, r2);
+
+        r2.setResourceOwnership(new ResourceRoleOwnership().setMetaOwner("ZTS"));
+        assertNotEquals(r2, r);
+        r2.setResourceOwnership(null);
+        assertNotEquals(r2, r);
+        r2.setResourceOwnership(new ResourceRoleOwnership().setMetaOwner("TF"));
+        assertEquals(r2, r);
+
+        r2.setPrincipalDomainFilter("user");
+        assertNotEquals(r2, r);
+        r2.setPrincipalDomainFilter(null);
+        assertNotEquals(r2, r);
+        r2.setPrincipalDomainFilter("user,+unix.test,-home");
+        assertEquals(r2, r);
+
+        r2.setNotifyDetails("check out https://athenz.io/test for details");
+        assertNotEquals(r2, r);
+        r2.setNotifyDetails(null);
+        assertNotEquals(r2, r);
+        r2.setNotifyDetails("check out https://athenz.io for details");
+        assertEquals(r2, r);
 
         r2.setAuditLog(null);
         assertNotEquals(r, r2);

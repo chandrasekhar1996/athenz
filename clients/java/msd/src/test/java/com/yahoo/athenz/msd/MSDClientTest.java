@@ -21,10 +21,12 @@ import static org.testng.Assert.*;
 import java.security.KeyStore;
 import javax.net.ssl.SSLContext;
 
-import org.apache.http.ssl.SSLContextBuilder;
+import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.testng.annotations.Test;
 
 public class MSDClientTest {
+
+    private final static String RESOURCE_OWNER = "msd";
 
     @Test
     public void testMSDUrlLookUpFromEnv() throws Exception {
@@ -87,12 +89,12 @@ public class MSDClientTest {
         msdClient.client = msdrdlClientMock;
         try {
             msdClient.getTransportPolicyRules("throw-ex", null);
-        } catch (ResourceException re) {
+        } catch (ClientResourceException re) {
             assertEquals(re.getCode(), 403);
         }
         try {
             msdClient.getTransportPolicyRules("throw-io", null);
-        } catch (ResourceException re) {
+        } catch (ClientResourceException re) {
             assertEquals(re.getCode(), 400);
         }
         msdClient.close();
@@ -115,7 +117,7 @@ public class MSDClientTest {
         try {
             msdClient.getWorkloadsByIP("127.0.0.1", null, null);
             fail();
-        } catch (ResourceException re) {
+        } catch (ClientResourceException re) {
             assertEquals(re.getCode(), 404);
         }
         try {
@@ -143,7 +145,7 @@ public class MSDClientTest {
         try {
             msdClient.getWorkloadsByService("bad-domain", "api", null, null);
             fail();
-        } catch (ResourceException re) {
+        } catch (ClientResourceException re) {
             assertEquals(re.getCode(), 404);
         }
         try {
@@ -163,19 +165,19 @@ public class MSDClientTest {
         WorkloadOptions options = new WorkloadOptions().setIpChanged(true);
 
         try {
-            msdClient.putDynamicWorkload("mydomain", "myservice", options);
+            msdClient.putDynamicWorkload("mydomain", "myservice", options, RESOURCE_OWNER);
         } catch (Exception ignored) {
             fail();
         }
 
         try {
-            msdClient.putDynamicWorkload("bad-domain", "api", options);
+            msdClient.putDynamicWorkload("bad-domain", "api", options, RESOURCE_OWNER);
             fail();
-        } catch (ResourceException re) {
+        } catch (ClientResourceException re) {
             assertEquals(re.getCode(), 404);
         }
         try {
-            msdClient.putDynamicWorkload("mydomain", "api", null);
+            msdClient.putDynamicWorkload("mydomain", "api", null, RESOURCE_OWNER);
             fail();
         } catch (Exception ex) {
             assertTrue(ex.getMessage().contains("bad request"));
@@ -191,19 +193,19 @@ public class MSDClientTest {
         msdClient.client = msdrdlClientMock;
         String instanceId = "123-123-123-123";
         try {
-            msdClient.deleteDynamicWorkload("mydomain", "myservice", instanceId);
+            msdClient.deleteDynamicWorkload("mydomain", "myservice", instanceId, RESOURCE_OWNER);
         } catch (Exception ignored) {
             fail();
         }
 
         try {
-            msdClient.deleteDynamicWorkload("bad-domain", "api", instanceId);
+            msdClient.deleteDynamicWorkload("bad-domain", "api", instanceId, RESOURCE_OWNER);
             fail();
-        } catch (ResourceException re) {
+        } catch (ClientResourceException re) {
             assertEquals(re.getCode(), 404);
         }
         try {
-            msdClient.deleteDynamicWorkload("mydomain", null, null);
+            msdClient.deleteDynamicWorkload("mydomain", null, null, RESOURCE_OWNER);
             fail();
         } catch (Exception ex) {
             assertTrue(ex.getMessage().contains("bad request"));
@@ -219,19 +221,19 @@ public class MSDClientTest {
         StaticWorkload sw1 = new StaticWorkload();
 
         try {
-            msdClient.putStaticWorkload("mydomain", "myservice", sw1);
+            msdClient.putStaticWorkload("mydomain", "myservice", sw1, RESOURCE_OWNER);
         } catch (Exception ignored) {
             fail();
         }
 
         try {
-            msdClient.putStaticWorkload("bad-domain", "api", sw1);
+            msdClient.putStaticWorkload("bad-domain", "api", sw1, RESOURCE_OWNER);
             fail();
-        } catch (ResourceException re) {
+        } catch (ClientResourceException re) {
             assertEquals(re.getCode(), 404);
         }
         try {
-            msdClient.putStaticWorkload("mydomain", "api", null);
+            msdClient.putStaticWorkload("mydomain", "api", null, RESOURCE_OWNER);
             fail();
         } catch (Exception ex) {
             assertTrue(ex.getMessage().contains("bad request"));
@@ -247,19 +249,19 @@ public class MSDClientTest {
         msdClient.client = msdrdlClientMock;
         String name = "123.123.123.123";
         try {
-            msdClient.deleteStaticWorkload("mydomain", "myservice", name);
+            msdClient.deleteStaticWorkload("mydomain", "myservice", name, RESOURCE_OWNER);
         } catch (Exception ignored) {
             fail();
         }
 
         try {
-            msdClient.deleteStaticWorkload("bad-domain", "api", name);
+            msdClient.deleteStaticWorkload("bad-domain", "api", name, RESOURCE_OWNER);
             fail();
-        } catch (ResourceException re) {
+        } catch (ClientResourceException re) {
             assertEquals(re.getCode(), 404);
         }
         try {
-            msdClient.deleteStaticWorkload("mydomain", null, null);
+            msdClient.deleteStaticWorkload("mydomain", null, null, RESOURCE_OWNER);
             fail();
         } catch (Exception ex) {
             assertTrue(ex.getMessage().contains("bad request"));

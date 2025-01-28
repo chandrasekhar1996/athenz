@@ -27,6 +27,8 @@ import { css, keyframes } from '@emotion/react';
 import { deleteRole } from '../../redux/thunks/roles';
 import { connect } from 'react-redux';
 import { selectDomainAuditEnabled } from '../../redux/selectors/domainData';
+import { isReviewRequired } from '../utils/ReviewUtils';
+import { onClickNewTabFunction } from '../utils/PageUtils';
 
 const TDStyledName = styled.div`
     background-color: ${(props) => props.color};
@@ -172,29 +174,35 @@ class RoleRow extends React.Component {
         let color = this.props.color;
         let idx = this.props.idx;
 
-        let clickMembers = this.onClickFunction.bind(
+        let clickMembers = onClickNewTabFunction.bind(
             this,
-            `/domain/${this.props.domain}/role/${this.state.name}/members`
+            `/domain/${this.props.domain}/role/${this.state.name}/members`,
+            this.props.router
         );
-        let clickReview = this.onClickFunction.bind(
+        let clickReview = onClickNewTabFunction.bind(
             this,
-            `/domain/${this.props.domain}/role/${this.state.name}/review`
+            `/domain/${this.props.domain}/role/${this.state.name}/review`,
+            this.props.router
         );
-        let clickSettings = this.onClickFunction.bind(
+        let clickSettings = onClickNewTabFunction.bind(
             this,
-            `/domain/${this.props.domain}/role/${this.state.name}/settings`
+            `/domain/${this.props.domain}/role/${this.state.name}/settings`,
+            this.props.router
         );
-        let clickPolicy = this.onClickFunction.bind(
+        let clickPolicy = onClickNewTabFunction.bind(
             this,
-            `/domain/${this.props.domain}/role/${this.state.name}/policy`
+            `/domain/${this.props.domain}/role/${this.state.name}/policy`,
+            this.props.router
         );
-        let clickHistory = this.onClickFunction.bind(
+        let clickHistory = onClickNewTabFunction.bind(
             this,
-            `/domain/${this.props.domain}/role/${this.state.name}/history`
+            `/domain/${this.props.domain}/role/${this.state.name}/history`,
+            this.props.router
         );
-        let clickTag = this.onClickFunction.bind(
+        let clickTag = onClickNewTabFunction.bind(
             this,
-            `/domain/${this.props.domain}/role/${this.state.name}/tags`
+            `/domain/${this.props.domain}/role/${this.state.name}/tags`,
+            this.props.router
         );
 
         let clickDelete = this.onClickDelete.bind(this, this.state.name);
@@ -277,8 +285,7 @@ class RoleRow extends React.Component {
             </Menu>
         );
 
-        let reviewRequired =
-            role.reviewEnabled && (role.memberExpiryDays || role.serviceExpiry);
+        let reviewRequired = isReviewRequired(role);
 
         let roleTypeIcon = role.trust ? iconDelegated : '';
         let roleDescriptionIcon = role.description ? iconDescription : '';
@@ -295,6 +302,7 @@ class RoleRow extends React.Component {
         rows.push(
             <TrStyled
                 key={this.state.name}
+                data-wdio={`${this.state.name}-role-row`}
                 data-testid='role-row'
                 isSuccess={newRole}
             >
@@ -325,6 +333,7 @@ class RoleRow extends React.Component {
                         trigger={
                             <span>
                                 <Icon
+                                    dataWdio={`${this.state.name}-view-members`}
                                     icon={'user-group'}
                                     onClick={clickMembers}
                                     color={colors.icons}
@@ -354,11 +363,17 @@ class RoleRow extends React.Component {
                                     isLink
                                     size={'1.25em'}
                                     verticalAlign={'text-bottom'}
+                                    enableTitle={false}
+                                    dataWdio={`${this.state.name}-review`}
                                 />
                             </span>
                         }
                     >
-                        <MenuDiv>Review Members</MenuDiv>
+                        <MenuDiv>
+                            {reviewRequired
+                                ? 'Role Review is required'
+                                : 'Review Members'}
+                        </MenuDiv>
                     </Menu>
                 </TDStyledIcon>
                 <TDStyledIcon color={color} align={center}>
@@ -405,6 +420,7 @@ class RoleRow extends React.Component {
                         trigger={
                             <span>
                                 <Icon
+                                    id={`${this.state.name}-setting-role-button`}
                                     icon={'setting'}
                                     onClick={clickSettings}
                                     color={colors.icons}
@@ -424,6 +440,7 @@ class RoleRow extends React.Component {
                         trigger={
                             <span>
                                 <Icon
+                                    id={`${this.state.name}-history-role-button`}
                                     icon={'time-history'}
                                     onClick={clickHistory}
                                     color={colors.icons}

@@ -16,7 +16,10 @@
 
 package com.yahoo.athenz.instance.provider;
 
+import com.yahoo.athenz.auth.Authorizer;
 import com.yahoo.athenz.instance.provider.impl.IdTokenAttestationData;
+
+import javax.net.ssl.SSLContext;
 
 /**
  * KubernetesDistributionValidator verifies the request parameters against the
@@ -26,7 +29,7 @@ public interface KubernetesDistributionValidator {
     /**
      * Optionally initialize the validator with the given region
      */
-    void initialize();
+    void initialize(SSLContext sslContext, Authorizer authorizer);
 
     /**
      * Retrieves issuer from id_token in attestation data and validates it

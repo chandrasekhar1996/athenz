@@ -25,8 +25,8 @@ import java.util.Set;
 
 import static com.yahoo.athenz.common.ServerCommonConsts.USER_DOMAIN_PREFIX;
 import static org.mockito.Mockito.mock;
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 public class DomainRoleMembersFetcherTest {
     @Test
@@ -41,7 +41,7 @@ public class DomainRoleMembersFetcherTest {
                 "domain1",
                 "domain1:role.admin");
 
-        assertEquals(2, domainRoleMembers.size());
+        assertEquals(domainRoleMembers.size(), 2);
         assertTrue(domainRoleMembers.contains("user.domain1rolemember1"));
         assertTrue(domainRoleMembers.contains("user.domain1rolemember2"));
     }
@@ -56,7 +56,7 @@ public class DomainRoleMembersFetcherTest {
                 "domain1",
                 "domain1:role.admin");
 
-        assertEquals(new HashSet<>(), domainRoleMembers);
+        assertEquals(domainRoleMembers, new HashSet<>());
     }
 
     @Test
@@ -70,6 +70,6 @@ public class DomainRoleMembersFetcherTest {
                 "domain1",
                 "domain1:role.admin");
 
-        assertEquals(new HashSet<>(), domainRoleMembers);
+        assertEquals(domainRoleMembers, new HashSet<>());
     }
 }

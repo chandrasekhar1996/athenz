@@ -20,6 +20,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"net"
 	"os"
 	"os/user"
 	"strconv"
@@ -408,6 +409,46 @@ func TestGenerateRoleCertCSR(test *testing.T) {
 	}
 	if parsedcertreq.Subject.Organization != nil {
 		test.Errorf("CSR does not have expected org")
+		return
+	}
+}
+
+func TestGenerateRoleCertCSRSpiffeTrustDomain(test *testing.T) {
+
+	key, err := GenerateKeyPair(2048)
+	if err != nil {
+		test.Errorf("Cannot generate private key: %v", err)
+		return
+	}
+	roleCertReqOptions := &RoleCertReqOptions{
+		Country:           "US",
+		Domain:            "domain",
+		Service:           "service",
+		RoleName:          "athenz:role.readers",
+		InstanceId:        "instance001",
+		Provider:          "Athenz",
+		EmailDomain:       "athenz.cloud",
+		SpiffeTrustDomain: "athenz.io",
+	}
+	csr, err := GenerateRoleCertCSR(key, roleCertReqOptions)
+	if err != nil {
+		test.Errorf("Cannot create CSR: %v", err)
+		return
+	}
+
+	block, _ := pem.Decode([]byte(csr))
+	parsedcertreq, err := x509.ParseCertificateRequest(block.Bytes)
+	if err != nil {
+		test.Errorf("Cannot parse CSR: %v", err)
+		return
+	}
+
+	if len(parsedcertreq.URIs) != 3 {
+		test.Errorf("CSR does not have expected number of URI fields: %d", len(parsedcertreq.URIs))
+		return
+	}
+	if parsedcertreq.URIs[0].String() != "spiffe://athenz.io/ns/athenz/ra/readers" {
+		test.Errorf("CSR does not have expected spiffe uri: %s", parsedcertreq.URIs[0].String())
 		return
 	}
 }
@@ -1652,4 +1693,133 @@ func TestGetSvcSpiffeUri(t *testing.T) {
 			assert.Equal(t, spiffeUri, tt.uri)
 		})
 	}
+}
+
+func TestGetRoleSpiffeUri(t *testing.T) {
+
+	tests := map[string]struct {
+		domain      string
+		role        string
+		trustDomain string
+		uri         string
+	}{
+		"domain-role-only": {
+			domain:      "sports",
+			role:        "readers",
+			trustDomain: "",
+			uri:         "spiffe://sports/ra/readers",
+		},
+		"trust-domain": {
+			domain:      "sports",
+			role:        "readers",
+			trustDomain: "athenz.cloud",
+			uri:         "spiffe://athenz.cloud/ns/sports/ra/readers",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			spiffeUri := GetRoleSpiffeUri(tt.trustDomain, tt.domain, tt.role)
+			assert.Equal(t, spiffeUri, tt.uri)
+		})
+	}
+}
+
+func TestParseSiaCmd(test *testing.T) {
+
+	tests := []struct {
+		name       string
+		siaCmd     string
+		cmd        string
+		skipErrors bool
+	}{
+		{"empty-cmd", "", "", false},
+		{"simple-valid-cmd", "init", "init", false},
+		{"simple-unknown-cmd", "operation", "operation", false},
+		{"simple-skip-errors", "init:skip-errors", "init", true},
+		{"multiple-parts", "init:skip-errors:unknown", "init", true},
+		{"multiple-parts-unknown", "init:test:unknown", "init", false},
+	}
+	for _, tt := range tests {
+		test.Run(tt.name, func(t *testing.T) {
+			cmd, skipErrors := ParseSiaCmd(tt.siaCmd)
+			if tt.cmd != cmd {
+				test.Errorf("%s: invalid cmd returned - expected: %v, received %v", tt.name, tt.cmd, cmd)
+			}
+			if tt.skipErrors != skipErrors {
+				test.Errorf("%s: invalid skipErrors returned - expected: %v, received %v", tt.name, tt.skipErrors, skipErrors)
+			}
+		})
+	}
+}
+
+func TestExecuteScript(test *testing.T) {
+
+	// non-existent script
+	err := ExecuteScript([]string{"unknown-script"}, "", false)
+	assert.NotNil(test, err)
+
+	// remove our test file if it exists
+	os.Remove("/tmp/test-after-script")
+	// valid script
+	err = ExecuteScript([]string{"data/test_after_script.sh"}, "", true)
+	assert.Nil(test, err)
+	// verify our test file was created
+	_, err = os.Stat("/tmp/test-after-script")
+	assert.Nil(test, err)
+}
+
+func TestNotifySystemdReady(test *testing.T) {
+
+	notifySocket := "/tmp/notify.socket"
+	// non-existent env setting
+	err := NotifySystemdReady()
+	assert.NotNil(test, err)
+	assert.Equal(test, err.Error(), "notify socket is not set")
+
+	// set the env variable but no socket
+	os.Setenv("NOTIFY_SOCKET", notifySocket)
+	err = NotifySystemdReady()
+	assert.NotNil(test, err)
+	assert.Equal(test, err.Error(), "dial unixgram /tmp/notify.socket: connect: no such file or directory")
+
+	// create a unix listener
+	socketAddr := net.UnixAddr{
+		Name: notifySocket,
+		Net:  "unixgram",
+	}
+	_, err = net.ListenUnixgram("unixgram", &socketAddr)
+	assert.Nil(test, err)
+	defer os.Remove(notifySocket)
+	err = NotifySystemdReady()
+	assert.Nil(test, err)
+	os.Unsetenv("NOTIFY_SOCKET")
+}
+
+func TestNotifySystemdReadyForCommand(test *testing.T) {
+
+	// when commands don't match there is always nil error
+	err := NotifySystemdReadyForCommand("systemd-notify", "init")
+	assert.Nil(test, err)
+
+	// when commands match, the code is executed, so we should
+	// get an error that notify socket is not set
+	err = NotifySystemdReadyForCommand("systemd-notify", "systemd-notify")
+	assert.NotNil(test, err)
+	assert.Equal(test, err.Error(), "notify socket is not set")
+}
+
+func TestTouchDoneFile(test *testing.T) {
+
+	// remove our test file if it exists
+	os.Remove("/tmp/init.done")
+	// create the file first time
+	err := TouchDoneFile("/tmp", "init")
+	assert.Nil(test, err)
+	// verify our test file was created
+	_, err = os.Stat("/tmp/init.done")
+	assert.Nil(test, err)
+	// call the method again and verify no errors
+	err = TouchDoneFile("/tmp", "init")
+	assert.Nil(test, err)
 }

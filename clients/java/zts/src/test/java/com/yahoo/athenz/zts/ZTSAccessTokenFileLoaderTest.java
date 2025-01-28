@@ -2,15 +2,11 @@ package com.yahoo.athenz.zts;
 
 import com.yahoo.athenz.auth.token.AccessToken;
 import com.yahoo.athenz.auth.token.jwts.JwtsSigningKeyResolver;
-import com.yahoo.athenz.auth.util.Crypto;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -22,14 +18,13 @@ public class ZTSAccessTokenFileLoaderTest {
 
     private JwtsSigningKeyResolver resolver;
 
-    private final File ecPublicKey = new File("./src/test/resources/ec_public.key");
     private final File confFile = new File("./src/test/resources/athenz.conf");
 
     @BeforeMethod
-    public void setup() {
-        resolver = new JwtsSigningKeyResolver(null, null);
-        PublicKey publicKey = Crypto.loadPublicKey(ecPublicKey);
-        resolver.addPublicKey("eckey1", publicKey);
+    public void setup() throws IOException {
+        File jwksUri = new File("./src/test/resources/jwt_jwks.json");
+        resolver = new JwtsSigningKeyResolver("file://" + jwksUri.getCanonicalPath(), null);
+
         System.setProperty(ZTSAccessTokenFileLoader.ACCESS_TOKEN_PATH_PROPERTY, "./src/test/resources/");
         System.setProperty("athenz.athenz_conf", confFile.getAbsolutePath());
         setupTokenFile();

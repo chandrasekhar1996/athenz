@@ -82,14 +82,15 @@ type SvcCertReqOptions struct {
 
 // RoleCertReqOptions - struct with details to generate a role certificate CSR
 type RoleCertReqOptions struct {
-	Country     string
-	OrgName     string
-	Domain      string
-	Service     string
-	RoleName    string
-	InstanceId  string
-	Provider    string
-	EmailDomain string
+	Country           string
+	OrgName           string
+	Domain            string
+	Service           string
+	RoleName          string
+	InstanceId        string
+	Provider          string
+	EmailDomain       string
+	SpiffeTrustDomain string
 }
 
 // SSHKeyReq - congruent with certsign-rdl/certsign.rdl
@@ -149,16 +150,16 @@ func ZtsClient(ztsUrl, ztsServerName string, keyFile, certFile, caCertFile strin
 		if caCertFile != "" {
 			log.Printf("ZTS Client: CA certificate file: %s\n", caCertFile)
 		}
-		config, err := tlsConfiguration(keyFile, certFile, caCertFile)
+		tlsConfig, err := tlsConfiguration(keyFile, certFile, caCertFile)
 		if err != nil {
 			return nil, err
 		}
 		if ztsServerName != "" {
 			log.Printf("ZTS Client: Server Name: %s\n", ztsServerName)
-			config.ServerName = ztsServerName
+			tlsConfig.ServerName = ztsServerName
 		}
 		tr := &http.Transport{
-			TLSClientConfig: config,
+			TLSClientConfig: tlsConfig,
 			Proxy:           http.ProxyFromEnvironment,
 		}
 		client := zts.NewClient(ztsUrl, tr)
@@ -354,6 +355,16 @@ func GetSvcSpiffeUri(trustDomain, namespace, domain, service string) string {
 	return uriStr
 }
 
+func GetRoleSpiffeUri(trustDomain, domain, role string) string {
+	var uriStr string
+	if trustDomain != "" {
+		uriStr = fmt.Sprintf("spiffe://%s/ns/%s/ra/%s", trustDomain, domain, role)
+	} else {
+		uriStr = fmt.Sprintf("spiffe://%s/ra/%s", domain, role)
+	}
+	return uriStr
+}
+
 func GenerateRoleCertCSR(key *rsa.PrivateKey, options *RoleCertReqOptions) (string, error) {
 
 	log.Println("Generating Role Certificate CSR...")
@@ -371,7 +382,7 @@ func GenerateRoleCertCSR(key *rsa.PrivateKey, options *RoleCertReqOptions) (stri
 	if err != nil {
 		return "", err
 	}
-	spiffeUri := fmt.Sprintf("spiffe://%s/ra/%s", domainNameRequest, roleNameRequest)
+	spiffeUri := GetRoleSpiffeUri(options.SpiffeTrustDomain, domainNameRequest, roleNameRequest)
 	csrDetails.URIs = AppendUri(csrDetails.URIs, spiffeUri)
 
 	// athenz://instanceid/<provider>/<instance-id>
@@ -391,7 +402,7 @@ func GenerateRoleCertCSR(key *rsa.PrivateKey, options *RoleCertReqOptions) (stri
 	return GenerateX509CSR(key, csrDetails)
 }
 
-func GenerateSSHHostCSR(sshPubKeyFile string, domain, service, ip string, ztsAwsDomains []string) (string, error) {
+func GenerateSSHHostCSR(sshPubKeyFile string, domain, service, ip string, ztsCloudDomains []string) (string, error) {
 
 	log.Println("Generating SSH Host Certificate CSR...")
 
@@ -404,7 +415,7 @@ func GenerateSSHHostCSR(sshPubKeyFile string, domain, service, ip string, ztsAws
 	transId := fmt.Sprintf("%x", time.Now().Unix())
 	hyphenDomain := strings.Replace(domain, ".", "-", -1)
 	principals := []string{}
-	for _, ztsDomain := range ztsAwsDomains {
+	for _, ztsDomain := range ztsCloudDomains {
 		host := fmt.Sprintf("%s.%s.%s", service, hyphenDomain, ztsDomain)
 		principals = append(principals, host)
 	}
@@ -423,7 +434,7 @@ func GenerateSSHHostCSR(sshPubKeyFile string, domain, service, ip string, ztsAws
 	return string(csr), err
 }
 
-func GenerateSSHHostRequest(sshPubKeyFile string, domain, service, hostname, ip, instanceId, sshPrincipals string, ztsAwsDomains []string) (*zts.SSHCertRequest, error) {
+func GenerateSSHHostRequest(sshPubKeyFile string, domain, service, hostname, ip, instanceId, sshPrincipals string, ztsCloudDomains []string) (*zts.SSHCertRequest, error) {
 
 	log.Println("Generating SSH Host Certificate Request...")
 
@@ -444,7 +455,7 @@ func GenerateSSHHostRequest(sshPubKeyFile string, domain, service, hostname, ip,
 	if ip != "" {
 		principals = append(principals, ip)
 	}
-	for _, ztsDomain := range ztsAwsDomains {
+	for _, ztsDomain := range ztsCloudDomains {
 		host := fmt.Sprintf("%s.%s.%s", service, hyphenDomain, ztsDomain)
 		principals = append(principals, host)
 	}
@@ -486,15 +497,28 @@ func AppendHostname(hostList []string, hostname string) []string {
 	return append(hostList, hostname)
 }
 
-func GetRoleCertFileName(certDir, fileName, certName string) string {
+func GetRoleCertFileName(certDir, fileName, roleName string) string {
 	switch {
 	case fileName == "":
-		return fmt.Sprintf("%s/%s.cert.pem", certDir, certName)
+		return fmt.Sprintf("%s/%s.cert.pem", certDir, roleName)
 	case fileName[0] == '/':
 		return fileName
 	default:
 		return fmt.Sprintf("%s/%s", certDir, fileName)
 	}
+}
+
+func GetRoleKeyFileName(keyDir, fileName, roleName string, generateRoleKey bool) string {
+	// if we're not asked to generate a separate role key then we're
+	// going to use the service key file thus no need to return a role key file
+	if !generateRoleKey {
+		return ""
+	}
+	keyPrefix := roleName
+	if fileName != "" {
+		keyPrefix = strings.TrimSuffix(fileName, ".cert.pem")
+	}
+	return fmt.Sprintf("%s/%s.key.pem", keyDir, keyPrefix)
 }
 
 func GetSvcCertFileName(certDir, fileName, domain, service string) string {
@@ -538,7 +562,7 @@ func ExtractServiceName(arn, comp string) (string, string, error) {
 }
 
 func PrivateKey(keyFile string, rotateKey bool) (*rsa.PrivateKey, error) {
-	if rotateKey == true || !FileExists(keyFile) {
+	if rotateKey || !FileExists(keyFile) {
 		key, err := GenerateKeyPair(2048)
 		if err != nil {
 			return nil, fmt.Errorf("cannot generate private key err: %v", err)
@@ -576,7 +600,7 @@ func Copy(sourceFile, destFile string, perm os.FileMode) error {
 		}
 		return os.WriteFile(destFile, sourceBytes, perm)
 	}
-	// source file does not exist to take back up of. so no error
+	// source file does not exist to take backup of so no error
 	return nil
 }
 
@@ -780,6 +804,24 @@ func ParseEnvFloatFlag(varName string, defaultValue float64) float64 {
 	return value
 }
 
+func GetRoleCertKeyPaths(domainName, roleName, roleFilename, roleService, roleServiceKeyFilename, keyDir string, generateRoleKey bool) (string, string, string) {
+	certPrefix := roleName
+	if roleFilename != "" {
+		certPrefix = strings.TrimSuffix(roleFilename, ".cert.pem")
+	}
+	svcKeyFile := ""
+	keyPrefix := fmt.Sprintf("%s.%s", domainName, roleService)
+	if generateRoleKey {
+		keyPrefix = roleName
+		if roleFilename != "" {
+			keyPrefix = strings.TrimSuffix(roleFilename, ".cert.pem")
+		}
+	} else {
+		svcKeyFile = GetSvcKeyFileName(keyDir, roleServiceKeyFilename, domainName, roleService)
+	}
+	return keyPrefix, certPrefix, svcKeyFile
+}
+
 func getCertKeyFileName(keyFile, certFile, keyDir, certDir, keyPrefix, certPrefix string) (string, string) {
 	if keyFile == "" {
 		keyFile = fmt.Sprintf("%s/%s.key.pem", keyDir, keyPrefix)
@@ -795,55 +837,134 @@ func getCertKeyFileName(keyFile, certFile, keyDir, certDir, keyPrefix, certPrefi
 	}
 }
 
-func SaveRoleCertKey(key, cert []byte, svcKeyFile, roleCertFile, keyPrefix, certPrefix string, uid, gid, fileMode int, createKey, rotateKey bool, keyDir, certDir, backupDir string, fileDirectUpdate bool) error {
-	keyFile, certFile := getCertKeyFileName(svcKeyFile, roleCertFile, keyDir, certDir, keyPrefix, certPrefix)
-	return SaveCertKey(key, cert, keyFile, certFile, keyPrefix, certPrefix, uid, gid, fileMode, createKey, rotateKey, backupDir, fileDirectUpdate)
-}
-
-func SaveServiceCertKey(key, cert []byte, keyFile, certFile, prefix string, uid, gid, fileMode int, createKey, rotateKey bool, backupDir string, fileDirectUpdate bool) error {
-	return SaveCertKey(key, cert, keyFile, certFile, prefix, prefix, uid, gid, fileMode, createKey, rotateKey, backupDir, fileDirectUpdate)
-}
-
-func SaveCertKey(key, cert []byte, keyFile, certFile, keyPrefix, certPrefix string, uid, gid, fileMode int, createKey, rotateKey bool, backupDir string, fileDirectUpdate bool) error {
+func SaveRoleCertKey(key, cert []byte, keyFile, certFile, svcKeyFile, roleName string, uid, gid, fileMode int, createKey, rotateKey bool, backupDir string, fileDirectUpdate bool) error {
 
 	// perform validation of x509KeyPair pair match before writing to disk
 	x509KeyPair, err := tls.X509KeyPair(cert, key)
 	if err != nil {
-		return fmt.Errorf("x509KeyPair and key for: %s do not match, error: %v", keyPrefix, err)
+		return fmt.Errorf("x509KeyPair and key for: %s do not match, error: %v", roleName, err)
 	}
 	_, err = x509.ParseCertificate(x509KeyPair.Certificate[0])
 	if err != nil {
-		return fmt.Errorf("x509KeyPair and key for: %s unable to parse cert, error: %v", keyPrefix, err)
+		return fmt.Errorf("x509KeyPair and key for: %s unable to parse cert, error: %v", roleName, err)
 	}
 
-	backUpKeyFile := fmt.Sprintf("%s/%s.key.pem", backupDir, keyPrefix)
-	backUpCertFile := fmt.Sprintf("%s/%s.cert.pem", backupDir, certPrefix)
+	backUpKeyFile := fmt.Sprintf("%s/%s.key.pem", backupDir, roleName)
+	backUpCertFile := fmt.Sprintf("%s/%s.cert.pem", backupDir, roleName)
 
+	// if we're not given a role key file, it means we're re-using our service private key
+	// thus there is no need to update any files
+	filesBackedUp := false
+	if keyFile != "" {
+		if rotateKey {
+			err = EnsureBackUpDir(backupDir)
+			if err != nil {
+				return err
+			}
+			// taking backup of key and cert
+			if FileExists(keyFile) || FileExists(certFile) {
+				log.Printf("taking backup of cert: %s to %s and key: %s to %s\n", certFile, backUpCertFile, keyFile, backUpKeyFile)
+				err = CopyCertKeyFile(keyFile, backUpKeyFile, certFile, backUpCertFile, os.FileMode(fileMode), fileDirectUpdate)
+				if err != nil {
+					log.Printf("Error while taking backup %v\n", err)
+					return err
+				}
+				filesBackedUp = true
+			}
+			//write the new key and x509KeyPair to disk
+			log.Printf("writing new key file: %s to disk\n", keyFile)
+			err = UpdateFile(keyFile, key, uid, gid, os.FileMode(fileMode), fileDirectUpdate, true)
+			if err != nil {
+				log.Printf("Error while writing key file during rotate %v\n", err)
+				return err
+			}
+		} else if createKey && !FileExists(keyFile) {
+			//write the new key and x509KeyPair to disk
+			log.Printf("writing new key file: %s to disk\n", keyFile)
+			err = UpdateFile(keyFile, key, uid, gid, os.FileMode(fileMode), fileDirectUpdate, true)
+			if err != nil {
+				log.Printf("Error while writing key file during create %v\n", err)
+				return err
+			}
+		} else if FileExists(keyFile) {
+			log.Printf("Updating existing key file %s ownership only", keyFile)
+			UpdateKeyOwnership(keyFile, uid, gid, os.FileMode(fileMode), fileDirectUpdate)
+		}
+	} else {
+		// since we're using our service key file, let's set the key file as such,
+		// so we can load and validate the x509KeyPair later in this method
+		keyFile = svcKeyFile
+	}
+
+	log.Printf("Updating the cert file %s", certFile)
+	err = UpdateFile(certFile, cert, uid, gid, os.FileMode(0444), fileDirectUpdate, true)
+	if err != nil {
+		log.Printf("Error while writing cert file %v\n", err)
+		return err
+	}
+
+	// perform 2nd validation of x509KeyPair pair match after writing to disk
+	x509KeyPair, err = tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		log.Printf("x509KeyPair: %s, key: %s do not match, error: %v\n", certFile, keyFile, err)
+		// restore the original contents only if we had successfully backed up the files
+		if filesBackedUp {
+			err = CopyCertKeyFile(backUpKeyFile, keyFile, backUpCertFile, certFile, os.FileMode(fileMode), fileDirectUpdate)
+		}
+		return err
+	}
+
+	_, err = x509.ParseCertificate(x509KeyPair.Certificate[0])
+	if err != nil {
+		log.Printf("x509KeyPair: %s, key: %s, unable to parse cert, error: %v\n", certFile, keyFile, err)
+		// restore the original contents only if we had successfully backed up the files
+		if filesBackedUp {
+			err = CopyCertKeyFile(backUpKeyFile, keyFile, backUpCertFile, certFile, os.FileMode(fileMode), fileDirectUpdate)
+		}
+		return err
+	}
+
+	return nil
+}
+
+// SaveServiceCertKey writes the key and cert to disk and takes backup of existing key and cert if rotateKey is true
+// this method is only called when we're refreshing the service certificate. during service registration we directly
+// update key/cert/ca-cert files
+func SaveServiceCertKey(key, cert []byte, keyFile, certFile, serviceName string, uid, gid, fileMode int, rotateKey bool, backupDir string, fileDirectUpdate bool) error {
+	// perform validation of x509KeyPair pair match before writing to disk
+	x509KeyPair, err := tls.X509KeyPair(cert, key)
+	if err != nil {
+		return fmt.Errorf("x509KeyPair and key for: %s do not match, error: %v", serviceName, err)
+	}
+	_, err = x509.ParseCertificate(x509KeyPair.Certificate[0])
+	if err != nil {
+		return fmt.Errorf("x509KeyPair and key for: %s unable to parse cert, error: %v", serviceName, err)
+	}
+
+	backUpKeyFile := fmt.Sprintf("%s/%s.key.pem", backupDir, serviceName)
+	backUpCertFile := fmt.Sprintf("%s/%s.cert.pem", backupDir, serviceName)
+
+	filesBackedUp := false
 	if rotateKey {
 		err = EnsureBackUpDir(backupDir)
 		if err != nil {
 			return err
 		}
-		// taking back up of key and cert
-		log.Printf("taking back up of cert: %s to %s and key: %s to %s\n", certFile, backUpCertFile, keyFile, backUpKeyFile)
-		err = CopyCertKeyFile(keyFile, backUpKeyFile, certFile, backUpCertFile, os.FileMode(fileMode), fileDirectUpdate)
-		if err != nil {
-			log.Printf("Error while taking back up %v\n", err)
-			return err
+		// taking backup of key and cert
+		if FileExists(keyFile) || FileExists(certFile) {
+			log.Printf("taking backup of cert: %s to %s and key: %s to %s\n", certFile, backUpCertFile, keyFile, backUpKeyFile)
+			err = CopyCertKeyFile(keyFile, backUpKeyFile, certFile, backUpCertFile, os.FileMode(fileMode), fileDirectUpdate)
+			if err != nil {
+				log.Printf("Error while taking backup %v\n", err)
+				return err
+			}
+			filesBackedUp = true
 		}
 		//write the new key and x509KeyPair to disk
 		log.Printf("writing new key file: %s to disk\n", keyFile)
 		err = UpdateFile(keyFile, key, uid, gid, os.FileMode(fileMode), fileDirectUpdate, true)
 		if err != nil {
 			log.Printf("Error while writing key file during rotate %v\n", err)
-			return err
-		}
-	} else if createKey && !FileExists(keyFile) {
-		//write the new key and x509KeyPair to disk
-		log.Printf("writing new key file: %s to disk\n", keyFile)
-		err = UpdateFile(keyFile, key, uid, gid, os.FileMode(fileMode), fileDirectUpdate, true)
-		if err != nil {
-			log.Printf("Error while writing key file during create %v\n", err)
 			return err
 		}
 	} else if FileExists(keyFile) {
@@ -861,19 +982,21 @@ func SaveCertKey(key, cert []byte, keyFile, certFile, keyPrefix, certPrefix stri
 	x509KeyPair, err = tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		log.Printf("x509KeyPair: %s, key: %s do not match, error: %v\n", certFile, keyFile, err)
-		err = CopyCertKeyFile(backUpKeyFile, keyFile, backUpCertFile, certFile, os.FileMode(fileMode), fileDirectUpdate)
-		if err != nil {
-			return err
+		// restore the original contents only if we had successfully backed up the files
+		if filesBackedUp {
+			err = CopyCertKeyFile(backUpKeyFile, keyFile, backUpCertFile, certFile, os.FileMode(fileMode), fileDirectUpdate)
 		}
+		return err
 	}
 
 	_, err = x509.ParseCertificate(x509KeyPair.Certificate[0])
 	if err != nil {
 		log.Printf("x509KeyPair: %s, key: %s, unable to parse cert, error: %v\n", certFile, keyFile, err)
-		err = CopyCertKeyFile(backUpKeyFile, keyFile, backUpCertFile, certFile, os.FileMode(fileMode), fileDirectUpdate)
-		if err != nil {
-			return err
+		// restore the original contents only if we had successfully backed up the files
+		if filesBackedUp {
+			err = CopyCertKeyFile(backUpKeyFile, keyFile, backUpCertFile, certFile, os.FileMode(fileMode), fileDirectUpdate)
 		}
+		return err
 	}
 
 	return nil
@@ -1181,8 +1304,7 @@ func ParseScriptArguments(script string) []string {
 		log.Printf("invalid script: %q, err: %v\n", script, err)
 		return []string{}
 	}
-	if len(parts) != 0 && !strings.HasPrefix(parts[0], "/") {
-		log.Printf("script path should be a fully qualified path: %q\n", script)
+	if !validateScriptArguments(parts) {
 		return []string{}
 	}
 
@@ -1193,18 +1315,94 @@ func ParseScriptArguments(script string) []string {
 	return parts
 }
 
-// ExecuteScriptWithoutBlock executes a script along with the provided
-// arguments in a go subroutine without blocking the agent
-func ExecuteScriptWithoutBlock(script []string) {
+// ExecuteScript executes a script along with the provided
+// arguments while blocking the agent
+func ExecuteScript(script []string, addlDetail string, runAfterFailExit bool) error {
 	// execute run after script (if provided)
 	if len(script) == 0 {
-		return
+		return nil
 	}
-
-	go func() {
-		log.Printf("executing run after hook for: %v", script)
-		if err := exec.Command(script[0], script[1:]...).Run(); err != nil {
-			log.Printf("unable to execute: %q, err: %v", script, err)
+	if addlDetail != "" {
+		script = append(script, addlDetail)
+	}
+	log.Printf("executing run after hook for: %v", script)
+	err := exec.Command(script[0], script[1:]...).Run()
+	if err != nil {
+		log.Printf("unable to execute: %q, err: %v", script, err)
+		if runAfterFailExit {
+			os.Exit(1)
 		}
+	}
+	return err
+}
+
+// ExecuteScriptWithoutBlock executes a script along with the provided
+// arguments in a go subroutine without blocking the agent
+func ExecuteScriptWithoutBlock(script []string, addlDetail string, runAfterFailExit bool) {
+	go func() {
+		ExecuteScript(script, addlDetail, runAfterFailExit)
 	}()
+}
+
+// ParseSiaCmd parses the sia command and returns the command and a boolean
+// indicating whether the command should skip errors or not. The format
+// of the command is sia-command[:skip-errors]. If the command includes
+// additional arguments separated by colon, then those are ignored.
+func ParseSiaCmd(siaCmd string) (string, bool) {
+	parts := strings.Split(siaCmd, ":")
+	if len(parts) == 1 {
+		return parts[0], false
+	} else {
+		return parts[0], parts[1] == "skip-errors"
+	}
+}
+
+// NotifySystemdReadyForCommand sends a notification to systemd that the
+// service is ready if the clientCmd argument matches to the notifyCmd
+func NotifySystemdReadyForCommand(clientCmd, notifyCmd string) error {
+	// if our client command is not the requested value
+	// then we're going to skip the notification
+	if clientCmd != notifyCmd {
+		return nil
+	}
+	err := NotifySystemdReady()
+	if err != nil {
+		log.Printf("failed to notify systemd: %v", err)
+	}
+	return err
+}
+
+// NotifySystemdReady sends a notification to systemd that the service is ready
+func NotifySystemdReady() error {
+	notifySocket := os.Getenv("NOTIFY_SOCKET")
+	if notifySocket == "" {
+		return fmt.Errorf("notify socket is not set")
+	}
+	socketAddr := &net.UnixAddr{
+		Name: notifySocket,
+		Net:  "unixgram",
+	}
+	conn, err := net.DialUnix(socketAddr.Net, nil, socketAddr)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	_, err = conn.Write([]byte("READY=1"))
+	return err
+}
+
+// TouchDoneFile creates an empty file if it doesn't exist and updates the
+// access and modification times to the current time. The name of the file
+// is constructed by joining the directory and file name with a separator
+// plus the .done extension.
+func TouchDoneFile(fileDir, fileName string) error {
+	doneFilePath := filepath.Join(fileDir, fileName+".done")
+	f, err := os.OpenFile(doneFilePath, os.O_CREATE, 0644)
+	if err != nil {
+		log.Printf("unable to touch '%s' file: %v\n", doneFilePath, err)
+		return err
+	}
+	f.Close()
+	currentTime := time.Now().Local()
+	return os.Chtimes(doneFilePath, currentTime, currentTime)
 }

@@ -49,14 +49,15 @@ public class InstanceProviderTest {
         provider.setHostnameResolver(null);
         provider.setRolesProvider(null);
         provider.setExternalCredentialsProvider(null);
+        provider.setPubKeysProvider(null);
 
         assertEquals(provider.getProviderScheme(), InstanceProvider.Scheme.UNKNOWN);
 
         try {
             provider.getInstanceRegisterToken(null);
             fail();
-        } catch (ResourceException ex) {
-            assertEquals(ex.getCode(), ResourceException.NOT_IMPLEMENTED);
+        } catch (ProviderResourceException ex) {
+            assertEquals(ex.getCode(), ProviderResourceException.NOT_IMPLEMENTED);
         }
     }
 }

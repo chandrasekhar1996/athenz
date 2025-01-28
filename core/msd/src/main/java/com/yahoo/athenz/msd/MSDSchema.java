@@ -83,6 +83,9 @@ public class MSDSchema {
         sb.stringType("StaticWorkloadName")
             .pattern("(([a-zA-Z0-9][a-zA-Z0-9-:._]*\\.)*[a-zA-Z0-9][a-zA-Z0-9-:._]*)(\\/[0-9]{1,3})?");
 
+        sb.stringType("TransportPolicySubjectExternal")
+            .pattern("(([a-zA-Z0-9][a-zA-Z0-9-:._]*\\.)*[a-zA-Z0-9][a-zA-Z0-9-:._]*)(\\/[0-9]{1,3})?");
+
         sb.enumType("TransportPolicyEnforcementState")
             .comment("Types of transport policy enforcement states")
             .element("ENFORCE")
@@ -114,13 +117,21 @@ public class MSDSchema {
         sb.structType("TransportPolicySubject")
             .comment("Subject for a transport policy")
             .field("domainName", "TransportPolicySubjectDomainName", false, "Name of the domain")
-            .field("serviceName", "TransportPolicySubjectServiceName", false, "Name of the service");
+            .field("serviceName", "TransportPolicySubjectServiceName", false, "Name of the service")
+            .field("externalPeer", "TransportPolicySubjectExternal", true, "External peer ( not in Athenz )");
+
+        sb.structType("TransportPolicySubjectSelectorRequirement")
+            .comment("A subject selector requirement is a selector that contains value, a key, and an operator that relates the key and value.")
+            .field("key", "String", false, "key that the selector applies to")
+            .field("operator", "String", false, "Operator that is applied to the key and value")
+            .field("value", "String", false, "Value that the selector applies to");
 
         sb.structType("TransportPolicyCondition")
             .comment("Transport policy condition. Used to specify additional restrictions for the subject of a transport policy")
             .field("enforcementState", "TransportPolicyEnforcementState", false, "State of transport policy enforcement ( ENFORCE / REPORT )")
             .arrayField("instances", "String", true, "Acts as restrictions. If present, this transport policy should be restricted to only mentioned instances.")
-            .arrayField("scope", "TransportPolicyScope", true, "Scope of transport policy");
+            .arrayField("scope", "TransportPolicyScope", true, "Scope of transport policy")
+            .arrayField("additionalConditions", "TransportPolicySubjectSelectorRequirement", true, "List of any additional conditions");
 
         sb.structType("PolicyPort")
             .comment("generic policy port. Will be used by TransportPolicyPort and NetworkPolicyPort structs")
@@ -149,6 +160,7 @@ public class MSDSchema {
         sb.structType("TransportPolicyIngressRule")
             .comment("Transport policy ingress rule")
             .field("id", "Int64", false, "Assertion id associated with this transport policy")
+            .field("identifier", "EntityName", true, "Policy Identifier")
             .field("lastModified", "Timestamp", false, "Last modification timestamp of this transport policy")
             .field("entitySelector", "TransportPolicyEntitySelector", false, "Entity to which this transport policy applies")
             .field("from", "TransportPolicyPeer", true, "Source of network traffic");
@@ -156,6 +168,7 @@ public class MSDSchema {
         sb.structType("TransportPolicyEgressRule")
             .comment("Transport policy egress rule")
             .field("id", "Int64", false, "Assertion id associated with this transport policy")
+            .field("identifier", "EntityName", true, "Policy Identifier")
             .field("lastModified", "Timestamp", false, "Last modification timestamp of this transport policy")
             .field("entitySelector", "TransportPolicyEntitySelector", false, "Entity to which this transport policy applies")
             .field("to", "TransportPolicyPeer", true, "Destination of network traffic");
@@ -183,18 +196,12 @@ public class MSDSchema {
             .comment("List of TransportPolicyValidationResponse")
             .arrayField("responseList", "TransportPolicyValidationResponse", false, "list of transport policy validation response");
 
-        sb.structType("TransportPolicySubjectSelectorRequirement")
-            .comment("A subject selector requirement is a selector that contains value, a key, and an operator that relates the key and value.")
-            .field("key", "String", false, "key that the selector applies to")
-            .field("operator", "String", false, "Operator that is applied to the key and value")
-            .field("value", "String", false, "Value that the selector applies to");
-
         sb.structType("TransportPolicyRequest")
             .comment("Input to create a transport policy")
             .field("direction", "TransportPolicyTrafficDirection", false, "Direction of network traffic")
             .field("identifier", "EntityName", false, "Policy Identifier")
             .field("subject", "TransportPolicySubject", false, "Subject for the policy")
-            .arrayField("conditions", "TransportPolicySubjectSelectorRequirement", true, "List of subject selector conditions")
+            .arrayField("conditions", "TransportPolicyCondition", true, "List of transport policy conditions")
             .arrayField("sourcePorts", "TransportPolicyPort", false, "List of source network traffic ports")
             .arrayField("destinationPorts", "TransportPolicyPort", false, "List of destination network traffic ports")
             .arrayField("peers", "TransportPolicySubject", true, "Source or destination of the policy depending on direction");
@@ -270,6 +277,16 @@ public class MSDSchema {
             .comment("response of a bulk workload search request")
             .arrayField("unmodifiedServices", "DomainServices", false, "list of services grouped by domain, those are not changed since time stamp in matchingTag")
             .field("workloads", "Workloads", false, "matching workloads");
+
+        sb.structType("CompositeInstance")
+            .comment("generic instance")
+            .field("domainName", "DomainName", false, "name of the domain")
+            .field("serviceName", "EntityName", false, "name of the service")
+            .field("instance", "SimpleName", false, "instance name/id")
+            .field("instanceType", "String", true, "instance type")
+            .field("provider", "String", true, "name of the instance provider, for example aws/gcp")
+            .field("certExpiryTime", "Timestamp", true, "certificate expiry time (ex: getNotAfter), if applicable")
+            .field("certIssueTime", "Timestamp", true, "certificate issue time (ex: getNotBefore), if applicable");
 
         sb.enumType("NetworkPolicyChangeEffect")
             .comment("IMPACT indicates that a change in network policy will interfere with workings of one or more transport policies NO_IMPACT indicates that a change in network policy will not interfere with workings of any transport policy")
@@ -619,7 +636,7 @@ public class MSDSchema {
             .pathParam("domainName", "DomainName", "name of the domain")
             .headerParam("If-None-Match", "matchingTag", "String", null, "Retrieved from the previous request, this timestamp specifies to the server to return any policies modified since this time")
             .output("ETag", "tag", "String", "The current latest modification timestamp is returned in this header")
-            .auth("", "", true)
+            .auth("msd.GetNetworkPolicy", "{domainName}:domain")
             .expected("OK")
             .exception("BAD_REQUEST", "ResourceError", "")
 
@@ -633,14 +650,59 @@ public class MSDSchema {
 ;
 
         sb.resource("TransportPolicyRequest", "PUT", "/domain/{domainName}/service/{serviceName}/transportpolicy")
-            .comment("API endpoint to create a transport policy for a given domain and service")
+            .comment("This API endpoint facilitates the creation or update of a transport policy for a specified domain and service. It is designed exclusively for the purpose of creating or updating transport policies, and does not support mixed-case scenarios. Once a transport policy is established, the destination service, protocol, and both source and destination ports become non-editable. To modify any of these fields, it is necessary to create a new policy and delete the old one.")
             .name("putTransportPolicy")
             .pathParam("domainName", "DomainName", "name of the domain")
             .pathParam("serviceName", "EntityName", "Name of the service")
+            .headerParam("Y-Audit-Ref", "auditRef", "String", null, "Audit param required(not empty) if domain auditEnabled is true.")
+            .headerParam("Athenz-Resource-Owner", "resourceOwner", "String", null, "Resource owner for the request")
             .input("payload", "TransportPolicyRequest", "Struct representing input transport policy")
             .auth("msd.UpdateNetworkPolicy", "{domainName}:service.{serviceName}")
             .expected("NO_CONTENT")
             .exception("BAD_REQUEST", "ResourceError", "")
+
+            .exception("FORBIDDEN", "ResourceError", "")
+
+            .exception("NOT_FOUND", "ResourceError", "")
+
+            .exception("TOO_MANY_REQUESTS", "ResourceError", "")
+
+            .exception("UNAUTHORIZED", "ResourceError", "")
+;
+
+        sb.resource("TransportPolicyRules", "GET", "/domain/{domainName}/service/{serviceName}/transportpolicies")
+            .comment("API endpoint to get the transport policy rules defined in Athenz for a given domain and service")
+            .name("getTransportPolicyRulesByService")
+            .pathParam("domainName", "DomainName", "name of the domain")
+            .pathParam("serviceName", "EntityName", "Name of the service")
+            .headerParam("If-None-Match", "matchingTag", "String", null, "Retrieved from the previous request, this timestamp specifies to the server to return any policies modified since this time")
+            .output("ETag", "tag", "String", "The current latest modification timestamp is returned in this header")
+            .auth("msd.GetNetworkPolicy", "{domainName}:service.{serviceName}")
+            .expected("OK")
+            .exception("BAD_REQUEST", "ResourceError", "")
+
+            .exception("FORBIDDEN", "ResourceError", "")
+
+            .exception("NOT_FOUND", "ResourceError", "")
+
+            .exception("TOO_MANY_REQUESTS", "ResourceError", "")
+
+            .exception("UNAUTHORIZED", "ResourceError", "")
+;
+
+        sb.resource("TransportPolicyRules", "DELETE", "/domain/{domainName}/service/{serviceName}/transportpolicy/{id}")
+            .comment("API endpoint to delete the transport policy Upon successful completion of this delete request, the server will return NO_CONTENT status code without any data (no object will be returned).")
+            .name("deleteTransportPolicy")
+            .pathParam("domainName", "DomainName", "Name of the domain")
+            .pathParam("serviceName", "EntityName", "Name of the service")
+            .pathParam("id", "Int64", "Id of the assertion representing the transport policy")
+            .headerParam("Y-Audit-Ref", "auditRef", "String", null, "Audit param required(not empty) if domain auditEnabled is true.")
+            .headerParam("Athenz-Resource-Owner", "resourceOwner", "String", null, "Resource owner for the request")
+            .auth("msd.DeleteNetworkPolicy", "{domainName}:service.{serviceName}")
+            .expected("NO_CONTENT")
+            .exception("BAD_REQUEST", "ResourceError", "")
+
+            .exception("CONFLICT", "ResourceError", "")
 
             .exception("FORBIDDEN", "ResourceError", "")
 
@@ -694,6 +756,7 @@ public class MSDSchema {
             .pathParam("domainName", "DomainName", "name of the domain")
             .pathParam("serviceName", "EntityName", "name of the service")
             .input("options", "WorkloadOptions", "metadata about the dynamic workload")
+            .headerParam("Athenz-Resource-Owner", "resourceOwner", "String", null, "Resource owner for the request")
             .auth("", "", true)
             .expected("NO_CONTENT")
             .exception("BAD_REQUEST", "ResourceError", "")
@@ -713,6 +776,7 @@ public class MSDSchema {
             .pathParam("domainName", "DomainName", "name of the domain")
             .pathParam("serviceName", "EntityName", "name of the service")
             .pathParam("instanceId", "PathElement", "unique instance id within provider's namespace")
+            .headerParam("Athenz-Resource-Owner", "resourceOwner", "String", null, "Resource owner for the request")
             .auth("update", "{domainName}:service.{serviceName}")
             .expected("NO_CONTENT")
             .exception("BAD_REQUEST", "ResourceError", "")
@@ -732,6 +796,7 @@ public class MSDSchema {
             .pathParam("domainName", "DomainName", "name of the domain")
             .pathParam("serviceName", "EntityName", "name of the service")
             .input("staticWorkload", "StaticWorkload", "Struct representing static workload entered by the user")
+            .headerParam("Athenz-Resource-Owner", "resourceOwner", "String", null, "Resource owner for the request")
             .auth("update", "{domainName}:service.{serviceName}")
             .expected("NO_CONTENT")
             .exception("BAD_REQUEST", "ResourceError", "")
@@ -751,6 +816,7 @@ public class MSDSchema {
             .pathParam("domainName", "DomainName", "name of the domain")
             .pathParam("serviceName", "EntityName", "name of the service")
             .pathParam("name", "StaticWorkloadName", "name associated with the workload. In most cases will be a FQDN")
+            .headerParam("Athenz-Resource-Owner", "resourceOwner", "String", null, "Resource owner for the request")
             .auth("update", "{domainName}:service.{serviceName}")
             .expected("NO_CONTENT")
             .exception("BAD_REQUEST", "ResourceError", "")
@@ -808,6 +874,46 @@ public class MSDSchema {
             .output("ETag", "tag", "String", "The current latest modification timestamp is returned in this header")
             .auth("", "", true)
             .expected("OK")
+            .exception("BAD_REQUEST", "ResourceError", "")
+
+            .exception("FORBIDDEN", "ResourceError", "")
+
+            .exception("NOT_FOUND", "ResourceError", "")
+
+            .exception("TOO_MANY_REQUESTS", "ResourceError", "")
+
+            .exception("UNAUTHORIZED", "ResourceError", "")
+;
+
+        sb.resource("CompositeInstance", "PUT", "/domain/{domainName}/service/{serviceName}/workload/discover/instance")
+            .comment("Api to discover an additional instance which can have static or dynamic or both IPs")
+            .name("putCompositeInstance")
+            .pathParam("domainName", "DomainName", "name of the domain")
+            .pathParam("serviceName", "EntityName", "name of the service")
+            .input("instance", "CompositeInstance", "Generic instance")
+            .headerParam("Athenz-Resource-Owner", "resourceOwner", "String", null, "Resource owner for the request")
+            .auth("update", "{domainName}:service.{serviceName}")
+            .expected("NO_CONTENT")
+            .exception("BAD_REQUEST", "ResourceError", "")
+
+            .exception("FORBIDDEN", "ResourceError", "")
+
+            .exception("NOT_FOUND", "ResourceError", "")
+
+            .exception("TOO_MANY_REQUESTS", "ResourceError", "")
+
+            .exception("UNAUTHORIZED", "ResourceError", "")
+;
+
+        sb.resource("Workloads", "DELETE", "/domain/{domainName}/service/{serviceName}/workload/discover/instance/{instance}")
+            .comment("Api to delete an additional instance which can have static or dynamic or both IPs")
+            .name("deleteCompositeInstance")
+            .pathParam("domainName", "DomainName", "name of the domain")
+            .pathParam("serviceName", "EntityName", "name of the service")
+            .pathParam("instance", "SimpleName", "instance name/id/key")
+            .headerParam("Athenz-Resource-Owner", "resourceOwner", "String", null, "Resource owner for the request")
+            .auth("update", "{domainName}:service.{serviceName}")
+            .expected("NO_CONTENT")
             .exception("BAD_REQUEST", "ResourceError", "")
 
             .exception("FORBIDDEN", "ResourceError", "")

@@ -73,6 +73,9 @@ type StaticWorkloadFQDN string
 // StaticWorkloadName -
 type StaticWorkloadName string
 
+// TransportPolicySubjectExternal -
+type TransportPolicySubjectExternal string
+
 // TransportPolicyEnforcementState - Types of transport policy enforcement
 // states
 type TransportPolicyEnforcementState int
@@ -444,6 +447,11 @@ type TransportPolicySubject struct {
 	// Name of the service
 	//
 	ServiceName TransportPolicySubjectServiceName `json:"serviceName"`
+
+	//
+	// External peer ( not in Athenz )
+	//
+	ExternalPeer TransportPolicySubjectExternal `json:"externalPeer,omitempty" rdl:"optional" yaml:",omitempty"`
 }
 
 // NewTransportPolicySubject - creates an initialized TransportPolicySubject instance, returns a pointer to it
@@ -489,6 +497,87 @@ func (self *TransportPolicySubject) Validate() error {
 			return fmt.Errorf("TransportPolicySubject.serviceName does not contain a valid TransportPolicySubjectServiceName (%v)", val.Error)
 		}
 	}
+	if self.ExternalPeer != "" {
+		val := rdl.Validate(MSDSchema(), "TransportPolicySubjectExternal", self.ExternalPeer)
+		if !val.Valid {
+			return fmt.Errorf("TransportPolicySubject.externalPeer does not contain a valid TransportPolicySubjectExternal (%v)", val.Error)
+		}
+	}
+	return nil
+}
+
+// TransportPolicySubjectSelectorRequirement - A subject selector requirement
+// is a selector that contains value, a key, and an operator that relates the
+// key and value.
+type TransportPolicySubjectSelectorRequirement struct {
+
+	//
+	// key that the selector applies to
+	//
+	Key string `json:"key"`
+
+	//
+	// Operator that is applied to the key and value
+	//
+	Operator string `json:"operator"`
+
+	//
+	// Value that the selector applies to
+	//
+	Value string `json:"value"`
+}
+
+// NewTransportPolicySubjectSelectorRequirement - creates an initialized TransportPolicySubjectSelectorRequirement instance, returns a pointer to it
+func NewTransportPolicySubjectSelectorRequirement(init ...*TransportPolicySubjectSelectorRequirement) *TransportPolicySubjectSelectorRequirement {
+	var o *TransportPolicySubjectSelectorRequirement
+	if len(init) == 1 {
+		o = init[0]
+	} else {
+		o = new(TransportPolicySubjectSelectorRequirement)
+	}
+	return o
+}
+
+type rawTransportPolicySubjectSelectorRequirement TransportPolicySubjectSelectorRequirement
+
+// UnmarshalJSON is defined for proper JSON decoding of a TransportPolicySubjectSelectorRequirement
+func (self *TransportPolicySubjectSelectorRequirement) UnmarshalJSON(b []byte) error {
+	var m rawTransportPolicySubjectSelectorRequirement
+	err := json.Unmarshal(b, &m)
+	if err == nil {
+		o := TransportPolicySubjectSelectorRequirement(m)
+		*self = o
+		err = self.Validate()
+	}
+	return err
+}
+
+// Validate - checks for missing required fields, etc
+func (self *TransportPolicySubjectSelectorRequirement) Validate() error {
+	if self.Key == "" {
+		return fmt.Errorf("TransportPolicySubjectSelectorRequirement.key is missing but is a required field")
+	} else {
+		val := rdl.Validate(MSDSchema(), "String", self.Key)
+		if !val.Valid {
+			return fmt.Errorf("TransportPolicySubjectSelectorRequirement.key does not contain a valid String (%v)", val.Error)
+		}
+	}
+	if self.Operator == "" {
+		return fmt.Errorf("TransportPolicySubjectSelectorRequirement.operator is missing but is a required field")
+	} else {
+		val := rdl.Validate(MSDSchema(), "String", self.Operator)
+		if !val.Valid {
+			return fmt.Errorf("TransportPolicySubjectSelectorRequirement.operator does not contain a valid String (%v)", val.Error)
+		}
+	}
+	if self.Value == "" {
+		return fmt.Errorf("TransportPolicySubjectSelectorRequirement.value is missing but is a required field")
+	} else {
+		val := rdl.Validate(MSDSchema(), "String", self.Value)
+		if !val.Valid {
+			return fmt.Errorf("TransportPolicySubjectSelectorRequirement.value does not contain a valid String (%v)", val.Error)
+		}
+	}
 	return nil
 }
 
@@ -511,6 +600,11 @@ type TransportPolicyCondition struct {
 	// Scope of transport policy
 	//
 	Scope []TransportPolicyScope `json:"scope,omitempty" rdl:"optional" yaml:",omitempty"`
+
+	//
+	// List of any additional conditions
+	//
+	AdditionalConditions []*TransportPolicySubjectSelectorRequirement `json:"additionalConditions,omitempty" rdl:"optional" yaml:",omitempty"`
 }
 
 // NewTransportPolicyCondition - creates an initialized TransportPolicyCondition instance, returns a pointer to it
@@ -835,6 +929,11 @@ type TransportPolicyIngressRule struct {
 	Id int64 `json:"id"`
 
 	//
+	// Policy Identifier
+	//
+	Identifier EntityName `json:"identifier,omitempty" rdl:"optional" yaml:",omitempty"`
+
+	//
 	// Last modification timestamp of this transport policy
 	//
 	LastModified rdl.Timestamp `json:"lastModified"`
@@ -885,6 +984,12 @@ func (self *TransportPolicyIngressRule) UnmarshalJSON(b []byte) error {
 
 // Validate - checks for missing required fields, etc
 func (self *TransportPolicyIngressRule) Validate() error {
+	if self.Identifier != "" {
+		val := rdl.Validate(MSDSchema(), "EntityName", self.Identifier)
+		if !val.Valid {
+			return fmt.Errorf("TransportPolicyIngressRule.identifier does not contain a valid EntityName (%v)", val.Error)
+		}
+	}
 	if self.LastModified.IsZero() {
 		return fmt.Errorf("TransportPolicyIngressRule: Missing required field: lastModified")
 	}
@@ -901,6 +1006,11 @@ type TransportPolicyEgressRule struct {
 	// Assertion id associated with this transport policy
 	//
 	Id int64 `json:"id"`
+
+	//
+	// Policy Identifier
+	//
+	Identifier EntityName `json:"identifier,omitempty" rdl:"optional" yaml:",omitempty"`
 
 	//
 	// Last modification timestamp of this transport policy
@@ -953,6 +1063,12 @@ func (self *TransportPolicyEgressRule) UnmarshalJSON(b []byte) error {
 
 // Validate - checks for missing required fields, etc
 func (self *TransportPolicyEgressRule) Validate() error {
+	if self.Identifier != "" {
+		val := rdl.Validate(MSDSchema(), "EntityName", self.Identifier)
+		if !val.Valid {
+			return fmt.Errorf("TransportPolicyEgressRule.identifier does not contain a valid EntityName (%v)", val.Error)
+		}
+	}
 	if self.LastModified.IsZero() {
 		return fmt.Errorf("TransportPolicyEgressRule: Missing required field: lastModified")
 	}
@@ -1189,81 +1305,6 @@ func (self *TransportPolicyValidationResponseList) Validate() error {
 	return nil
 }
 
-// TransportPolicySubjectSelectorRequirement - A subject selector requirement
-// is a selector that contains value, a key, and an operator that relates the
-// key and value.
-type TransportPolicySubjectSelectorRequirement struct {
-
-	//
-	// key that the selector applies to
-	//
-	Key string `json:"key"`
-
-	//
-	// Operator that is applied to the key and value
-	//
-	Operator string `json:"operator"`
-
-	//
-	// Value that the selector applies to
-	//
-	Value string `json:"value"`
-}
-
-// NewTransportPolicySubjectSelectorRequirement - creates an initialized TransportPolicySubjectSelectorRequirement instance, returns a pointer to it
-func NewTransportPolicySubjectSelectorRequirement(init ...*TransportPolicySubjectSelectorRequirement) *TransportPolicySubjectSelectorRequirement {
-	var o *TransportPolicySubjectSelectorRequirement
-	if len(init) == 1 {
-		o = init[0]
-	} else {
-		o = new(TransportPolicySubjectSelectorRequirement)
-	}
-	return o
-}
-
-type rawTransportPolicySubjectSelectorRequirement TransportPolicySubjectSelectorRequirement
-
-// UnmarshalJSON is defined for proper JSON decoding of a TransportPolicySubjectSelectorRequirement
-func (self *TransportPolicySubjectSelectorRequirement) UnmarshalJSON(b []byte) error {
-	var m rawTransportPolicySubjectSelectorRequirement
-	err := json.Unmarshal(b, &m)
-	if err == nil {
-		o := TransportPolicySubjectSelectorRequirement(m)
-		*self = o
-		err = self.Validate()
-	}
-	return err
-}
-
-// Validate - checks for missing required fields, etc
-func (self *TransportPolicySubjectSelectorRequirement) Validate() error {
-	if self.Key == "" {
-		return fmt.Errorf("TransportPolicySubjectSelectorRequirement.key is missing but is a required field")
-	} else {
-		val := rdl.Validate(MSDSchema(), "String", self.Key)
-		if !val.Valid {
-			return fmt.Errorf("TransportPolicySubjectSelectorRequirement.key does not contain a valid String (%v)", val.Error)
-		}
-	}
-	if self.Operator == "" {
-		return fmt.Errorf("TransportPolicySubjectSelectorRequirement.operator is missing but is a required field")
-	} else {
-		val := rdl.Validate(MSDSchema(), "String", self.Operator)
-		if !val.Valid {
-			return fmt.Errorf("TransportPolicySubjectSelectorRequirement.operator does not contain a valid String (%v)", val.Error)
-		}
-	}
-	if self.Value == "" {
-		return fmt.Errorf("TransportPolicySubjectSelectorRequirement.value is missing but is a required field")
-	} else {
-		val := rdl.Validate(MSDSchema(), "String", self.Value)
-		if !val.Valid {
-			return fmt.Errorf("TransportPolicySubjectSelectorRequirement.value does not contain a valid String (%v)", val.Error)
-		}
-	}
-	return nil
-}
-
 // TransportPolicyRequest - Input to create a transport policy
 type TransportPolicyRequest struct {
 
@@ -1283,9 +1324,9 @@ type TransportPolicyRequest struct {
 	Subject *TransportPolicySubject `json:"subject"`
 
 	//
-	// List of subject selector conditions
+	// List of transport policy conditions
 	//
-	Conditions []*TransportPolicySubjectSelectorRequirement `json:"conditions,omitempty" rdl:"optional" yaml:",omitempty"`
+	Conditions []*TransportPolicyCondition `json:"conditions,omitempty" rdl:"optional" yaml:",omitempty"`
 
 	//
 	// List of source network traffic ports
@@ -2226,6 +2267,111 @@ func (self *BulkWorkloadResponse) Validate() error {
 	}
 	if self.Workloads == nil {
 		return fmt.Errorf("BulkWorkloadResponse: Missing required field: workloads")
+	}
+	return nil
+}
+
+// CompositeInstance - generic instance
+type CompositeInstance struct {
+
+	//
+	// name of the domain
+	//
+	DomainName DomainName `json:"domainName"`
+
+	//
+	// name of the service
+	//
+	ServiceName EntityName `json:"serviceName"`
+
+	//
+	// instance name/id
+	//
+	Instance SimpleName `json:"instance"`
+
+	//
+	// instance type
+	//
+	InstanceType string `json:"instanceType" rdl:"optional" yaml:",omitempty"`
+
+	//
+	// name of the instance provider, for example aws/gcp
+	//
+	Provider string `json:"provider" rdl:"optional" yaml:",omitempty"`
+
+	//
+	// certificate expiry time (ex: getNotAfter), if applicable
+	//
+	CertExpiryTime *rdl.Timestamp `json:"certExpiryTime,omitempty" rdl:"optional" yaml:",omitempty"`
+
+	//
+	// certificate issue time (ex: getNotBefore), if applicable
+	//
+	CertIssueTime *rdl.Timestamp `json:"certIssueTime,omitempty" rdl:"optional" yaml:",omitempty"`
+}
+
+// NewCompositeInstance - creates an initialized CompositeInstance instance, returns a pointer to it
+func NewCompositeInstance(init ...*CompositeInstance) *CompositeInstance {
+	var o *CompositeInstance
+	if len(init) == 1 {
+		o = init[0]
+	} else {
+		o = new(CompositeInstance)
+	}
+	return o
+}
+
+type rawCompositeInstance CompositeInstance
+
+// UnmarshalJSON is defined for proper JSON decoding of a CompositeInstance
+func (self *CompositeInstance) UnmarshalJSON(b []byte) error {
+	var m rawCompositeInstance
+	err := json.Unmarshal(b, &m)
+	if err == nil {
+		o := CompositeInstance(m)
+		*self = o
+		err = self.Validate()
+	}
+	return err
+}
+
+// Validate - checks for missing required fields, etc
+func (self *CompositeInstance) Validate() error {
+	if self.DomainName == "" {
+		return fmt.Errorf("CompositeInstance.domainName is missing but is a required field")
+	} else {
+		val := rdl.Validate(MSDSchema(), "DomainName", self.DomainName)
+		if !val.Valid {
+			return fmt.Errorf("CompositeInstance.domainName does not contain a valid DomainName (%v)", val.Error)
+		}
+	}
+	if self.ServiceName == "" {
+		return fmt.Errorf("CompositeInstance.serviceName is missing but is a required field")
+	} else {
+		val := rdl.Validate(MSDSchema(), "EntityName", self.ServiceName)
+		if !val.Valid {
+			return fmt.Errorf("CompositeInstance.serviceName does not contain a valid EntityName (%v)", val.Error)
+		}
+	}
+	if self.Instance == "" {
+		return fmt.Errorf("CompositeInstance.instance is missing but is a required field")
+	} else {
+		val := rdl.Validate(MSDSchema(), "SimpleName", self.Instance)
+		if !val.Valid {
+			return fmt.Errorf("CompositeInstance.instance does not contain a valid SimpleName (%v)", val.Error)
+		}
+	}
+	if self.InstanceType != "" {
+		val := rdl.Validate(MSDSchema(), "String", self.InstanceType)
+		if !val.Valid {
+			return fmt.Errorf("CompositeInstance.instanceType does not contain a valid String (%v)", val.Error)
+		}
+	}
+	if self.Provider != "" {
+		val := rdl.Validate(MSDSchema(), "String", self.Provider)
+		if !val.Valid {
+			return fmt.Errorf("CompositeInstance.provider does not contain a valid String (%v)", val.Error)
+		}
 	}
 	return nil
 }

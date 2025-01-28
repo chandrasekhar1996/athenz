@@ -15,6 +15,7 @@
  */
 package com.yahoo.athenz.zms;
 
+import com.yahoo.athenz.common.messaging.DomainChangeMessage;
 import com.yahoo.rdl.Timestamp;
 import com.yahoo.rdl.UUID;
 import org.slf4j.Logger;
@@ -27,12 +28,11 @@ import org.testcontainers.utility.MountableFile;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.time.Duration;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
+
+import static org.testng.Assert.assertEquals;
 
 public class ZMSTestUtils {
 
@@ -49,7 +49,7 @@ public class ZMSTestUtils {
             FileUtils.copyFile(new File(externalInitScriptPath), destinationInitScript);
             LOG.info("Copied {} to {}", externalInitScriptPath, destinationInitScript.getAbsolutePath());
 
-            mysql = new MySQLContainer<>(DockerImageName.parse("mysql/mysql-server:5.7").asCompatibleSubstituteFor("mysql"))
+            mysql = new MySQLContainer<>(DockerImageName.parse("mysql/mysql-server:8.0").asCompatibleSubstituteFor("mysql"))
                     .withDatabaseName("zms_server")
                     .withUsername(userName)
                     .withPassword(password)
@@ -73,14 +73,15 @@ public class ZMSTestUtils {
         mysqld.stop();
     }
 
-    public static void setDatabaseReadOnlyMode(MySQLContainer<?> mysqld, boolean readOnly, final String username, final String password) throws IOException, InterruptedException {
+    public static void setDatabaseReadOnlyMode(MySQLContainer<?> mysqld, boolean readOnly,
+            final String password) throws IOException, InterruptedException {
         final String scriptName = readOnly ? "set-read-only.sql" : "unset-read-only.sql";
         try {
-            mysqld.execInContainer("mysql", "-u", "root", "-p"+password, "zms_server", "-e", "source /athenz-mysql-scripts/" + scriptName);
+            mysqld.execInContainer("mysql", "-u", "root", "-p"+password, "zms_server", "-e",
+                    "source /athenz-mysql-scripts/" + scriptName);
         } catch (Throwable t) {
-            LOG.error("Unable to execute script in testcontainers mysql container: " + scriptName, t);
+            LOG.error("Unable to execute script in testcontainers mysql container: {}", scriptName, t);
         }
-
     }
 
     public static boolean verifyDomainRoleMember(DomainRoleMember domainRoleMember, MemberRole memberRole) {
@@ -115,25 +116,6 @@ public class ZMSTestUtils {
                 }
 
                 return true;
-            }
-        }
-
-        return false;
-    }
-
-    public static boolean verifyDomainRoleMemberTimestamp(List<DomainRoleMember> members,
-                                                          String memberName,
-                                                          String roleName,
-                                                          Timestamp timestamp,
-                                                          Function<MemberRole, Timestamp> timestampGetter) {
-
-        for (DomainRoleMember member : members) {
-            if (member.getMemberName().equals(memberName)) {
-                for (MemberRole memberRole : member.getMemberRoles()) {
-                    if (memberRole.getRoleName().equals(roleName)) {
-                        return timestampGetter.apply(memberRole).equals(timestamp);
-                    }
-                }
             }
         }
 
@@ -185,10 +167,94 @@ public class ZMSTestUtils {
         return Timestamp.fromMillis(System.currentTimeMillis() + TimeUnit.MILLISECONDS.convert(alreadyExpired ? -daysInterval : daysInterval , TimeUnit.DAYS));
     }
 
-    public static long getDaysSinceExpiry(Timestamp expiry) {
-        Date expirationDate = new Date(expiry.millis());
-        Date date = new Date();
-        long diffInMillis = date.getTime() - expirationDate.getTime();
-        return TimeUnit.DAYS.convert(diffInMillis, TimeUnit.MILLISECONDS);
+    public static void assertChange(DomainChangeMessage change, DomainChangeMessage.ObjectType objType,
+            final String domainName, final String objName, final String apiName) {
+        assertEquals(change.getObjectType(), objType);
+        assertEquals(change.getDomainName(), domainName);
+        assertEquals(change.getObjectName(), objName);
+        assertEquals(change.getApiName(), apiName.toLowerCase());
+    }
+
+    public static RoleMeta createRoleMetaObject(Boolean selfServe) {
+
+        RoleMeta meta = new RoleMeta();
+
+        if (selfServe != null) {
+            meta.setSelfServe(selfServe);
+        }
+        return meta;
+    }
+
+    public static RoleSystemMeta createRoleSystemMetaObject(Boolean auditEnabled) {
+
+        RoleSystemMeta meta = new RoleSystemMeta();
+
+        if (auditEnabled != null) {
+            meta.setAuditEnabled(auditEnabled);
+        }
+        return meta;
+    }
+
+    public static GroupSystemMeta createGroupSystemMetaObject(Boolean auditEnabled) {
+
+        GroupSystemMeta meta = new GroupSystemMeta();
+
+        if (auditEnabled != null) {
+            meta.setAuditEnabled(auditEnabled);
+        }
+        return meta;
+    }
+
+    public static RoleMember getRoleMember(Role role, final String memberName) {
+        if (role.getRoleMembers() == null) {
+            return null;
+        }
+        for (RoleMember roleMember : role.getRoleMembers()) {
+            if (roleMember.getMemberName().equals(memberName)) {
+                return roleMember;
+            }
+        }
+        return null;
+    }
+
+    public static GroupMember getGroupMember(Group group, final String memberName) {
+        if (group.getGroupMembers() == null) {
+            return null;
+        }
+        for (GroupMember groupMember : group.getGroupMembers()) {
+            if (groupMember.getMemberName().equals(memberName)) {
+                return groupMember;
+            }
+        }
+        return null;
+    }
+
+    public static boolean verifyDomainGroupMember(List<DomainGroupMember> members, String memberName,
+            String... groups) {
+
+        for (DomainGroupMember member : members) {
+            if (member.getMemberName().equals(memberName)) {
+                List<GroupMember> memberGroups = member.getMemberGroups();
+                if (memberGroups.size() != groups.length) {
+                    return false;
+                }
+                for (String group : groups) {
+                    boolean bMatchFound = false;
+                    for (GroupMember memberGroup : memberGroups) {
+                        if (memberGroup.getGroupName().equals(group)) {
+                            bMatchFound = true;
+                            break;
+                        }
+                    }
+                    if (!bMatchFound) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+        }
+
+        return false;
     }
 }

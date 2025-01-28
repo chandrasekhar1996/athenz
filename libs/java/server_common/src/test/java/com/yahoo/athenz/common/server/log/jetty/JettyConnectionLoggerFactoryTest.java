@@ -20,7 +20,7 @@ package com.yahoo.athenz.common.server.log.jetty;
 
 import org.testng.annotations.Test;
 
-import static org.testng.AssertJUnit.*;
+import static org.testng.Assert.*;
 
 public class JettyConnectionLoggerFactoryTest {
     @Test
@@ -38,7 +38,7 @@ public class JettyConnectionLoggerFactoryTest {
             jettyConnectionLoggerFactory.create();
             fail();
         } catch (Exception ex) {
-            assertEquals("Invalid SSLConnectionLogFactory", ex.getMessage());
+            assertEquals(ex.getMessage(), "Invalid SSLConnectionLogFactory");
         }
         System.clearProperty("athenz.ssl_logger_factory_class");
     }
@@ -51,7 +51,7 @@ public class JettyConnectionLoggerFactoryTest {
             jettyConnectionLoggerFactory.create();
             fail();
         } catch (Exception ex) {
-            assertEquals("Invalid metric class", ex.getMessage());
+            assertEquals(ex.getMessage(), "Invalid metric class");
         }
         System.clearProperty("athenz.jetty.container.metric_factory_class");
     }

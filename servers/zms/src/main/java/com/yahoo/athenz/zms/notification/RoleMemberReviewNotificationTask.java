@@ -22,6 +22,8 @@ import com.yahoo.rdl.Timestamp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static com.yahoo.athenz.common.server.notification.NotificationServiceConstants.*;
@@ -37,14 +39,13 @@ public class RoleMemberReviewNotificationTask implements NotificationTask {
     private final RoleReviewPrincipalNotificationToMetricConverter roleReviewPrincipalNotificationToMetricConverter;
     private final RoleReviewDomainNotificationToMetricConverter roleReviewDomainNotificationToMetricConverter;
 
-    private final static String[] TEMPLATE_COLUMN_NAMES = { "DOMAIN", "ROLE", "MEMBER", "REVIEW" };
+    private final static String[] TEMPLATE_COLUMN_NAMES = { "DOMAIN", "ROLE", "MEMBER", "REVIEW", "NOTES" };
 
     public RoleMemberReviewNotificationTask(DBService dbService, String userDomainPrefix,
-            NotificationToEmailConverterCommon notificationToEmailConverterCommon, boolean consolidateNotifications) {
+            NotificationToEmailConverterCommon notificationToEmailConverterCommon) {
 
         this.dbService = dbService;
-        this.roleMemberNotificationCommon = new RoleMemberNotificationCommon(dbService, userDomainPrefix,
-                consolidateNotifications);
+        this.roleMemberNotificationCommon = new RoleMemberNotificationCommon(dbService, userDomainPrefix);
         this.roleReviewDomainNotificationToEmailConverter =
                 new RoleReviewDomainNotificationToEmailConverter(notificationToEmailConverterCommon);
         this.roleReviewPrincipalNotificationToEmailConverter =
@@ -64,6 +65,7 @@ public class RoleMemberReviewNotificationTask implements NotificationTask {
         }
 
         List<Notification> notificationDetails = roleMemberNotificationCommon.getNotificationDetails(
+                Notification.Type.ROLE_MEMBER_REVIEW,
                 reviewMembers,
                 roleReviewPrincipalNotificationToEmailConverter,
                 roleReviewDomainNotificationToEmailConverter,
@@ -71,7 +73,7 @@ public class RoleMemberReviewNotificationTask implements NotificationTask {
                 roleReviewPrincipalNotificationToMetricConverter,
                 roleReviewDomainNotificationToMetricConverter,
                 new ReviewDisableRoleMemberNotificationFilter());
-        return roleMemberNotificationCommon.printNotificationDetailsToLog(notificationDetails, DESCRIPTION, LOGGER);
+        return roleMemberNotificationCommon.printNotificationDetailsToLog(notificationDetails, DESCRIPTION);
     }
 
     static class ReviewRoleMemberDetailStringer implements RoleMemberNotificationCommon.RoleMemberDetailStringer {
@@ -82,7 +84,9 @@ public class RoleMemberReviewNotificationTask implements NotificationTask {
             detailsRow.append(memberRole.getDomainName()).append(';');
             detailsRow.append(memberRole.getRoleName()).append(';');
             detailsRow.append(memberRole.getMemberName()).append(';');
-            detailsRow.append(memberRole.getReviewReminder());
+            detailsRow.append(memberRole.getReviewReminder()).append(';');
+            detailsRow.append(memberRole.getNotifyDetails() == null ?
+                    "" : URLEncoder.encode(memberRole.getNotifyDetails(), StandardCharsets.UTF_8));
             return detailsRow;
         }
 

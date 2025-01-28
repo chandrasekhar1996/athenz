@@ -35,7 +35,7 @@ type javaClientGenerator struct {
 	ns       string
 }
 
-// GenerateJavaClient generates the client code to talk to the server
+// GenerateAthenzJavaClient generates the client code to talk to the server
 func GenerateAthenzJavaClient(schema *rdl.Schema, params *GeneratorParams) error {
 	reg := rdl.NewTypeRegistry(schema)
 	packageDir, err := javaGenerationDir(params.Outdir, schema, params.Namespace)
@@ -60,8 +60,8 @@ func GenerateAthenzJavaClient(schema *rdl.Schema, params *GeneratorParams) error
 		return gen.err
 	}
 
-	//ResourceException - the throawable wrapper for alternate return types
-	out, file, _, err = outputWriter(packageDir, "ResourceException", ".java")
+	//ClientResourceException - the throwable wrapper for alternate return types
+	out, file, _, err = outputWriter(packageDir, "ClientResourceException", ".java")
 	if err != nil {
 		return err
 	}
@@ -72,8 +72,8 @@ func GenerateAthenzJavaClient(schema *rdl.Schema, params *GeneratorParams) error
 		return err
 	}
 
-	//ResourceError - the default data object for an error
-	out, file, _, err = outputWriter(packageDir, "ResourceError", ".java")
+	//ClientResourceError - the default data object for an error
+	out, file, _, err = outputWriter(packageDir, "ClientResourceError", ".java")
 	if err != nil {
 		return err
 	}
@@ -121,28 +121,41 @@ const javaClientTemplate = `{{header}}
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.CookieStore;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.client.methods.RequestBuilder;
-import org.apache.http.client.protocol.HttpClientContext;
-import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.BasicCookieStore;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.cookie.BasicClientCookie;
-import org.apache.http.protocol.BasicHttpContext;
-import org.apache.http.protocol.HttpContext;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.config.ConnectionConfig;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.config.TlsConfig;
+import org.apache.hc.client5.http.cookie.BasicCookieStore;
+import org.apache.hc.client5.http.cookie.CookieStore;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.cookie.BasicClientCookie;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.protocol.HttpClientContext;
+import org.apache.hc.client5.http.ssl.DefaultClientTlsStrategy;
+import org.apache.hc.client5.http.ssl.TlsSocketStrategy;
+import org.apache.hc.core5.http.ClassicHttpRequest;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
+import org.apache.hc.core5.http.protocol.BasicHttpContext;
+import org.apache.hc.core5.http.protocol.HttpContext;
+import org.apache.hc.core5.http.ssl.TLS;
+import org.apache.hc.core5.net.URIBuilder;
+import org.apache.hc.core5.pool.PoolConcurrencyPolicy;
+import org.apache.hc.core5.pool.PoolReusePolicy;
+import org.apache.hc.core5.ssl.SSLContexts;
+import org.apache.hc.core5.util.Timeout;
 
 import javax.net.ssl.HostnameVerifier;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.List;
+
 import com.yahoo.rdl.Schema;
 
 public class {{cName}}Client {
@@ -159,14 +172,29 @@ public class {{cName}}Client {
     private ObjectMapper jsonMapper;
 
     protected CloseableHttpClient createHttpClient(HostnameVerifier hostnameVerifier) {
+
+        final TlsSocketStrategy tlsStrategy = hostnameVerifier == null ?
+                new DefaultClientTlsStrategy(SSLContexts.createSystemDefault()) :
+                new DefaultClientTlsStrategy(SSLContexts.createSystemDefault(), hostnameVerifier);
+
+        PoolingHttpClientConnectionManager connectionManager = PoolingHttpClientConnectionManagerBuilder.create()
+                .setTlsSocketStrategy(tlsStrategy)
+                .setDefaultTlsConfig(TlsConfig.custom()
+                        .setSupportedProtocols(TLS.V_1_2, TLS.V_1_3)
+                        .build())
+                .setPoolConcurrencyPolicy(PoolConcurrencyPolicy.STRICT)
+                .setConnPoolPolicy(PoolReusePolicy.FIFO)
+                .setDefaultConnectionConfig(ConnectionConfig.custom()
+                        .setSocketTimeout(Timeout.ofMinutes(DEFAULT_CLIENT_READ_TIMEOUT_MS))
+                        .setConnectTimeout(Timeout.ofMinutes(DEFAULT_CLIENT_CONNECT_TIMEOUT_MS))
+                        .build())
+                .build();
         RequestConfig config = RequestConfig.custom()
-                .setConnectTimeout(DEFAULT_CLIENT_CONNECT_TIMEOUT_MS)
-                .setSocketTimeout(DEFAULT_CLIENT_READ_TIMEOUT_MS)
                 .setRedirectsEnabled(false)
                 .build();
         return HttpClients.custom()
+                .setConnectionManager(connectionManager)
                 .setDefaultRequestConfig(config)
-                .setSSLHostnameVerifier(hostnameVerifier)
                 .build();
     }
 
@@ -232,6 +260,14 @@ public class {{cName}}Client {
 
     public void setHttpClient(CloseableHttpClient httpClient) {
         client = httpClient;
+    }
+
+    protected String getStringResponseEntity(HttpEntity httpResponseEntity) throws IOException {
+        try {
+            return EntityUtils.toString(httpResponseEntity);
+        } catch (ParseException ex) {
+            throw new IOException(ex);
+        }
     }
 {{range .Resources}}
     {{methodSig .}} {
@@ -308,7 +344,7 @@ func (gen *javaClientGenerator) clientMethodBody(r *rdl.Resource) string {
 		obj += "\n            .setEntity(httpEntity)"
 	}
 
-	s += "\n        HttpUriRequest httpUriRequest = RequestBuilder." + strings.ToLower(r.Method) + "()"
+	s += "\n        ClassicHttpRequest httpUriRequest = ClassicRequestBuilder." + strings.ToLower(r.Method) + "()"
 	s += "\n            .setUri(uriBuilder.build())"
 	s += obj
 	s += "\n            .build();"
@@ -328,7 +364,7 @@ func (gen *javaClientGenerator) clientMethodBody(r *rdl.Resource) string {
 	s += "\n"
 	s += "        HttpEntity httpResponseEntity = null;\n"
 	s += "        try (CloseableHttpResponse httpResponse = client.execute(httpUriRequest, httpContext)) {\n"
-	s += "            int code = httpResponse.getStatusLine().getStatusCode();\n"
+	s += "            int code = httpResponse.getCode();\n"
 	s += "            httpResponseEntity = httpResponse.getEntity();\n"
 	s += "            switch (code) {\n"
 
@@ -372,15 +408,15 @@ func (gen *javaClientGenerator) clientMethodBody(r *rdl.Resource) string {
 		s += "                return jsonMapper.readValue(httpResponseEntity.getContent(), " + returnType + ".class);\n"
 	}
 	s += "            default:\n"
-	s += "                final String errorData = (httpResponseEntity == null) ? null : EntityUtils.toString(httpResponseEntity);\n"
+	s += "                final String errorData = (httpResponseEntity == null) ? null : getStringResponseEntity(httpResponseEntity);\n"
 	if r.Exceptions != nil {
 		s += "                throw (errorData != null && !errorData.isEmpty())\n"
-		s += "                    ? new ResourceException(code, jsonMapper.readValue(errorData, ResourceError.class))\n"
-		s += "                    : new ResourceException(code);\n"
+		s += "                    ? new ClientResourceException(code, jsonMapper.readValue(errorData, ClientResourceError.class))\n"
+		s += "                    : new ClientResourceException(code);\n"
 	} else {
 		s += "                throw (errorData != null && !errorData.isEmpty())\n"
-		s += "                    ? new ResourceException(code, jsonMapper.readValue(errorData, Object.class))\n"
-		s += "                    : new ResourceException(code);\n"
+		s += "                    ? new ClientResourceException(code, jsonMapper.readValue(errorData, Object.class))\n"
+		s += "                    : new ClientResourceException(code);\n"
 	}
 	s += "            }\n"
 	s += "        } finally {\n"
@@ -453,16 +489,16 @@ func javaGenerateResourceError(banner string, schema *rdl.Schema, writer io.Writ
 
 const javaResourceErrorTemplate = `{{header}}
 {{package}}
-public class ResourceError {
+public class ClientResourceError {
 
     public int code;
     public String message;
 
-    public ResourceError code(int code) {
+    public ClientResourceError code(int code) {
         this.code = code;
         return this;
     }
-    public ResourceError message(String message) {
+    public ClientResourceError message(String message) {
         this.message = message;
         return this;
     }
@@ -491,7 +527,7 @@ func javaGenerateResourceException(banner string, schema *rdl.Schema, writer io.
 
 const javaResourceExceptionTemplate = `{{header}}
 {{package}}
-public class ResourceException extends RuntimeException {
+public class ClientResourceException extends RuntimeException {
     public static final int OK = 200;
     public static final int CREATED = 201;
     public static final int ACCEPTED = 202;
@@ -550,12 +586,12 @@ public class ResourceException extends RuntimeException {
     int code;
     Object data;
 
-    public ResourceException(int code) {
-        this(code, new ResourceError().code(code).message(codeToString(code)));
+    public ClientResourceException(int code) {
+        this(code, new ClientResourceError().code(code).message(codeToString(code)));
     }
 
-    public ResourceException(int code, Object data) {
-        super("ResourceException (" + code + "): " + data);
+    public ClientResourceException(int code, Object data) {
+        super("ClientResourceException (" + code + "): " + data);
         this.code = code;
         this.data = data;
     }
@@ -615,13 +651,13 @@ func formatBlock(s string, leftCol int, prefix string) string {
 	}
 	tab := spaces(leftCol)
 	var buf bytes.Buffer
-	max := 80
+	maxValue := 80
 	col := leftCol
 	lines := 1
 	tokens := strings.Split(s, " ")
 	for _, tok := range tokens {
 		toklen := len(tok)
-		if col+toklen >= max {
+		if col+toklen >= maxValue {
 			buf.WriteString("\n")
 			lines++
 			buf.WriteString(tab)

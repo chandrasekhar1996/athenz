@@ -1,7 +1,38 @@
 The following is the list of features that the Athenz team is working or
 planning to work on. At Yahoo, we review our list every quarter
 and decide which features will be implemented during that quarter. Additionally,
-we implement several smaller features as they're requested by our customers.
+we implement several smaller features as requested by our customers.
+
+# Q1 2025
+
+- Provide interface to allow customization of SPIFFE URI format
+- Provide interface for external validation checks before adding principals to roles and groups
+
+# Q4 2024
+
+- Athenz Service Identity Provider for Harness
+- Introduce slack notification support
+  
+# Q3 2024
+
+- Upgrade jetty to 12.x release with the following changes:
+  - Server components requiring jdk 17.x (requirement from jetty 12.x)
+  - Client components requiring jdk 11.x
+- Move all components to use aws sdk 2.x since 1.x is EOL
+- Move jjwt to 0.12.x (breaking changes from 0.11.x release)
+
+# Q2 2024
+
+- Resource Ownership for all objects in ZMS
+- Capability to enable/disable prinicpals (domain and system admins)
+- Update SPIFFE URI support to include trust domains
+  
+# Q1 2024
+
+- Integration with Cert-Manager (cont. from Q4)
+- K8S operator for Athenz to manage Athenz resources using CRDs (cont. from Q4)
+- Implement a provider for Github Actions
+- Introduce environment classification for domains (production/staging/etc)
 
 # Q4 2023
 
@@ -147,11 +178,3 @@ we implement several smaller features as they're requested by our customers.
   separate values for human users and services.
 - Email notification support for any active hosts not refreshing their
   service identity certificates.
-
-# Future
-
-- Unix SSH Access Management solution
-  - Define least privileged access policies in Athenz like who can login, sudo, what sudo commands are permitted for a given set of users, headless accounts, unix groups, headless users incoming and outgoing policies etc 
-  - Provision the access policies on the target hosts in near realtime
-- Athenz Integration with Google Cloud Platform (GCP)
-- Implement SPIFEE workload API to be 100% SPIFEE spec compliant

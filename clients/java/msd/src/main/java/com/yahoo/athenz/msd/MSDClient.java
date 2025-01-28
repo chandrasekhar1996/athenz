@@ -20,15 +20,20 @@ import java.util.List;
 import java.util.Map;
 import javax.net.ssl.SSLContext;
 
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.config.Registry;
-import org.apache.http.config.RegistryBuilder;
-import org.apache.http.conn.socket.ConnectionSocketFactory;
-import org.apache.http.conn.socket.PlainConnectionSocketFactory;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.config.ConnectionConfig;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.config.TlsConfig;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.DefaultClientTlsStrategy;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.ssl.TlsSocketStrategy;
+import org.apache.hc.core5.http.ssl.TLS;
+import org.apache.hc.core5.pool.PoolConcurrencyPolicy;
+import org.apache.hc.core5.pool.PoolReusePolicy;
+import org.apache.hc.core5.util.TimeValue;
+import org.apache.hc.core5.util.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +44,10 @@ public class MSDClient implements Closeable {
     public static final String MSD_CLIENT_PROP_READ_TIMEOUT = "athenz.msd.client.read_timeout";
     public static final String MSD_CLIENT_PROP_CONNECT_TIMEOUT = "athenz.msd.client.connect_timeout";
     public static final String MSD_CLIENT_PROP_MSD_URL = "athenz.msd.client.msd_url";
+    public static final String MSD_CLIENT_PROP_POOL_MAX_PER_ROUTE = "athenz.msd.client.http_pool_max_per_route";
+    public static final String MSD_CLIENT_PROP_POOL_MAX_TOTAL = "athenz.msd.client.http_pool_max_total";
+    public static final String MSD_CLIENT_PROP_TIME_TO_LIVE = "athenz.msd.client.http_pool_time_to_live";
+    public static final String MSD_CLIENT_PROP_HANDSHAKE_TIMEOUT = "athenz.msd.client.handshake_timeout";
 
     protected MSDRDLGeneratedClient client = null;
 
@@ -64,25 +73,37 @@ public class MSDClient implements Closeable {
     }
 
     protected PoolingHttpClientConnectionManager createConnectionPooling(SSLContext sslContext) {
-        Registry<ConnectionSocketFactory> registry = RegistryBuilder.<ConnectionSocketFactory>create()
-                .register("https", new SSLConnectionSocketFactory(sslContext))
-                .register("http", new PlainConnectionSocketFactory())
-                .build();
-        PoolingHttpClientConnectionManager poolingHttpClientConnectionManager = new PoolingHttpClientConnectionManager(registry);
 
-        //route is host + port.  Since we have only one, set the max and the route the same
-        poolingHttpClientConnectionManager.setDefaultMaxPerRoute(30);
-        poolingHttpClientConnectionManager.setMaxTotal(20);
-        return poolingHttpClientConnectionManager;
+        int maxPerRoute = Integer.parseInt(System.getProperty(MSD_CLIENT_PROP_POOL_MAX_PER_ROUTE, "2"));
+        int maxTotal = Integer.parseInt(System.getProperty(MSD_CLIENT_PROP_POOL_MAX_TOTAL, "20"));
+        int readTimeout = Integer.parseInt(System.getProperty(MSD_CLIENT_PROP_READ_TIMEOUT, "30000"));
+        int connectTimeout = Integer.parseInt(System.getProperty(MSD_CLIENT_PROP_CONNECT_TIMEOUT, "30000"));
+        int timeToLive = Integer.parseInt(System.getProperty(MSD_CLIENT_PROP_TIME_TO_LIVE, "10"));
+        int handshakeTimeout = Integer.parseInt(System.getProperty(MSD_CLIENT_PROP_HANDSHAKE_TIMEOUT, "30000"));
+
+        final TlsSocketStrategy tlsStrategy = new DefaultClientTlsStrategy(sslContext);
+
+        return PoolingHttpClientConnectionManagerBuilder.create()
+                .setTlsSocketStrategy(tlsStrategy)
+                .setDefaultTlsConfig(TlsConfig.custom()
+                        .setHandshakeTimeout(Timeout.ofMilliseconds(handshakeTimeout))
+                        .setSupportedProtocols(TLS.V_1_2, TLS.V_1_3)
+                        .build())
+                .setPoolConcurrencyPolicy(PoolConcurrencyPolicy.STRICT)
+                .setConnPoolPolicy(PoolReusePolicy.LIFO)
+                .setDefaultConnectionConfig(ConnectionConfig.custom()
+                        .setSocketTimeout(Timeout.ofMilliseconds(readTimeout))
+                        .setConnectTimeout(Timeout.ofMilliseconds(connectTimeout))
+                        .setTimeToLive(TimeValue.ofMinutes(timeToLive))
+                        .build())
+                .setMaxConnPerRoute(maxPerRoute)
+                .setMaxConnTotal(maxTotal)
+                .build();
     }
 
-    protected CloseableHttpClient createHttpClient(int connTimeoutMs, int readTimeoutMs,
-            PoolingHttpClientConnectionManager poolingHttpClientConnectionManager) {
+    protected CloseableHttpClient createHttpClient(PoolingHttpClientConnectionManager poolingHttpClientConnectionManager) {
 
-        //apache http client expects in milliseconds
         RequestConfig config = RequestConfig.custom()
-                .setConnectTimeout(connTimeoutMs)
-                .setSocketTimeout(readTimeoutMs)
                 .setRedirectsEnabled(false)
                 .build();
         return HttpClients.custom()
@@ -110,13 +131,8 @@ public class MSDClient implements Closeable {
             msdUrl = url;
         }
 
-        // determine our read and connect timeouts
-
-        int readTimeout = Integer.parseInt(System.getProperty(MSD_CLIENT_PROP_READ_TIMEOUT, "30000"));
-        int connectTimeout = Integer.parseInt(System.getProperty(MSD_CLIENT_PROP_CONNECT_TIMEOUT, "30000"));
-
         PoolingHttpClientConnectionManager connManager = createConnectionPooling(sslContext);
-        CloseableHttpClient httpClient = createHttpClient(connectTimeout, readTimeout, connManager);
+        CloseableHttpClient httpClient = createHttpClient(connManager);
 
         client = new MSDRDLGeneratedClient(msdUrl, httpClient);
     }
@@ -139,10 +155,10 @@ public class MSDClient implements Closeable {
                                                         Map<String, List<String>> responseHeaders) {
         try {
             return client.getTransportPolicyRules(matchingTag, responseHeaders);
-        } catch (ResourceException ex) {
+        } catch (ClientResourceException ex) {
             throw new MSDClientException(ex.getCode(), ex.getData());
         } catch (Exception ex) {
-            throw new MSDClientException(ResourceException.BAD_REQUEST, ex.getMessage());
+            throw new MSDClientException(ClientResourceException.BAD_REQUEST, ex.getMessage());
         }
     }
 
@@ -162,10 +178,10 @@ public class MSDClient implements Closeable {
                                       Map<String, List<String>> responseHeaders) {
         try {
             return client.getWorkloadsByIP(ipAddress, matchingTag, responseHeaders);
-        } catch (ResourceException ex) {
+        } catch (ClientResourceException ex) {
             throw new MSDClientException(ex.getCode(), ex.getData());
         } catch (Exception ex) {
-            throw new MSDClientException(ResourceException.BAD_REQUEST, ex.getMessage());
+            throw new MSDClientException(ClientResourceException.BAD_REQUEST, ex.getMessage());
         }
     }
 
@@ -186,10 +202,10 @@ public class MSDClient implements Closeable {
                                            Map<String, List<String>> responseHeaders) {
         try {
             return client.getWorkloadsByService(domain, service, matchingTag, responseHeaders);
-        } catch (ResourceException ex) {
+        } catch (ClientResourceException ex) {
             throw new MSDClientException(ex.getCode(), ex.getData());
         } catch (Exception ex) {
-            throw new MSDClientException(ResourceException.BAD_REQUEST, ex.getMessage());
+            throw new MSDClientException(ClientResourceException.BAD_REQUEST, ex.getMessage());
         }
     }
 
@@ -201,13 +217,13 @@ public class MSDClient implements Closeable {
      * @param options options for the new workload
      * @return WorkloadOptions
      */
-    public WorkloadOptions putDynamicWorkload(String domain, String service, WorkloadOptions options) {
+    public WorkloadOptions putDynamicWorkload(String domain, String service, WorkloadOptions options, String resourceOwner) {
         try {
-            return client.putDynamicWorkload(domain, service, options);
-        } catch (ResourceException ex) {
+            return client.putDynamicWorkload(domain, service, options, resourceOwner);
+        } catch (ClientResourceException ex) {
             throw new MSDClientException(ex.getCode(), ex.getData());
         } catch (Exception ex) {
-            throw new MSDClientException(ResourceException.BAD_REQUEST, ex.getMessage());
+            throw new MSDClientException(ClientResourceException.BAD_REQUEST, ex.getMessage());
         }
     }
 
@@ -218,13 +234,13 @@ public class MSDClient implements Closeable {
      * @param service name of the service
      * @param instanceId instanceId of the host
      */
-    public void deleteDynamicWorkload(String domain, String service, String instanceId) {
+    public void deleteDynamicWorkload(String domain, String service, String instanceId, String resourceOwner) {
         try {
-            client.deleteDynamicWorkload(domain, service, instanceId);
-        } catch (ResourceException ex) {
+            client.deleteDynamicWorkload(domain, service, instanceId, resourceOwner);
+        } catch (ClientResourceException ex) {
             throw new MSDClientException(ex.getCode(), ex.getData());
         } catch (Exception ex) {
-            throw new MSDClientException(ResourceException.BAD_REQUEST, ex.getMessage());
+            throw new MSDClientException(ClientResourceException.BAD_REQUEST, ex.getMessage());
         }
     }
 
@@ -236,13 +252,13 @@ public class MSDClient implements Closeable {
      * @param staticWorkload StaticWorkload object
      * @return WorkloadOptions
      */
-    public StaticWorkload putStaticWorkload(String domain, String service, StaticWorkload staticWorkload) {
+    public StaticWorkload putStaticWorkload(String domain, String service, StaticWorkload staticWorkload, String resourceOwner) {
         try {
-            return client.putStaticWorkload(domain, service, staticWorkload);
-        } catch (ResourceException ex) {
+            return client.putStaticWorkload(domain, service, staticWorkload, resourceOwner);
+        } catch (ClientResourceException ex) {
             throw new MSDClientException(ex.getCode(), ex.getData());
         } catch (Exception ex) {
-            throw new MSDClientException(ResourceException.BAD_REQUEST, ex.getMessage());
+            throw new MSDClientException(ClientResourceException.BAD_REQUEST, ex.getMessage());
         }
     }
 
@@ -253,13 +269,13 @@ public class MSDClient implements Closeable {
      * @param service name of the service
      * @param name name of the static workload
      */
-    public void deleteStaticWorkload(String domain, String service, String name) {
+    public void deleteStaticWorkload(String domain, String service, String name, String resourceOwner) {
         try {
-            client.deleteStaticWorkload(domain, service, name);
-        } catch (ResourceException ex) {
+            client.deleteStaticWorkload(domain, service, name, resourceOwner);
+        } catch (ClientResourceException ex) {
             throw new MSDClientException(ex.getCode(), ex.getData());
         } catch (Exception ex) {
-            throw new MSDClientException(ResourceException.BAD_REQUEST, ex.getMessage());
+            throw new MSDClientException(ClientResourceException.BAD_REQUEST, ex.getMessage());
         }
     }
 

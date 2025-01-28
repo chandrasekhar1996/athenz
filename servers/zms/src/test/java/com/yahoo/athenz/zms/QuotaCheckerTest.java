@@ -1,21 +1,60 @@
+/*
+ * Copyright The Athenz Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yahoo.athenz.zms;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import com.yahoo.athenz.common.server.ServerResourceException;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import static com.yahoo.athenz.zms.ZMSConsts.ZMS_PROP_QUOTA_ASSERTION_CONDITIONS;
 import static org.testng.Assert.*;
 
-import com.yahoo.athenz.zms.store.ObjectStoreConnection;
+import com.yahoo.athenz.common.server.store.ObjectStoreConnection;
 
 public class QuotaCheckerTest {
-    
+
+    private final ZMSTestInitializer zmsTestInitializer = new ZMSTestInitializer();
+
+    @BeforeClass
+    public void startMemoryMySQL() {
+        zmsTestInitializer.startMemoryMySQL();
+    }
+
+    @AfterClass
+    public void stopMemoryMySQL() {
+        zmsTestInitializer.stopMemoryMySQL();
+    }
+
+    @BeforeMethod
+    public void setUp() throws Exception {
+        MockitoAnnotations.openMocks(this);
+        zmsTestInitializer.setUp();
+    }
+
     @Test
-    public void testGetDomainQuota() {
+    public void testGetDomainQuota() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -35,7 +74,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testGetDomainQuotaDefault() {
+    public void testGetDomainQuotaDefault() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         ObjectStoreConnection con = Mockito.mock(ObjectStoreConnection.class);
@@ -68,7 +107,7 @@ public class QuotaCheckerTest {
     }
 
     @Test
-    public void testCheckSubDomainQuotaTopLevel() {
+    public void testCheckSubDomainQuotaTopLevel() throws ServerResourceException {
         
         // top level domains have no check
         QuotaChecker quotaCheck = new QuotaChecker();
@@ -76,7 +115,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckSubDomainQuota() {
+    public void testCheckSubDomainQuota() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -93,7 +132,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckSubDomainQuotaExceeded() {
+    public void testCheckSubDomainQuotaExceeded() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -121,7 +160,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckRoleQuotaNull() {
+    public void testCheckRoleQuotaNull() throws ServerResourceException {
         
         // null objects have no check
         QuotaChecker quotaCheck = new QuotaChecker();
@@ -129,7 +168,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckRoleQuota() {
+    public void testCheckRoleQuota() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -148,7 +187,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckRoleQuotaRoleMemberExceeded() {
+    public void testCheckRoleQuotaRoleMemberExceeded() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -178,7 +217,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckRoleQuotaRoleCountExceeded() {
+    public void testCheckRoleQuotaRoleCountExceeded() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -206,7 +245,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckRoleMembershipQuota() {
+    public void testCheckRoleMembershipQuota() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -214,14 +253,16 @@ public class QuotaCheckerTest {
         ObjectStoreConnection con = Mockito.mock(ObjectStoreConnection.class);
         Mockito.when(con.getQuota("athenz")).thenReturn(mockQuota);
         Mockito.when(con.countRoleMembers("athenz", "readers")).thenReturn(1);
+        Membership membership = new Membership().setIsMember(false);
+        Mockito.when(con.getRoleMember("athenz", "readers", "user.joe", 0, false)).thenReturn(membership);
 
         // this should complete successfully
         
-        quotaCheck.checkRoleMembershipQuota(con, "athenz", "readers", "caller");
+        quotaCheck.checkRoleMembershipQuota(con, "athenz", "readers", "user.joe", 0, "caller");
     }
     
     @Test
-    public void testCheckRoleMembershipQuotaRoleCountExceeded() {
+    public void testCheckRoleMembershipQuotaRoleCountExceeded() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -229,9 +270,11 @@ public class QuotaCheckerTest {
         ObjectStoreConnection con = Mockito.mock(ObjectStoreConnection.class);
         Mockito.when(con.getQuota("athenz")).thenReturn(mockQuota);
         Mockito.when(con.countRoleMembers("athenz", "readers")).thenReturn(2);
-        
+        Membership membership = new Membership().setIsMember(false);
+        Mockito.when(con.getRoleMember("athenz", "readers", "user.joe", 0, false)).thenReturn(membership);
+
         try {
-            quotaCheck.checkRoleMembershipQuota(con, "athenz", "readers", "caller");
+            quotaCheck.checkRoleMembershipQuota(con, "athenz", "readers", "user.joe", 0, "caller");
             fail();
         } catch (ResourceException ex) {
             assertEquals(ex.getCode(), ResourceException.TOO_MANY_REQUESTS);
@@ -241,11 +284,11 @@ public class QuotaCheckerTest {
         // with quota check disabled - no exceptions
 
         quotaCheck.setQuotaCheckEnabled(false);
-        quotaCheck.checkRoleMembershipQuota(con, "athenz", "readers", "caller");
+        quotaCheck.checkRoleMembershipQuota(con, "athenz", "readers", "user.joe", 0, "caller");
     }
 
     @Test
-    public void testCheckPolicyQuotaNull() {
+    public void testCheckPolicyQuotaNull() throws ServerResourceException {
         
         // null objects have no check
         QuotaChecker quotaCheck = new QuotaChecker();
@@ -253,7 +296,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckPolicyQuota() {
+    public void testCheckPolicyQuota() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -274,7 +317,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckPolicyQuotaAssertionExceeded() {
+    public void testCheckPolicyQuotaAssertionExceeded() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -306,7 +349,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckPolicyQuotaPolicyCountExceeded() {
+    public void testCheckPolicyQuotaPolicyCountExceeded() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -337,7 +380,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckPolicyAssertionQuota() {
+    public void testCheckPolicyAssertionQuota() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -352,7 +395,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckPolicyAssertionQuotaAssertionExceeded() {
+    public void testCheckPolicyAssertionQuotaAssertionExceeded() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -376,15 +419,15 @@ public class QuotaCheckerTest {
     }
 
     @Test
-    public void testCheckServiceQuotaNull() {
-        
+    public void testCheckServiceQuotaNull() throws ServerResourceException {
+
         // null objects have no check
         QuotaChecker quotaCheck = new QuotaChecker();
         quotaCheck.checkServiceIdentityQuota(null, "athenz", null, "caller");
     }
     
     @Test
-    public void testCheckServiceQuota() {
+    public void testCheckServiceQuota() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -409,7 +452,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckServiceQuotaServiceCountExceeded() {
+    public void testCheckServiceQuotaServiceCountExceeded() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -445,7 +488,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckServiceQuotaServiceHostExceeded() {
+    public void testCheckServiceQuotaServiceHostExceeded() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -483,7 +526,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckServiceQuotaPublicKeyExceeded() {
+    public void testCheckServiceQuotaPublicKeyExceeded() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -521,7 +564,7 @@ public class QuotaCheckerTest {
     }
 
     @Test
-    public void testCheckServicePublicKeyQuota() {
+    public void testCheckServicePublicKeyQuota() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -536,7 +579,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckServicePublicKeyQuotaExceeded() {
+    public void testCheckServicePublicKeyQuotaExceeded() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -560,7 +603,7 @@ public class QuotaCheckerTest {
     }
 
     @Test
-    public void testCheckEntityQuotaNull() {
+    public void testCheckEntityQuotaNull() throws ServerResourceException {
         
         // null objects have no check
         QuotaChecker quotaCheck = new QuotaChecker();
@@ -568,7 +611,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckEntityQuota() {
+    public void testCheckEntityQuota() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -585,7 +628,7 @@ public class QuotaCheckerTest {
     }
     
     @Test
-    public void testCheckEntityQuotaEntityCountExceeded() {
+    public void testCheckEntityQuotaEntityCountExceeded() throws ServerResourceException {
         
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -611,7 +654,7 @@ public class QuotaCheckerTest {
     }
 
     @Test
-    public void testCheckGroupQuota() {
+    public void testCheckGroupQuota() throws ServerResourceException {
 
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -630,7 +673,7 @@ public class QuotaCheckerTest {
     }
 
     @Test
-    public void testCheckGroupQuotaGroupMemberExceeded() {
+    public void testCheckGroupQuotaGroupMemberExceeded() throws ServerResourceException {
 
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -660,7 +703,7 @@ public class QuotaCheckerTest {
     }
 
     @Test
-    public void testCheckGroupQuotaGroupCountExceeded() {
+    public void testCheckGroupQuotaGroupCountExceeded() throws ServerResourceException {
 
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -688,7 +731,7 @@ public class QuotaCheckerTest {
     }
 
     @Test
-    public void testCheckGroupMembershipQuota() {
+    public void testCheckGroupMembershipQuota() throws ServerResourceException {
 
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -696,14 +739,16 @@ public class QuotaCheckerTest {
         ObjectStoreConnection con = Mockito.mock(ObjectStoreConnection.class);
         Mockito.when(con.getQuota("athenz")).thenReturn(mockQuota);
         Mockito.when(con.countGroupMembers("athenz", "readers")).thenReturn(1);
+        GroupMembership membership = new GroupMembership().setIsMember(false);
+        Mockito.when(con.getGroupMember("athenz", "readers", "user.joe", 0, false)).thenReturn(membership);
 
         // this should complete successfully
 
-        quotaCheck.checkGroupMembershipQuota(con, "athenz", "readers", "caller");
+        quotaCheck.checkGroupMembershipQuota(con, "athenz", "readers", "user.joe", 0, "caller");
     }
 
     @Test
-    public void testCheckGroupMembershipQuotaGroupCountExceeded() {
+    public void testCheckGroupMembershipQuotaGroupCountExceeded() throws ServerResourceException {
 
         QuotaChecker quotaCheck = new QuotaChecker();
         Quota mockQuota = new Quota().setName("athenz")
@@ -711,9 +756,11 @@ public class QuotaCheckerTest {
         ObjectStoreConnection con = Mockito.mock(ObjectStoreConnection.class);
         Mockito.when(con.getQuota("athenz")).thenReturn(mockQuota);
         Mockito.when(con.countGroupMembers("athenz", "readers")).thenReturn(2);
+        GroupMembership membership = new GroupMembership().setIsMember(false);
+        Mockito.when(con.getGroupMember("athenz", "readers", "user.joe", 0, false)).thenReturn(membership);
 
         try {
-            quotaCheck.checkGroupMembershipQuota(con, "athenz", "readers", "caller");
+            quotaCheck.checkGroupMembershipQuota(con, "athenz", "readers", "user.joe", 0, "caller");
             fail();
         } catch (ResourceException ex) {
             assertEquals(ex.getCode(), ResourceException.TOO_MANY_REQUESTS);
@@ -723,11 +770,11 @@ public class QuotaCheckerTest {
         // with quota check disabled - no exceptions
 
         quotaCheck.setQuotaCheckEnabled(false);
-        quotaCheck.checkGroupMembershipQuota(con, "athenz", "readers", "caller");
+        quotaCheck.checkGroupMembershipQuota(con, "athenz", "readers", "user.joe", 0,  "caller");
     }
 
     @Test
-    public void testCheckGroupQuotaNull() {
+    public void testCheckGroupQuotaNull() throws ServerResourceException {
 
         // null objects have no check
         QuotaChecker quotaCheck = new QuotaChecker();
@@ -735,7 +782,7 @@ public class QuotaCheckerTest {
     }
 
     @Test
-    public void testCheckAssertionConditionsQuota() {
+    public void testCheckAssertionConditionsQuota() throws ServerResourceException {
         QuotaChecker quotaCheck = new QuotaChecker();
         ObjectStoreConnection con = Mockito.mock(ObjectStoreConnection.class);
         Mockito.when(con.countAssertionConditions(1)).thenReturn(8).thenReturn(8).thenReturn(10);
@@ -801,7 +848,7 @@ public class QuotaCheckerTest {
     }
 
     @Test
-    public void testCheckAssertionConditionQuota() {
+    public void testCheckAssertionConditionQuota() throws ServerResourceException {
         QuotaChecker quotaCheck = new QuotaChecker();
         ObjectStoreConnection con = Mockito.mock(ObjectStoreConnection.class);
         Mockito.when(con.countAssertionConditions(1)).thenReturn(9).thenReturn(9).thenReturn(9).thenReturn(10).thenReturn(5);
@@ -864,5 +911,211 @@ public class QuotaCheckerTest {
             assertEquals(re.getCode(), ResourceException.TOO_MANY_REQUESTS);
         }
         System.clearProperty(ZMS_PROP_QUOTA_ASSERTION_CONDITIONS);
+    }
+
+    @Test
+    public void testRoleWithMaxLimits() {
+
+        final String domainName = "role-max-members";
+        final String roleName1 = "role1";
+        final String roleName2 = "role2";
+
+        ZMSImpl zmsImpl = zmsTestInitializer.getZms();
+        RsrcCtxWrapper ctx = zmsTestInitializer.getMockDomRsrcCtx();
+        final String auditRef = zmsTestInitializer.getAuditRef();
+
+        TopLevelDomain dom1 = zmsTestInitializer.createTopLevelDomainObject(domainName,
+                "Test Domain1", "testOrg", "user.user1");
+        zmsImpl.postTopLevelDomain(ctx, auditRef, null, dom1);
+
+        List<RoleMember> roleMembers = new ArrayList<>();
+        roleMembers.add(new RoleMember().setMemberName("user.test1"));
+        roleMembers.add(new RoleMember().setMemberName("user.test2"));
+
+        // creating a role with the max members set to 1 should be
+        // rejected
+
+        Role role = zmsTestInitializer.createRoleObject(domainName, roleName1, null, roleMembers);
+        role.setMaxMembers(1);
+
+        try {
+            zmsImpl.putRole(ctx, domainName, roleName1, auditRef, false, null, role);
+            fail();
+        } catch (ResourceException ex) {
+            assertEquals(ex.getCode(), ResourceException.TOO_MANY_REQUESTS);
+        }
+
+        // now we're going to increase the limit and make sure it works
+
+        role.setMaxMembers(2);
+        zmsImpl.putRole(ctx, domainName, roleName1, auditRef, false, null, role);
+
+        // now we're going to add a 3rd member and make sure it fails
+
+        roleMembers.add(new RoleMember().setMemberName("user.test3"));
+        role.setRoleMembers(roleMembers);
+        try {
+            zmsImpl.putRole(ctx, domainName, roleName1, auditRef, false, null, role);
+            fail();
+        } catch (ResourceException ex) {
+            assertEquals(ex.getCode(), ResourceException.TOO_MANY_REQUESTS);
+        }
+
+        // let's try to add a 3rd member directly which should also be rejected
+
+        Membership membership = new Membership().setMemberName("user.test3");
+        try {
+            zmsImpl.putMembership(ctx, domainName, roleName1, "user.test3", auditRef, false, null, membership);
+            fail();
+        } catch (ResourceException ex) {
+            assertEquals(ex.getCode(), ResourceException.TOO_MANY_REQUESTS);
+        }
+
+        // let's get our meta and verify the max members value
+
+        Role roleRes = zmsImpl.getRole(ctx, domainName, roleName1, false, false, false);
+        assertEquals(roleRes.getMaxMembers(), 2);
+
+        // now let's update the max members through role meta
+
+        RoleMeta roleMeta = new RoleMeta().setMaxMembers(3);
+        zmsImpl.putRoleMeta(ctx, domainName, roleName1, auditRef, null, roleMeta);
+
+        // now let's try our membership operation which should succeed
+
+        zmsImpl.putMembership(ctx, domainName, roleName1, "user.test3", auditRef, false, null, membership);
+
+        // if we try another one then it should fail
+
+        Membership membership4 = new Membership().setMemberName("user.test4");
+        try {
+            zmsImpl.putMembership(ctx, domainName, roleName1, "user.test4", auditRef, false, null, membership4);
+            fail();
+        } catch (ResourceException ex) {
+            assertEquals(ex.getCode(), ResourceException.TOO_MANY_REQUESTS);
+        }
+
+        // let's remove the limit
+
+        roleMeta = new RoleMeta().setMaxMembers(0);
+        zmsImpl.putRoleMeta(ctx, domainName, roleName1, auditRef, null, roleMeta);
+
+        roleRes = zmsImpl.getRole(ctx, domainName, roleName1, false, false, false);
+        assertNull(roleRes.getMaxMembers());
+
+        // now let's try our membership operation which should succeed
+
+        zmsImpl.putMembership(ctx, domainName, roleName1, "user.test4", auditRef, false, null, membership4);
+
+        // adding a role with the max member limit set to 0 is ok
+
+        role = zmsTestInitializer.createRoleObject(domainName, roleName2, null, roleMembers);
+        role.setMaxMembers(0);
+        zmsImpl.putRole(ctx, domainName, roleName2, auditRef, false, null, role);
+
+        zmsTestInitializer.deleteTopLevelDomain(domainName);
+    }
+
+    @Test
+    public void testGroupWithMaxLimits() {
+
+        final String domainName = "group-max-members";
+        final String groupName1 = "group1";
+        final String groupName2 = "group2";
+
+        ZMSImpl zmsImpl = zmsTestInitializer.getZms();
+        RsrcCtxWrapper ctx = zmsTestInitializer.getMockDomRsrcCtx();
+        final String auditRef = zmsTestInitializer.getAuditRef();
+
+        TopLevelDomain dom1 = zmsTestInitializer.createTopLevelDomainObject(domainName,
+                "Test Domain1", "testOrg", "user.user1");
+        zmsImpl.postTopLevelDomain(ctx, auditRef, null, dom1);
+
+        List<GroupMember> groupMembers = new ArrayList<>();
+        groupMembers.add(new GroupMember().setMemberName("user.test1"));
+        groupMembers.add(new GroupMember().setMemberName("user.test2"));
+
+        // creating a group with the max members set to 1 should be
+        // rejected
+
+        Group group = zmsTestInitializer.createGroupObject(domainName, groupName1, groupMembers);
+        group.setMaxMembers(1);
+
+        try {
+            zmsImpl.putGroup(ctx, domainName, groupName1, auditRef, false, null, group);
+            fail();
+        } catch (ResourceException ex) {
+            assertEquals(ex.getCode(), ResourceException.TOO_MANY_REQUESTS);
+        }
+
+        // now we're going to increase the limit and make sure it works
+
+        group.setMaxMembers(2);
+        zmsImpl.putGroup(ctx, domainName, groupName1, auditRef, false, null, group);
+
+        // now we're going to add a 3rd member and make sure it fails
+
+        groupMembers.add(new GroupMember().setMemberName("user.test3"));
+        group.setGroupMembers(groupMembers);
+        try {
+            zmsImpl.putGroup(ctx, domainName, groupName1, auditRef, false, null, group);
+            fail();
+        } catch (ResourceException ex) {
+            assertEquals(ex.getCode(), ResourceException.TOO_MANY_REQUESTS);
+        }
+
+        // let's try to add a 3rd member directly which should also be rejected
+
+        GroupMembership membership = new GroupMembership().setMemberName("user.test3");
+        try {
+            zmsImpl.putGroupMembership(ctx, domainName, groupName1, "user.test3", auditRef, false, null, membership);
+            fail();
+        } catch (ResourceException ex) {
+            assertEquals(ex.getCode(), ResourceException.TOO_MANY_REQUESTS);
+        }
+
+        // let's get our meta and verify the max members value
+
+        Group groupRes = zmsImpl.getGroup(ctx, domainName, groupName1, false, false);
+        assertEquals(groupRes.getMaxMembers(), 2);
+
+        // now let's update the max members through group meta
+
+        GroupMeta groupMeta = new GroupMeta().setMaxMembers(3);
+        zmsImpl.putGroupMeta(ctx, domainName, groupName1, auditRef, null, groupMeta);
+
+        // now let's try our membership operation which should succeed
+
+        zmsImpl.putGroupMembership(ctx, domainName, groupName1, "user.test3", auditRef, false, null, membership);
+
+        // if we try another one then it should fail
+
+        GroupMembership membership4 = new GroupMembership().setMemberName("user.test4");
+        try {
+            zmsImpl.putGroupMembership(ctx, domainName, groupName1, "user.test4", auditRef, false, null, membership4);
+            fail();
+        } catch (ResourceException ex) {
+            assertEquals(ex.getCode(), ResourceException.TOO_MANY_REQUESTS);
+        }
+
+        // let's remove the limit
+
+        groupMeta = new GroupMeta().setMaxMembers(0);
+        zmsImpl.putGroupMeta(ctx, domainName, groupName1, auditRef, null, groupMeta);
+
+        groupRes = zmsImpl.getGroup(ctx, domainName, groupName1, false, false);
+        assertNull(groupRes.getMaxMembers());
+
+        // now let's try our membership operation which should succeed
+
+        zmsImpl.putGroupMembership(ctx, domainName, groupName1, "user.test4", auditRef, false, null, membership4);
+
+        // adding a group with 0 as the limit is allowed
+
+        group = zmsTestInitializer.createGroupObject(domainName, groupName2, groupMembers);
+        group.setMaxMembers(0);
+        zmsImpl.putGroup(ctx, domainName, groupName2, auditRef, false, null, group);
+
+        zmsTestInitializer.deleteTopLevelDomain(domainName);
     }
 }

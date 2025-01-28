@@ -21,11 +21,14 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"github.com/AthenZ/athenz/libs/go/sia/host/ip"
-	"github.com/AthenZ/athenz/libs/go/sia/host/signature"
-	"github.com/AthenZ/athenz/libs/go/sia/host/utils"
 	"net"
 	"net/url"
+
+	"github.com/AthenZ/athenz/libs/go/sia/aws/attestation"
+	"github.com/AthenZ/athenz/libs/go/sia/host/ip"
+	"github.com/AthenZ/athenz/libs/go/sia/host/provider"
+	"github.com/AthenZ/athenz/libs/go/sia/host/signature"
+	"github.com/AthenZ/athenz/libs/go/sia/host/utils"
 )
 
 type EKSProvider struct {
@@ -42,11 +45,11 @@ func (eks EKSProvider) GetHostname(fqdn bool) string {
 	return utils.GetHostname(fqdn)
 }
 
-func (eks EKSProvider) AttestationData(svc string, key crypto.PrivateKey, sigInfo *signature.SignatureInfo) (string, error) {
+func (eks EKSProvider) AttestationData(_ string, _ crypto.PrivateKey, _ *signature.SignatureInfo) (string, error) {
 	return "", fmt.Errorf("not implemented")
 }
 
-func (eks EKSProvider) PrepareKey(file string) (crypto.PrivateKey, error) {
+func (eks EKSProvider) PrepareKey(_ string) (crypto.PrivateKey, error) {
 	return "", fmt.Errorf("not implemented")
 }
 
@@ -54,42 +57,42 @@ func (eks EKSProvider) GetCsrDn() pkix.Name {
 	return pkix.Name{}
 }
 
-func (eks EKSProvider) GetSanDns(service string, includeHost bool, wildcard bool, cnames []string) []string {
+func (eks EKSProvider) GetSanDns(_ string, _ bool, _ bool, _ []string) []string {
 	return nil
 }
 
-func (eks EKSProvider) GetSanUri(svc string, opts ip.Opts, spiffeTrustDomain, spiffeNamespace string) []*url.URL {
+func (eks EKSProvider) GetSanUri(_ string, _ ip.Opts, _, _ string) []*url.URL {
 	return nil
 }
 
-func (eks EKSProvider) GetEmail(service string) []string {
+func (eks EKSProvider) GetEmail(_ string) []string {
 	return nil
 }
 
-func (eks EKSProvider) GetRoleDnsNames(cert *x509.Certificate, service string) []string {
+func (eks EKSProvider) GetRoleDnsNames(_ *x509.Certificate, _ string) []string {
 	return nil
 }
 
-func (eks EKSProvider) GetSanIp(docIp map[string]bool, ips []net.IP, opts ip.Opts) []net.IP {
+func (eks EKSProvider) GetSanIp(_ map[string]bool, _ []net.IP, _ ip.Opts) []net.IP {
 	return nil
 }
 
-func (eks EKSProvider) GetSuffix() string {
-	return ""
+func (eks EKSProvider) GetSuffixes() []string {
+	return []string{}
 }
 
-func (eks EKSProvider) CloudAttestationData(base, svc, ztSserverName string) (string, error) {
-	return "", fmt.Errorf("not implemented")
+func (eks EKSProvider) CloudAttestationData(request *provider.AttestationRequest) (string, error) {
+	return attestation.New(request.Domain, request.Service, request.Region, request.Account, request.EC2Document, request.EC2Signature, request.UseRegionalSTS, request.OmitDomain)
 }
 
-func (eks EKSProvider) GetAccountDomainServiceFromMeta(base string) (string, string, string, error) {
+func (eks EKSProvider) GetAccountDomainServiceFromMeta(_ string) (string, string, string, error) {
 	return "", "", "", fmt.Errorf("not implemented")
 }
 
-func (tp EKSProvider) GetAccessManagementProfileFromMeta(base string) (string, error) {
+func (eks EKSProvider) GetAccessManagementProfileFromMeta(_ string) (string, error) {
 	return "", fmt.Errorf("not implemented")
 }
 
-func (tp EKSProvider) GetAdditionalSshHostPrincipals(base string) (string, error) {
+func (eks EKSProvider) GetAdditionalSshHostPrincipals(_ string) (string, error) {
 	return "", nil
 }

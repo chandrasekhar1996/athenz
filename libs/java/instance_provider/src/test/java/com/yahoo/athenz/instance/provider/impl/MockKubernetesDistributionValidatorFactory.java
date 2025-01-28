@@ -15,10 +15,12 @@
  */
 package com.yahoo.athenz.instance.provider.impl;
 
+import com.yahoo.athenz.auth.Authorizer;
 import com.yahoo.athenz.instance.provider.InstanceConfirmation;
 import com.yahoo.athenz.instance.provider.KubernetesDistributionValidator;
 import com.yahoo.athenz.instance.provider.KubernetesDistributionValidatorFactory;
 
+import javax.net.ssl.SSLContext;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,7 +34,7 @@ public class MockKubernetesDistributionValidatorFactory implements KubernetesDis
         Map<String, KubernetesDistributionValidator> map = new HashMap<>();
         KubernetesDistributionValidator mockValidator = new KubernetesDistributionValidator() {
             @Override
-            public void initialize() {
+            public void initialize(final SSLContext sslContext, Authorizer authorizer) {
 
             }
             @Override

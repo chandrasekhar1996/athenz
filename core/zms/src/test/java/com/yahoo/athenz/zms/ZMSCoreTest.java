@@ -477,7 +477,8 @@ public class ZMSCoreTest {
                 .setProviderEndpoint("http://test.endpoint").setModified(Timestamp.fromMillis(123456789123L))
                 .setExecutable("exec/path").setHosts(hosts).setUser("user.test").setGroup("test.group")
                 .setDescription("description")
-                .setTags(Collections.singletonMap("tagKey", new TagValueList().setList(Collections.singletonList("tagValue"))));
+                .setTags(Collections.singletonMap("tagKey", new TagValueList().setList(Collections.singletonList("tagValue"))))
+                .setResourceOwnership(new ResourceServiceIdentityOwnership().setObjectOwner("TF"));
         result = validator.validate(si, "ServiceIdentity");
         assertTrue(result.valid);
 
@@ -491,15 +492,24 @@ public class ZMSCoreTest {
         assertEquals(si.getGroup(), "test.group");
         assertEquals(si.getDescription(), "description");
         assertEquals(si.getTags().get("tagKey").getList().get(0), "tagValue");
+        assertEquals(si.getResourceOwnership(), new ResourceServiceIdentityOwnership().setObjectOwner("TF"));
 
         ServiceIdentity si2 = new ServiceIdentity().setName("test.service").setPublicKeys(pkel)
                 .setProviderEndpoint("http://test.endpoint").setModified(Timestamp.fromMillis(123456789123L))
                 .setExecutable("exec/path").setHosts(hosts).setUser("user.test").setGroup("test.group")
                 .setDescription("description")
-                .setTags(Collections.singletonMap("tagKey", new TagValueList().setList(Collections.singletonList("tagValue"))));
+                .setTags(Collections.singletonMap("tagKey", new TagValueList().setList(Collections.singletonList("tagValue"))))
+                .setResourceOwnership(new ResourceServiceIdentityOwnership().setObjectOwner("TF"));
 
         assertTrue(si2.equals(si));
         assertTrue(si.equals(si));
+
+        si2.setResourceOwnership(new ResourceServiceIdentityOwnership().setObjectOwner("ZTS"));
+        assertNotEquals(si2, si);
+        si2.setResourceOwnership(null);
+        assertNotEquals(si2, si);
+        si2.setResourceOwnership(new ResourceServiceIdentityOwnership().setObjectOwner("TF"));
+        assertEquals(si2, si);
 
         si2.setGroup(null);
         assertFalse(si2.equals(si));
@@ -546,21 +556,29 @@ public class ZMSCoreTest {
         List<ServiceIdentity> sil = Arrays.asList(si);
 
         // ServiceIdentities test
-        ServiceIdentities sis = new ServiceIdentities().setList(sil);
+        ServiceIdentities sis = new ServiceIdentities().setList(sil).setServiceMatchCount(100);
         result = validator.validate(sis, "ServiceIdentities");
         assertTrue(result.valid);
 
         assertEquals(sis.getList(), sil);
+        assertEquals(sis.getServiceMatchCount(), 100);
 
-        ServiceIdentities sis2 = new ServiceIdentities().setList(sil);
+        ServiceIdentities sis2 = new ServiceIdentities().setList(sil).setServiceMatchCount(100);
         assertTrue(sis2.equals(sis));
         assertTrue(sis.equals(sis));
 
         sis2.setList(null);
         assertFalse(sis2.equals(sis));
+        sis2.setList(sil);
+        assertTrue(sis2.equals(sis));
 
         assertFalse(sis.equals(null));
         assertFalse(sis.equals(new String()));
+
+        sis.setServiceMatchCount(200);
+        assertFalse(sis2.equals(sis));
+        sis.setServiceMatchCount(100);
+        assertTrue(sis2.equals(sis));
 
         // groups for the domain object
 
@@ -575,10 +593,14 @@ public class ZMSCoreTest {
                 .setMemberExpiryDays(30).setServiceExpiryDays(40).setGroupExpiryDays(50)
                 .setTokenExpiryMins(300).setRoleCertExpiryMins(120)
                 .setServiceCertExpiryMins(150).setDescription("main domain").setOrg("org").setSignAlgorithm("rsa")
-                .setUserAuthorityFilter("OnShore").setGroups(gl).setAzureSubscription("azure").setGcpProject("gcp")
+                .setUserAuthorityFilter("OnShore").setGroups(gl)
+                .setAzureSubscription("azure").setAzureTenant("tenant").setAzureClient("client")
                 .setTags(Collections.singletonMap("tagKey", new TagValueList().setList(Collections.singletonList("tagValue"))))
-                .setBusinessService("business-service").setMemberPurgeExpiryDays(10).setGcpProjectNumber("1235")
-                .setProductId("abcd-1234").setFeatureFlags(3).setContacts(Map.of("pe-owner", "user.test"));
+                .setBusinessService("business-service").setMemberPurgeExpiryDays(10).setGcpProject("gcp").setGcpProjectNumber("1235")
+                .setProductId("abcd-1234").setFeatureFlags(3).setContacts(Map.of("pe-owner", "user.test"))
+                .setEnvironment("production").setResourceOwnership(new ResourceDomainOwnership().setObjectOwner("TF"))
+                .setX509CertSignerKeyId("x509-keyid").setSshCertSignerKeyId("ssh-keyid")
+                .setSlackChannel("slack");
 
         result = validator.validate(dd, "DomainData");
         assertTrue(result.valid, result.error);
@@ -586,6 +608,8 @@ public class ZMSCoreTest {
         assertEquals(dd.getName(), "test.domain");
         assertEquals(dd.getAccount(), "aws");
         assertEquals(dd.getAzureSubscription(), "azure");
+        assertEquals(dd.getAzureTenant(), "tenant");
+        assertEquals(dd.getAzureClient(), "client");
         assertEquals(dd.getGcpProject(), "gcp");
         assertEquals(dd.getGcpProjectNumber(), "1235");
         assertEquals((int) dd.getYpmId(), 1);
@@ -616,17 +640,26 @@ public class ZMSCoreTest {
         assertEquals(dd.getProductId(), "abcd-1234");
         assertEquals(dd.getFeatureFlags(), 3);
         assertEquals(dd.getContacts(), Map.of("pe-owner", "user.test"));
+        assertEquals(dd.getEnvironment(), "production");
+        assertEquals(dd.getX509CertSignerKeyId(), "x509-keyid");
+        assertEquals(dd.getSshCertSignerKeyId(), "ssh-keyid");
+        assertEquals(dd.getResourceOwnership(), new ResourceDomainOwnership().setObjectOwner("TF"));
+        assertEquals(dd.getSlackChannel(), "slack");
 
         DomainData dd2 = new DomainData().setName("test.domain").setAccount("aws").setYpmId(1).setRoles(rl)
                 .setPolicies(sp).setServices(sil).setEntities(elist).setModified(Timestamp.fromMillis(123456789123L))
                 .setEnabled(true).setApplicationId("101").setCertDnsDomain("athenz.cloud").setAuditEnabled(false)
                 .setMemberExpiryDays(30).setTokenExpiryMins(300).setRoleCertExpiryMins(120).setServiceCertExpiryMins(150)
                 .setDescription("main domain").setOrg("org").setSignAlgorithm("rsa").setServiceExpiryDays(40)
-                .setUserAuthorityFilter("OnShore").setGroupExpiryDays(50).setGroups(gl).setAzureSubscription("azure")
+                .setUserAuthorityFilter("OnShore").setGroupExpiryDays(50).setGroups(gl)
+                .setAzureSubscription("azure").setAzureTenant("tenant").setAzureClient("client")
                 .setTags(Collections.singletonMap("tagKey", new TagValueList().setList(Collections.singletonList("tagValue"))))
                 .setBusinessService("business-service").setMemberPurgeExpiryDays(10).setGcpProject("gcp")
                 .setGcpProjectNumber("1235").setProductId("abcd-1234").setFeatureFlags(3)
-                .setContacts(Map.of("pe-owner", "user.test"));
+                .setContacts(Map.of("pe-owner", "user.test")).setEnvironment("production")
+                .setResourceOwnership(new ResourceDomainOwnership().setObjectOwner("TF"))
+                .setX509CertSignerKeyId("x509-keyid").setSshCertSignerKeyId("ssh-keyid")
+                .setSlackChannel("slack");
 
         assertEquals(dd2, dd);
         assertNotEquals(dd, null);
@@ -639,6 +672,27 @@ public class ZMSCoreTest {
         dd2.setGroups(null);
         assertNotEquals(dd, dd2);
         dd2.setGroups(gl);
+        assertEquals(dd, dd2);
+
+        dd2.setEnvironment("staging");
+        assertNotEquals(dd, dd2);
+        dd2.setEnvironment(null);
+        assertNotEquals(dd, dd2);
+        dd2.setEnvironment("production");
+        assertEquals(dd, dd2);
+
+        dd2.setX509CertSignerKeyId("x509-keyid2");
+        assertNotEquals(dd, dd2);
+        dd2.setX509CertSignerKeyId(null);
+        assertNotEquals(dd, dd2);
+        dd2.setX509CertSignerKeyId("x509-keyid");
+        assertEquals(dd, dd2);
+
+        dd2.setSshCertSignerKeyId("ssh-keyid2");
+        assertNotEquals(dd, dd2);
+        dd2.setSshCertSignerKeyId(null);
+        assertNotEquals(dd, dd2);
+        dd2.setSshCertSignerKeyId("ssh-keyid");
         assertEquals(dd, dd2);
 
         dd2.setContacts(Map.of("product-owner", "user.test"));
@@ -674,6 +728,20 @@ public class ZMSCoreTest {
         dd2.setAzureSubscription(null);
         assertNotEquals(dd, dd2);
         dd2.setAzureSubscription("azure");
+        assertEquals(dd, dd2);
+
+        dd2.setAzureTenant("tenant2");
+        assertNotEquals(dd, dd2);
+        dd2.setAzureTenant(null);
+        assertNotEquals(dd, dd2);
+        dd2.setAzureTenant("tenant");
+        assertEquals(dd, dd2);
+
+        dd2.setAzureClient("client2");
+        assertNotEquals(dd, dd2);
+        dd2.setAzureClient(null);
+        assertNotEquals(dd, dd2);
+        dd2.setAzureClient("client");
         assertEquals(dd, dd2);
 
         dd2.setGcpProject("gcp2");
@@ -786,6 +854,20 @@ public class ZMSCoreTest {
         dd2.setBusinessService(null);
         assertNotEquals(dd, dd2);
         dd2.setBusinessService("business-service");
+        assertEquals(dd, dd2);
+
+        dd2.setSlackChannel("slack2");
+        assertNotEquals(dd, dd2);
+        dd2.setSlackChannel(null);
+        assertNotEquals(dd, dd2);
+        dd2.setSlackChannel("slack");
+        assertEquals(dd, dd2);
+
+        dd2.setResourceOwnership(new ResourceDomainOwnership().setObjectOwner("TF2"));
+        assertNotEquals(dd, dd2);
+        dd2.setResourceOwnership(null);
+        assertNotEquals(dd, dd2);
+        dd2.setResourceOwnership(new ResourceDomainOwnership().setObjectOwner("TF"));
         assertEquals(dd, dd2);
 
         dd2.setAuditEnabled(true);
@@ -2641,6 +2723,10 @@ public class ZMSCoreTest {
         assertTrue(resultTvl.valid);
 
         tvl = new TagValueList().setList(Collections.singletonList("/homes/home/"));
+        resultTvl = validator.validate(tvl, "TagValueList");
+        assertTrue(resultTvl.valid);
+
+        tvl = new TagValueList().setList(Collections.singletonList("/home%test"));
         resultTvl = validator.validate(tvl, "TagValueList");
         assertTrue(resultTvl.valid);
     }

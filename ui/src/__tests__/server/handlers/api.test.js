@@ -29,6 +29,7 @@ const config = {
         {
             id: 'aws_instance_launch_provider',
             name: 'AWS EC2/EKS/Fargate launches instances for the service',
+            service: 'athens.aws.us-east-1',
         },
     ],
     createDomainMessage: '',
@@ -43,6 +44,10 @@ const secrets = {};
 const expressApp = require('express')();
 const request = require('supertest');
 const bodyParser = require('body-parser');
+const {
+    listUserDomains_response,
+    getPrincipalRoles_response,
+} = require('../../../mock/MockData');
 
 describe('Fetchr Server API Test', () => {
     describe('success tests', () => {
@@ -105,6 +110,11 @@ describe('Fetchr Server API Test', () => {
                                       names: ['dom1', 'domabc1'],
                                   });
                         },
+                        getPrincipalRoles: (params, callback) => {
+                            callback(undefined, {
+                                ...getPrincipalRoles_response,
+                            });
+                        },
                         getSignedDomains: (params, callback) =>
                             params.forcefail
                                 ? callback({ status: 404 }, null)
@@ -141,6 +151,8 @@ describe('Fetchr Server API Test', () => {
                             params.forcefail
                                 ? callback({ status: 404 }, null)
                                 : callback(undefined, { success: 'true' }),
+                        getAccessExt: (params, callback) =>
+                            callback(undefined, { granted: 'true' }),
                         putPolicy: (params, callback) =>
                             params.forcefail
                                 ? callback({ status: 404 }, null)
@@ -307,23 +319,44 @@ describe('Fetchr Server API Test', () => {
                                           principal: 'user.dummy1',
                                           assertions: [
                                               {
-                                                  role: 'dummy.project:role.gcp.fed.power.user',
-                                                  resource:
-                                                      'dummy.project:fed.power.user',
-                                                  action: 'gcp.assume_role',
-                                                  effect: 'ALLOW',
-                                                  id: 1,
-                                              },
-                                              {
-                                                  role: 'dummy.project2:role.gcp.fed.admin.user',
-                                                  resource:
-                                                      'dummy.project2:fed.admin.user',
-                                                  action: 'gcp.assume_role',
-                                                  effect: 'ALLOW',
-                                                  id: 2,
+                                                  dummyProperty: 'dummyValue',
                                               },
                                           ],
                                       },
+                                  }),
+                        getRolesForReview: (params, callback) =>
+                            params.forcefail
+                                ? callback({ status: 404 }, null)
+                                : callback(undefined, {
+                                      list: [
+                                          {
+                                              domainName: 'home.jtsang01',
+                                              name: 'testrole',
+                                              memberExpiryDays: 10,
+                                              memberReviewDays: 0,
+                                              serviceExpiryDays: 10,
+                                              serviceReviewDays: 0,
+                                              groupExpiryDays: 5,
+                                              groupReviewDays: 5,
+                                          },
+                                      ],
+                                  }),
+                        getGroupsForReview: (params, callback) =>
+                            params.forcefail
+                                ? callback({ status: 404 }, null)
+                                : callback(undefined, {
+                                      list: [
+                                          {
+                                              domainName: 'home.jtsang01',
+                                              name: 'testgroup',
+                                              memberExpiryDays: 10,
+                                              memberReviewDays: 0,
+                                              serviceExpiryDays: 10,
+                                              serviceReviewDays: 0,
+                                              groupExpiryDays: 5,
+                                              groupReviewDays: 5,
+                                          },
+                                      ],
                                   }),
                     },
                 };
@@ -511,14 +544,11 @@ describe('Fetchr Server API Test', () => {
                     expect(res.body).toEqual([]);
                 });
         });
-        it('domainList test success', async () => {
+        it('getPrincipalRoles test success', async () => {
             await request(expressApp)
-                .get('/api/v1/domain-list')
+                .get('/api/v1/domain-role-member')
                 .then((res) => {
-                    expect(res.body).toEqual([
-                        { adminDomain: true, name: 'dom1' },
-                        { adminDomain: true, name: 'domabc1' },
-                    ]);
+                    expect(res.body).toEqual(listUserDomains_response);
                 });
         });
         it('getForm test success', async () => {
@@ -694,18 +724,19 @@ describe('Fetchr Server API Test', () => {
                     expect(res.body.g0.data).toEqual({ success: 'true' });
                 });
         });
-        it('getProvider test success', async () => {
+        it('getAccessExt test granted - true', async () => {
             await request(expressApp)
-                .get('/api/v1/provider')
+                .get('/api/v1/access')
                 .then((res) => {
                     expect(res.body).toEqual({
                         allProviders: [
                             {
                                 id: 'aws_instance_launch_provider',
                                 name: 'AWS EC2/EKS/Fargate launches instances for the service',
+                                service: 'athens.aws.us-east-1',
                             },
                         ],
-                        provider: { aws_instance_launch_provider: 'not' },
+                        provider: { aws_instance_launch_provider: 'allow' },
                     });
                 });
         });
@@ -1291,22 +1322,47 @@ describe('Fetchr Server API Test', () => {
                             principal: 'user.dummy1',
                             assertions: [
                                 {
-                                    role: 'dummy.project:role.gcp.fed.power.user',
-                                    resource: 'dummy.project:fed.power.user',
-                                    action: 'gcp.assume_role',
-                                    effect: 'ALLOW',
-                                    id: 1,
-                                },
-                                {
-                                    role: 'dummy.project2:role.gcp.fed.admin.user',
-                                    resource: 'dummy.project2:fed.admin.user',
-                                    action: 'gcp.assume_role',
-                                    effect: 'ALLOW',
-                                    id: 2,
+                                    dummyProperty: 'dummyValue',
                                 },
                             ],
                         },
                     });
+                });
+        });
+        it('getRolesForReview test success', async () => {
+            await request(expressApp)
+                .get('/api/v1/roles-review')
+                .then((res) => {
+                    expect(res.body).toEqual([
+                        {
+                            domainName: 'home.jtsang01',
+                            name: 'testrole',
+                            memberExpiryDays: 10,
+                            memberReviewDays: 0,
+                            serviceExpiryDays: 10,
+                            serviceReviewDays: 0,
+                            groupExpiryDays: 5,
+                            groupReviewDays: 5,
+                        },
+                    ]);
+                });
+        });
+        it('getGroupsForReview test success', async () => {
+            await request(expressApp)
+                .get('/api/v1/groups-review')
+                .then((res) => {
+                    expect(res.body).toEqual([
+                        {
+                            domainName: 'home.jtsang01',
+                            name: 'testgroup',
+                            memberExpiryDays: 10,
+                            memberReviewDays: 0,
+                            serviceExpiryDays: 10,
+                            serviceReviewDays: 0,
+                            groupExpiryDays: 5,
+                            groupReviewDays: 5,
+                        },
+                    ]);
                 });
         });
     });

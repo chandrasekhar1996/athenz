@@ -17,25 +17,25 @@
 describe('Home page', () => {
     it('should redirect to okta without credentials', async () => {
         await browser.url(`/`);
-        await expect(browser).toHaveUrlContaining('okta');
+        await expect(browser).toHaveUrl(expect.stringContaining('okta'));
     });
 
     it('should login with valid credentials', async () => {
         await browser.newUser();
         await browser.url(`/`);
-        await expect(browser).toHaveUrlContaining('athenz');
+        await expect(browser).toHaveUrl(expect.stringContaining('athenz'));
     });
 
     // TODO: Update test when able to create a new domain with unique name 'X' and create role against 'X'
     it('should successfully add and delete role', async () => {
         let testDomain = await $('a*=athenz.dev.functional-test');
-        let testRoleName = 'testrole';
+        let testRoleName = 'testroleindex';
         await browser.waitUntil(async () => await testDomain.isClickable());
         await testDomain.click();
 
         let addRoleButton = await $('button*=Add Role');
         await browser.waitUntil(async () => await addRoleButton.isClickable());
-        addRoleButton.click();
+        await addRoleButton.click();
         let roleNameInput = await $('#role-name-input');
         await roleNameInput.addValue(testRoleName);
         let submitButton = await $('button*=Submit');

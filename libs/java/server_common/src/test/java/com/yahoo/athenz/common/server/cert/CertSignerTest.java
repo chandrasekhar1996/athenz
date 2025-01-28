@@ -15,6 +15,7 @@
  */
 package com.yahoo.athenz.common.server.cert;
 
+import com.yahoo.athenz.common.server.ServerResourceException;
 import org.testng.annotations.*;
 import org.mockito.Mockito;
 
@@ -23,7 +24,7 @@ import static org.testng.Assert.*;
 public class CertSignerTest {
 
     @Test
-    public void testCertSignerFactory() {
+    public void testCertSignerFactory() throws ServerResourceException {
 
         CertSigner signer = Mockito.mock(CertSigner.class);
 
@@ -34,42 +35,44 @@ public class CertSignerTest {
     }
 
     @Test
-    public void testCertSignerDefaultMethods() {
+    public void testCertSignerDefaultMethods() throws ServerResourceException {
 
         CertSigner signer = new CertSigner() {
         };
 
-        assertNull(signer.generateX509Certificate("csr", "client", 60));
-        assertNull(signer.generateX509Certificate("aws", "us-west-2", "csr", "client", 60));
-        assertNull(signer.generateX509Certificate("aws", "us-west-2", "csr", "client", 60, Priority.Unspecified_priority));
-        assertNull(signer.getCACertificate());
-        assertNull(signer.getCACertificate("aws"));
+        assertNull(signer.generateX509Certificate("aws", "us-west-2", "csr", "client", 60,
+                Priority.Unspecified_priority, "keyid"));
+        assertNull(signer.getCACertificate("aws", "keyid"));
         assertEquals(signer.getMaxCertExpiryTimeMins(), 0);
         signer.close();
     }
 
     @Test
-    public void testCertSigner() {
+    public void testCertSigner() throws ServerResourceException {
 
         CertSigner signer = Mockito.mock(CertSigner.class);
-        Mockito.when(signer.generateX509Certificate("csr", "client", 100)).thenReturn("cert");
-        Mockito.when(signer.generateX509Certificate("aws", "us-west-2", "csr", "client", 100)).thenReturn("cert1");
-        Mockito.when(signer.generateX509Certificate("aws", "us-west-2", "csr", "client", 100, Priority.High)).thenReturn("cert2");
-        Mockito.when(signer.getCACertificate()).thenReturn("ca-cert");
-        Mockito.when(signer.getCACertificate("aws")).thenReturn("ca-cert1");
+        Mockito.when(signer.generateX509Certificate("aws", "us-west-2", "csr", "client", 100, Priority.High, "keyid"))
+                .thenReturn("cert2-keyid");
+        Mockito.when(signer.getCACertificate("aws", "keyid")).thenReturn("ca-cert1-keyid");
         Mockito.when(signer.getMaxCertExpiryTimeMins()).thenReturn(60);
 
         CertSignerFactory factory = () -> signer;
 
         CertSigner testSigner = factory.create();
         assertNotNull(testSigner);
-        assertEquals("cert", testSigner.generateX509Certificate("csr", "client", 100));
-        assertEquals("cert1", testSigner.generateX509Certificate("aws", "us-west-2", "csr", "client", 100));
-        assertEquals("cert2", testSigner.generateX509Certificate("aws", "us-west-2", "csr", "client", 100, Priority.High));
-        assertEquals("ca-cert", testSigner.getCACertificate());
-        assertEquals("ca-cert1", testSigner.getCACertificate("aws"));
-        assertEquals(60, testSigner.getMaxCertExpiryTimeMins());
+        assertEquals(testSigner.generateX509Certificate("aws", "us-west-2", "csr", "client", 100,
+                Priority.High, "keyid"), "cert2-keyid");
+        assertEquals(testSigner.getCACertificate("aws", "keyid"), "ca-cert1-keyid");
+        assertEquals(testSigner.getMaxCertExpiryTimeMins(), 60);
 
         testSigner.close();
+    }
+
+    @Test
+    public void testPriority() {
+        assertEquals(Priority.Unspecified_priority.getPriorityValue(), 0);
+        assertEquals(Priority.High.getPriorityValue(), 5);
+        assertEquals(Priority.Medium.getPriorityValue(), 10);
+        assertEquals(Priority.Low.getPriorityValue(), 15);
     }
 }

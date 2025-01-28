@@ -23,11 +23,14 @@ import com.yahoo.athenz.auth.AuthorityConsts;
 import com.yahoo.athenz.auth.util.StringUtils;
 import com.yahoo.athenz.common.metrics.Metric;
 import com.yahoo.athenz.common.server.db.RolesProvider;
+import com.yahoo.athenz.common.server.key.PubKeysProvider;
 import com.yahoo.athenz.common.server.store.ChangeLogStore;
 import com.yahoo.athenz.common.server.util.ConfigProperties;
 import com.yahoo.athenz.common.server.util.AuthzHelper;
 import com.yahoo.athenz.common.utils.SignUtils;
 import com.yahoo.athenz.zms.*;
+import com.yahoo.athenz.zms.PublicKeyEntry;
+import com.yahoo.athenz.zms.ServiceIdentity;
 import com.yahoo.athenz.zts.*;
 import com.yahoo.athenz.zts.ResourceException;
 import com.yahoo.rdl.*;
@@ -64,7 +67,7 @@ import static com.yahoo.athenz.common.ServerCommonConsts.ATHENZ_SYS_DOMAIN;
 import static com.yahoo.athenz.common.ServerCommonConsts.PROP_ATHENZ_CONF;
 import static com.yahoo.athenz.zts.ZTSConsts.ZTS_ISSUE_ROLE_CERT_TAG;
 
-public class DataStore implements DataCacheProvider, RolesProvider {
+public class DataStore implements DataCacheProvider, RolesProvider, PubKeysProvider {
 
     ChangeLogStore changeLogStore;
     private CloudStore cloudStore;
@@ -76,6 +79,8 @@ public class DataStore implements DataCacheProvider, RolesProvider {
     final RequireRoleCertCache requireRoleCertCache;
     final Map<String, List<String>> hostCache;
     final Map<String, String> publicKeyCache;
+    final JWKList zmsJWKList;
+    final JWKList zmsJWKListStrictRFC;
     final JWKList ztsJWKList;
     final JWKList ztsJWKListStrictRFC;
     private final ObjectMapper jsonMapper;
@@ -127,6 +132,8 @@ public class DataStore implements DataCacheProvider, RolesProvider {
 
         requireRoleCertCache = new RequireRoleCertCache();
 
+        zmsJWKList = new JWKList();
+        zmsJWKListStrictRFC = new JWKList();
         ztsJWKList = new JWKList();
         ztsJWKListStrictRFC = new JWKList();
 
@@ -583,6 +590,10 @@ public class DataStore implements DataCacheProvider, RolesProvider {
         return rfc == Boolean.TRUE ? ztsJWKListStrictRFC : ztsJWKList;
     }
 
+    public JWKList getZmsJWKList(Boolean rfc) {
+        return rfc == Boolean.TRUE ? zmsJWKListStrictRFC : zmsJWKList;
+    }
+
     boolean loadAthenzPublicKeys() {
 
         final String rootDir = ZTSImpl.getRootDir();
@@ -610,41 +621,58 @@ public class DataStore implements DataCacheProvider, RolesProvider {
                 LOGGER.error("No valid public ZMS keys in conf file: {}", confFileName);
                 return false;
             }
+            loadZmsJwk(zmsPublicKeys);
+
             final ArrayList<com.yahoo.athenz.zms.PublicKeyEntry> ztsPublicKeys = conf.getZtsPublicKeys();
             if (ztsPublicKeys == null) {
                 LOGGER.error("Conf file {} has no ZTS Public keys", confFileName);
                 return false;
             }
-            final List<JWK> jwkList = new ArrayList<>();
-            final List<JWK> jwkListStrictRFC = new ArrayList<>();
-            for (com.yahoo.athenz.zms.PublicKeyEntry publicKey : ztsPublicKeys) {
-                final String id = publicKey.getId();
-                final String key = publicKey.getKey();
-                if (key == null || id == null) {
-                    LOGGER.error("Missing required zts public key attributes: {}/{}", id, key);
-                    continue;
-                }
-                final JWK jwk = getJWK(key, id, false);
-                if (jwk != null) {
-                    jwkList.add(jwk);
-                }
-                final JWK jwkRfc = getJWK(key, id, true);
-                if (jwkRfc != null) {
-                    jwkListStrictRFC.add(jwkRfc);
-                }
-            }
-            if (jwkList.isEmpty() || jwkListStrictRFC.isEmpty()) {
+            if (!loadZtsJwk(ztsPublicKeys)) {
                 LOGGER.error("No valid public ZTS keys in conf file: {}", confFileName);
                 return false;
             }
-            ztsJWKList.setKeys(jwkList);
-            ztsJWKListStrictRFC.setKeys(jwkListStrictRFC);
         } catch (IOException ex) {
             LOGGER.error("Unable to parse conf file {}, error: {}", confFileName, ex.getMessage());
             return false;
         }
         return true;
     }
+
+boolean loadJwk(ArrayList<com.yahoo.athenz.zms.PublicKeyEntry> keys, JWKList jwkList, JWKList jwkListStrictRFC) {
+    final List<JWK> tmpJwkList = new ArrayList<>();
+    final List<JWK> tmpJwkListStrictRFC = new ArrayList<>();
+    for (com.yahoo.athenz.zms.PublicKeyEntry publicKey : keys) {
+        final String id = publicKey.getId();
+        final String key = publicKey.getKey();
+        if (key == null || id == null) {
+            LOGGER.error("Missing required public key attributes: {}/{}", id, key);
+            continue;
+        }
+        final JWK jwk = getJWK(key, id, false);
+        if (jwk != null) {
+            tmpJwkList.add(jwk);
+        }
+        final JWK jwkRfc = getJWK(key, id, true);
+        if (jwkRfc != null) {
+            tmpJwkListStrictRFC.add(jwkRfc);
+        }
+    }
+    if (tmpJwkList.isEmpty() || tmpJwkListStrictRFC.isEmpty()) {
+        return false;
+    }
+    jwkList.setKeys(tmpJwkList);
+    jwkListStrictRFC.setKeys(tmpJwkListStrictRFC);
+    return true;
+}
+
+boolean loadZmsJwk(ArrayList<com.yahoo.athenz.zms.PublicKeyEntry> keys) {
+    return loadJwk(keys, zmsJWKList, zmsJWKListStrictRFC);
+}
+
+boolean loadZtsJwk(ArrayList<com.yahoo.athenz.zms.PublicKeyEntry> keys) {
+    return loadJwk(keys, ztsJWKList, ztsJWKListStrictRFC);
+}
 
     @SuppressWarnings("rawtypes")
     String getCurveName(org.bouncycastle.jce.spec.ECParameterSpec ecParameterSpec, boolean rfc) {
@@ -1451,7 +1479,7 @@ public class DataStore implements DataCacheProvider, RolesProvider {
 
         if (getCloudStore() != null) {
             getCloudStore().updateAwsAccount(name, dataCache.getDomainData().getAccount());
-            getCloudStore().updateAzureSubscription(name, dataCache.getDomainData().getAzureSubscription());
+            getCloudStore().updateAzureSubscription(name, dataCache.getDomainData().getAzureSubscription(), dataCache.getDomainData().getAzureTenant(), dataCache.getDomainData().getAzureClient());
             getCloudStore().updateGCPProject(name, dataCache.getDomainData().getGcpProject(), dataCache.getDomainData().getGcpProjectNumber());
         }
 
@@ -1936,9 +1964,30 @@ public class DataStore implements DataCacheProvider, RolesProvider {
         return domainData.getRoles();
     }
 
+    @Override
+    public List<PublicKeyEntry> getPubKeysByService(String domain, String service) {
+        DomainData domainData = getDomainData(domain);
+        if (domainData == null) {
+            LOGGER.error("domainData can not be null, domain: {}, service: {}", domain, service);
+            return new ArrayList<>();
+        }
+
+        String serviceFqn = domain + "." + service;
+
+        for (ServiceIdentity serviceIdentity: domainData.getServices()) {
+            if (serviceIdentity.getName().equalsIgnoreCase(serviceFqn)) {
+                return serviceIdentity.getPublicKeys();
+            }
+        }
+
+        LOGGER.error("pub keys not found for domain: {}, service: {}", domain, service);
+        return new ArrayList<>();
+    }
+
     public List<String> getRolesRequireRoleCert(String principal) {
         return requireRoleCertCache.getRolesRequireRoleCert(principal);
     }
+
 
     class DataUpdater implements Runnable {
 

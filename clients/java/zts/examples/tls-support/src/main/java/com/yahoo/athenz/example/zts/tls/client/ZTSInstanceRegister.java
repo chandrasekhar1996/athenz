@@ -15,8 +15,6 @@
  */
 package com.yahoo.athenz.example.zts.tls.client;
 
-import com.oath.auth.KeyRefresher;
-import com.oath.auth.Utils;
 import com.yahoo.athenz.auth.util.Crypto;
 import com.yahoo.athenz.zts.*;
 import org.apache.commons.cli.*;
@@ -24,9 +22,9 @@ import org.bouncycastle.asn1.DERIA5String;
 import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.operator.OperatorCreationException;
 
-import javax.net.ssl.SSLContext;
 import java.io.File;
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.util.HashMap;
 import java.util.List;
@@ -111,7 +109,7 @@ public class ZTSInstanceRegister {
         String csr;
         try {
             csr = Crypto.generateX509CSR(privateKey, dn, sanArray);
-        } catch (OperatorCreationException | IOException ex) {
+        } catch (OperatorCreationException | IOException | NoSuchAlgorithmException ex) {
             throw new ZTSClientException(ZTSClientException.BAD_REQUEST, ex.getMessage());
         }
 

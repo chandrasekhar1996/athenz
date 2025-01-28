@@ -17,6 +17,7 @@ package com.yahoo.athenz.common.server.ssh;
 
 import com.yahoo.athenz.auth.Principal;
 import com.yahoo.athenz.auth.Authorizer;
+import com.yahoo.athenz.common.server.ServerResourceException;
 import com.yahoo.athenz.zts.SSHCertRequest;
 import com.yahoo.athenz.zts.SSHCertificates;
 
@@ -31,21 +32,23 @@ public interface SSHSigner {
      * @param certType requested certificate type: user or host or null. If null,
      *                 no verification is necessary otherwise the implementation
      *                 must verify that the certRequest matches the requested type.
+     * @param signerKeyId requested signer key id if configured for the domain
      * @return SSH Certificates. Any error conditions are handled
      * by throwing com.yahoo.athenz.common.rest.ResourceExceptions
      */
     default SSHCertificates generateCertificate(Principal principal, SSHCertRequest certRequest,
-            SSHCertRecord certRecord, final String certType) {
+            SSHCertRecord certRecord, String certType, String signerKeyId) throws ServerResourceException {
         return null;
     }
 
     /**
      * Retrieve the SSH Signer certificate for the given type
      * @param certType signer type: user or host
+     * @param signerKeyId requested signer key id if configured for the domain
      * @return SSH Signer Certificate. Any error conditions are handled
      * by throwing com.yahoo.athenz.common.rest.ResourceExceptions
      */
-    default String getSignerCertificate(String certType) {
+    default String getSignerCertificate(String certType, String signerKeyId) throws ServerResourceException {
         return null;
     }
 
@@ -54,7 +57,6 @@ public interface SSHSigner {
      * can use to for any authorization checks, if necessary
      * @param authorizer Authorizer object
      */
-
     default void setAuthorizer(Authorizer authorizer) {
     }
 

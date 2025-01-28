@@ -46,6 +46,12 @@ public class MemberRole {
     @RdlOptional
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     public String trustRoleName;
+    @RdlOptional
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    public String notifyRoles;
+    @RdlOptional
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    public String notifyDetails;
 
     public MemberRole setRoleName(String roleName) {
         this.roleName = roleName;
@@ -131,6 +137,20 @@ public class MemberRole {
     public String getTrustRoleName() {
         return trustRoleName;
     }
+    public MemberRole setNotifyRoles(String notifyRoles) {
+        this.notifyRoles = notifyRoles;
+        return this;
+    }
+    public String getNotifyRoles() {
+        return notifyRoles;
+    }
+    public MemberRole setNotifyDetails(String notifyDetails) {
+        this.notifyDetails = notifyDetails;
+        return this;
+    }
+    public String getNotifyDetails() {
+        return notifyDetails;
+    }
 
     @Override
     public boolean equals(Object another) {
@@ -173,6 +193,12 @@ public class MemberRole {
                 return false;
             }
             if (trustRoleName == null ? a.trustRoleName != null : !trustRoleName.equals(a.trustRoleName)) {
+                return false;
+            }
+            if (notifyRoles == null ? a.notifyRoles != null : !notifyRoles.equals(a.notifyRoles)) {
+                return false;
+            }
+            if (notifyDetails == null ? a.notifyDetails != null : !notifyDetails.equals(a.notifyDetails)) {
                 return false;
             }
         }

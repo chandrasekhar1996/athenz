@@ -453,6 +453,8 @@ public class ZTSSchema {
             .field("name", "DomainName", false, "name of the athenz domain")
             .field("awsAccount", "String", true, "associated aws account id")
             .field("azureSubscription", "String", true, "associated azure subscription id")
+            .field("azureTenant", "String", true, "associated azure tenant id")
+            .field("azureClient", "String", true, "associated azure client id")
             .field("gcpProjectId", "String", true, "associated gcp project id")
             .field("gcpProjectNumber", "String", true, "associated gcp project number");
 
@@ -1048,6 +1050,7 @@ public class ZTSSchema {
 
         sb.resource("JWKList", "GET", "/oauth2/keys")
             .queryParam("rfc", "rfc", "Bool", false, "flag to indicate ec curve names are restricted to RFC values")
+            .queryParam("service", "service", "ServiceName", "zts", "service")
             .expected("OK")
             .exception("BAD_REQUEST", "ResourceError", "")
 
@@ -1083,6 +1086,7 @@ public class ZTSSchema {
             .queryParam("expiryTime", "expiryTime", "Int32", null, "optional expiry period specified in seconds")
             .queryParam("output", "output", "SimpleName", null, "optional output format of json")
             .queryParam("roleInAudClaim", "roleInAudClaim", "Bool", false, "flag to indicate to include role name in the audience claim only if we have a single role in response")
+            .queryParam("allScopePresent", "allScopePresent", "Bool", false, "flag to indicate that all requested roles/groups in the scope must be present in the response otherwise return an error")
             .output("Location", "location", "String", "return location header with id token")
             .auth("", "", true)
             .expected("OK")

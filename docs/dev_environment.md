@@ -57,7 +57,7 @@ the git client is required.
 
 #### Go
 
-Install go 1.19 or newer version by following the directions at
+Install go 1.23.1 or newer version by following the directions at
 [Getting Started - The Go Programming Language](https://golang.org/doc/install).
 
 Make sure you have set the [$GOPATH environment variable](https://pkg.go.dev/cmd/go#hdr-GOPATH_environment_variable)
@@ -80,12 +80,12 @@ in your runtime path:
 
 ```shell
 $ node --version
-v18.12.1
+v18.19.0
 $ npm -v
-8.19.2
+10.3.0
 $ npm install -g nodemon
 $ nodemon --version
-2.0.20
+3.0.3
 ```
 
 ## Build Steps

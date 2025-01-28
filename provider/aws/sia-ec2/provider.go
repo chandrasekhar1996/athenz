@@ -21,15 +21,20 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"github.com/AthenZ/athenz/libs/go/sia/host/ip"
-	"github.com/AthenZ/athenz/libs/go/sia/host/signature"
-	"github.com/AthenZ/athenz/libs/go/sia/host/utils"
+	"log"
 	"net"
 	"net/url"
+
+	"github.com/AthenZ/athenz/libs/go/sia/aws/attestation"
+	"github.com/AthenZ/athenz/libs/go/sia/host/ip"
+	"github.com/AthenZ/athenz/libs/go/sia/host/provider"
+	"github.com/AthenZ/athenz/libs/go/sia/host/signature"
+	"github.com/AthenZ/athenz/libs/go/sia/host/utils"
 )
 
 type EC2Provider struct {
-	Name string
+	Name            string
+	SSHCertPublicIP bool
 }
 
 // GetName returns the name of the current provider
@@ -42,11 +47,11 @@ func (ec2 EC2Provider) GetHostname(fqdn bool) string {
 	return utils.GetHostname(fqdn)
 }
 
-func (ec2 EC2Provider) AttestationData(svc string, key crypto.PrivateKey, sigInfo *signature.SignatureInfo) (string, error) {
+func (ec2 EC2Provider) AttestationData(_ string, _ crypto.PrivateKey, _ *signature.SignatureInfo) (string, error) {
 	return "", fmt.Errorf("not implemented")
 }
 
-func (ec2 EC2Provider) PrepareKey(file string) (crypto.PrivateKey, error) {
+func (ec2 EC2Provider) PrepareKey(_ string) (crypto.PrivateKey, error) {
 	return "", fmt.Errorf("not implemented")
 }
 
@@ -54,42 +59,62 @@ func (ec2 EC2Provider) GetCsrDn() pkix.Name {
 	return pkix.Name{}
 }
 
-func (ec2 EC2Provider) GetSanDns(service string, includeHost bool, wildcard bool, cnames []string) []string {
+func (ec2 EC2Provider) GetSanDns(_ string, _ bool, _ bool, _ []string) []string {
 	return nil
 }
 
-func (ec2 EC2Provider) GetSanUri(svc string, opts ip.Opts, spiffeTrustDomain, spiffeNamespace string) []*url.URL {
+func (ec2 EC2Provider) GetSanUri(_ string, _ ip.Opts, _, _ string) []*url.URL {
 	return nil
 }
 
-func (ec2 EC2Provider) GetEmail(service string) []string {
+func (ec2 EC2Provider) GetEmail(_ string) []string {
 	return nil
 }
 
-func (ec2 EC2Provider) GetRoleDnsNames(cert *x509.Certificate, service string) []string {
+func (ec2 EC2Provider) GetRoleDnsNames(_ *x509.Certificate, _ string) []string {
 	return nil
 }
 
-func (ec2 EC2Provider) GetSanIp(docIp map[string]bool, ips []net.IP, opts ip.Opts) []net.IP {
+func (ec2 EC2Provider) GetSanIp(_ map[string]bool, _ []net.IP, _ ip.Opts) []net.IP {
 	return nil
 }
 
-func (ec2 EC2Provider) GetSuffix() string {
-	return ""
+func (ec2 EC2Provider) GetSuffixes() []string {
+	return []string{}
 }
 
-func (eks EC2Provider) CloudAttestationData(base, svc, ztSserverName string) (string, error) {
-	return "", fmt.Errorf("not implemented")
+func (ec2 EC2Provider) CloudAttestationData(request *provider.AttestationRequest) (string, error) {
+	return attestation.New(request.Domain, request.Service, request.Region, request.Account, request.EC2Document, request.EC2Signature, request.UseRegionalSTS, request.OmitDomain)
 }
 
-func (eks EC2Provider) GetAccountDomainServiceFromMeta(base string) (string, string, string, error) {
+func (ec2 EC2Provider) GetAccountDomainServiceFromMeta(_ string) (string, string, string, error) {
 	return "", "", "", fmt.Errorf("not implemented")
 }
 
-func (tp EC2Provider) GetAccessManagementProfileFromMeta(base string) (string, error) {
+func (ec2 EC2Provider) GetAccessManagementProfileFromMeta(_ string) (string, error) {
 	return "", fmt.Errorf("not implemented")
 }
 
-func (tp EC2Provider) GetAdditionalSshHostPrincipals(base string) (string, error) {
-	return "", nil
+// GetAdditionalSshHostPrincipals returns the additional ssh host principals
+func (ec2 EC2Provider) GetAdditionalSshHostPrincipals(base string) (string, error) {
+	// we're going to use our instance id as the additional ssh host principal
+	_, _, _, instanceId, _, _, _, err := GetEC2DocumentDetails(base)
+	if err != nil {
+		log.Printf("unable to extract instance id for ssh host principal: %v\n", err)
+	}
+	// we're going to use our public ip as the additional ssh host principal if enabled
+	publicIP := ""
+	if ec2.SSHCertPublicIP {
+		publicIP, err = GetEC2PublicIP(base)
+		if err != nil {
+			log.Printf("unable to extract public ip for ssh host principal: %v\n", err)
+		}
+	}
+	if instanceId == "" {
+		return publicIP, nil
+	} else if publicIP == "" {
+		return instanceId, nil
+	} else {
+		return fmt.Sprintf("%s,%s", instanceId, publicIP), nil
+	}
 }

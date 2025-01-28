@@ -15,11 +15,15 @@
  */
 import styled from '@emotion/styled';
 import DateUtils from '../utils/DateUtils';
+import AppUtils from '../utils/AppUtils';
 import React from 'react';
 import Button from '../denali/Button';
 import Switch from '../denali/Switch';
 import Alert from '../denali/Alert';
-import { MODAL_TIME_OUT } from '../constants/constants';
+import {
+    MODAL_TIME_OUT,
+    ENVIRONMENT_DROPDOWN_OPTIONS,
+} from '../constants/constants';
 import AddModal from '../modal/AddModal';
 import RequestUtils from '../utils/RequestUtils';
 import BusinessServiceModal from '../modal/BusinessServiceModal';
@@ -39,6 +43,11 @@ import {
 import { getBusinessServicesAll } from '../../redux/thunks/domains';
 import { makeRolesExpires } from '../../redux/actions/roles';
 import { makePoliciesExpires } from '../../redux/actions/policies';
+import Icon from '../denali/icons/Icon';
+import AddPoc from '../member/AddPoc';
+import { selectAllUsers } from '../../redux/selectors/user';
+import AddEnvironmentModal from '../modal/AddEnvironmentModal';
+import AddSlackChannelModal from '../modal/AddSlackChannelModal';
 
 const DomainSectionDiv = styled.div`
     margin: 20px 0;
@@ -47,10 +56,12 @@ const DomainSectionDiv = styled.div`
 const DetailsDiv = styled.div`
     display: flex;
     flex-flow: row nowrap;
+    margin: 20px 0;
 `;
 
 const SectionDiv = styled.div`
     padding-right: 50px;
+    flex-basis: 15%;
 `;
 
 const ValueDiv = styled.div`
@@ -86,6 +97,10 @@ const StyledAnchor = styled.a`
     font-weight: '';
 `;
 
+const IconContainer = styled.div`
+    margin-left: 5px;
+`;
+
 class DomainDetails extends React.Component {
     constructor(props) {
         super(props);
@@ -100,6 +115,20 @@ class DomainDetails extends React.Component {
             errorMessageForModal: '',
             errorMessage: null,
             showError: false,
+            showPoc: false,
+            showEnvironment: false,
+            showSecurityPoc: false,
+            poc: AppUtils.getSafe(
+                () => this.props.domainDetails.contacts['product-owner'],
+                'add'
+            ),
+            securityPoc: AppUtils.getSafe(
+                () => this.props.domainDetails.contacts['security-owner'],
+                'add'
+            ),
+            expandedDomain: false,
+            environmentName: this.props.domainDetails.environment || 'add',
+            slackChannel: this.props.domainDetails.slackChannel || 'add',
         };
         this.showError = this.showError.bind(this);
         this.closeModal = this.closeModal.bind(this);
@@ -107,6 +136,8 @@ class DomainDetails extends React.Component {
         this.toggleOnboardToAWSModal = this.toggleOnboardToAWSModal.bind(this);
         this.saveBusinessService = this.saveBusinessService.bind(this);
         this.saveJustification = this.saveJustification.bind(this);
+        this.onBusinessServiceInputChange =
+            this.onBusinessServiceInputChange.bind(this);
     }
 
     componentDidMount() {
@@ -153,6 +184,79 @@ class DomainDetails extends React.Component {
         });
     }
 
+    onClickPointOfContact(pointOfContact, contactType) {
+        if (contactType === 'product-owner') {
+            this.setState({
+                showPoc: true,
+                tempPocName: pointOfContact,
+            });
+        } else {
+            // contactType = 'security-owner'
+            this.setState({
+                showSecurityPoc: true,
+                tempSecurityPocName: pointOfContact,
+            });
+        }
+    }
+
+    onClickSlackChannel() {
+        this.setState({
+            showSlackChannelModal: true,
+        });
+    }
+
+    onSlackChannelUpdateSuccessCb(slackChannelName) {
+        let newState = {
+            showSlackChannelModal: false,
+            showSuccess: true,
+        };
+
+        if (!!!slackChannelName) {
+            slackChannelName = 'add';
+        }
+        newState.slackChannel = slackChannelName;
+        newState.successMessage = 'Successfully updated Slack channel';
+        this.setState(newState);
+        setTimeout(
+            () =>
+                this.setState({
+                    showSuccess: false,
+                }),
+            MODAL_TIME_OUT + 1000
+        );
+    }
+
+    onClickSlackChannelCancel() {
+        this.setState({
+            showSlackChannelModal: false,
+            errorMessage: null,
+            errorMessageForModal: '',
+        });
+    }
+
+    onClickPointOfContactCancel() {
+        this.setState({
+            showPoc: false,
+            showSecurityPoc: false,
+            errorMessage: null,
+            errorMessageForModal: '',
+        });
+    }
+
+    onClickEnvironment() {
+        this.setState({
+            showEnvironment: true,
+        });
+    }
+
+    onClickEnvironmentCancel() {
+        this.setState({
+            showEnvironment: false,
+            errorMessage: null,
+            errorMessageForModal: '',
+        });
+    }
+
     saveJustification(val) {
         this.setState({
             auditRef: val,
@@ -161,6 +265,13 @@ class DomainDetails extends React.Component {
     saveBusinessService(val) {
         this.setState({
             tempBusinessServiceName: val,
+            errorMessageForModal: '',
+        });
+    }
+
+    onBusinessServiceInputChange(val) {
+        this.setState({
+            businessServiceInInput: val,
         });
     }
 
@@ -212,6 +323,32 @@ class DomainDetails extends React.Component {
             return;
         }
 
+        if (
+            this.state.tempBusinessServiceName &&
+            this.state.businessServiceInInput
+        ) {
+            const colonIdx = this.state.tempBusinessServiceName.indexOf(':');
+            if (
+                colonIdx === -1 ||
+                this.state.tempBusinessServiceName.substring(colonIdx + 1) !==
+                    this.state.businessServiceInInput
+            ) {
+                // text in input doesn't match selected service
+                this.setState({
+                    errorMessageForModal:
+                        'Business Service must be selected in the dropdown or clear input before submitting',
+                });
+                return;
+            }
+        } else if (this.state.businessServiceInInput) {
+            // text is in input but the service name is not selected
+            this.setState({
+                errorMessageForModal:
+                    'Business Service must be selected in the dropdown or clear input before submitting',
+            });
+            return;
+        }
+
         if (this.state.tempBusinessServiceName) {
             var index = this.props.businessServicesAll.findIndex(
                 (x) =>
@@ -232,7 +369,9 @@ class DomainDetails extends React.Component {
         let domainName = this.props.domainDetails.name;
         let businessServiceName = this.state.tempBusinessServiceName;
         let domainMeta = {};
-        domainMeta.businessService = businessServiceName;
+        domainMeta.businessService = businessServiceName
+            ? businessServiceName
+            : '';
         let successMessage = `Successfully set business service for domain ${domainName}`;
         this.updateMeta(
             domainMeta,
@@ -286,7 +425,56 @@ class DomainDetails extends React.Component {
         this.setState({ showSuccess: null });
     }
 
+    expandDomain() {
+        this.setState({
+            expandedDomain: !this.state.expandedDomain,
+        });
+    }
+
+    onPocUpdateSuccessCb(contactType, pocName) {
+        let newState = {
+            showPoc: false,
+            showSecurityPoc: false,
+            showSuccess: true,
+        };
+        if (contactType === 'product-owner') {
+            newState.poc = pocName;
+            newState.successMessage = 'Successfully added Point of Contact';
+        } else {
+            newState.securityPoc = pocName;
+            newState.successMessage =
+                'Successfully added Security Point of Contact';
+        }
+        this.setState(newState);
+        setTimeout(
+            () =>
+                this.setState({
+                    showSuccess: false,
+                }),
+            MODAL_TIME_OUT + 1000
+        );
+    }
+
+    onEnvironmentUpdateSuccessCb(environmentName) {
+        this.setState({
+            showEnvironment: false,
+            showSuccess: true,
+            environmentName: environmentName,
+            successMessage: 'Successfully updated the domain environment',
+        });
+        setTimeout(
+            () =>
+                this.setState({
+                    showSuccess: false,
+                }),
+            MODAL_TIME_OUT + 1000
+        );
+    }
+
     render() {
+        const arrowup = 'arrowhead-up-circle-solid';
+        const arrowdown = 'arrowhead-down-circle';
+        let expandDomain = this.expandDomain.bind(this);
         let localDate = new DateUtils();
         let modifiedDate = localDate.getLocalDate(
             this.props.domainDetails.modified,
@@ -331,43 +519,124 @@ class DomainDetails extends React.Component {
                 />
             );
         }
+        let pocObject = {};
+        let securityPocObject = {};
+        if ((this.state.poc || this.state.securityPoc) && this.props.userList) {
+            this.props.userList.find((user) => {
+                let fullName = 'user.' + user.login;
+                if (fullName === this.state.poc) {
+                    pocObject = user;
+                }
+                if (fullName === this.state.securityPoc) {
+                    securityPocObject = user;
+                }
+            });
+        }
+        let onClickPointOfContact = this.onClickPointOfContact.bind(
+            this,
+            this.state.poc,
+            'product-owner'
+        );
+        let onClickSecurityPointOfContact = this.onClickPointOfContact.bind(
+            this,
+            this.state.poc,
+            'security-owner'
+        );
+        let onClickSlackChannel = this.onClickSlackChannel.bind(this);
+        let contactType;
+        let pocName;
+        let openPocModal;
+        if (this.state.showPoc) {
+            openPocModal = true;
+            contactType = 'product-owner';
+            pocName = this.state.poc;
+        } else if (this.state.showSecurityPoc) {
+            openPocModal = true;
+            contactType = 'security-owner';
+            pocName = this.state.securityPoc;
+        }
+        let pocModal = openPocModal ? (
+            <AddPoc
+                domain={this.props.domainDetails.name}
+                isOpen={openPocModal}
+                onCancel={this.onClickPointOfContactCancel.bind(this)}
+                errorMessage={this.state.errorMessageForModal}
+                pocName={pocName}
+                contactType={contactType}
+                onPocUpdateSuccessCb={this.onPocUpdateSuccessCb.bind(this)}
+                csrf={this.props._csrf}
+                contacts={this.props.domainDetails.contacts || {}}
+                api={this.api}
+            />
+        ) : (
+            ''
+        );
+        let environmentModal = this.state.showEnvironment ? (
+            <AddEnvironmentModal
+                domain={this.props.domainDetails.name}
+                title='Environment'
+                isOpen={this.state.showEnvironment}
+                cancel={this.onClickEnvironmentCancel.bind(this)}
+                errorMessage={this.state.errorMessageForModal}
+                onEnvironmentUpdateSuccessCb={this.onEnvironmentUpdateSuccessCb.bind(
+                    this
+                )}
+                csrf={this.props._csrf}
+                api={this.api}
+                environmentName={this.state.environmentName}
+                environment={this.props.domainDetails.environment}
+                dropDownOptions={ENVIRONMENT_DROPDOWN_OPTIONS}
+            />
+        ) : (
+            ''
+        );
+
+        let slackChannelModal = this.state.showSlackChannelModal ? (
+            <AddSlackChannelModal
+                domain={this.props.domainDetails.name}
+                title='Slack Channel'
+                isOpen={this.state.showSlackChannelModal}
+                onCancel={this.onClickSlackChannelCancel.bind(this)}
+                errorMessage={this.state.errorMessageForModal}
+                onSlackChannelUpdateSuccessCb={this.onSlackChannelUpdateSuccessCb.bind(
+                    this
+                )}
+                slackChannelName={this.state.slackChannel}
+                csrf={this.props._csrf}
+                api={this.api}
+            />
+        ) : (
+            ''
+        );
 
         return (
             <DomainSectionDiv data-testid='domain-details'>
                 <DetailsDiv>
                     <SectionDiv>
+                        <DivStyledBusinessService>
+                            <StyledAnchor
+                                data-testid='poc-link'
+                                onClick={onClickPointOfContact}
+                            >
+                                {pocObject.name || 'add'}
+                            </StyledAnchor>
+                        </DivStyledBusinessService>
+                        <LabelDiv>POINT OF CONTACT</LabelDiv>
+                    </SectionDiv>
+                    <SectionDiv>
+                        <DivStyledBusinessService>
+                            <StyledAnchor
+                                data-testid='security-poc-link'
+                                onClick={onClickSecurityPointOfContact}
+                            >
+                                {securityPocObject.name || 'add'}
+                            </StyledAnchor>
+                        </DivStyledBusinessService>
+                        <LabelDiv>SECURITY POINT OF CONTACT</LabelDiv>
+                    </SectionDiv>
+                    <SectionDiv>
                         <ValueDiv>{modifiedDate}</ValueDiv>
                         <LabelDiv>MODIFIED DATE</LabelDiv>
-                    </SectionDiv>
-                    <SectionDiv>
-                        <ValueDiv>
-                            {this.props.domainDetails.productId ? (
-                                <StyledAnchorDiv
-                                    data-testid='pm-id'
-                                    onClick={() =>
-                                        window.open(
-                                            this.props.productMasterLink.url +
-                                                this.props.domainDetails
-                                                    .productId,
-                                            this.props.productMasterLink.target
-                                        )
-                                    }
-                                >
-                                    {this.props.domainDetails.productId}
-                                </StyledAnchorDiv>
-                            ) : (
-                                'N/A'
-                            )}
-                        </ValueDiv>
-                        <LabelDiv>Product ID</LabelDiv>
-                    </SectionDiv>
-                    <SectionDiv>
-                        <ValueDiv>
-                            {this.props.domainDetails.org
-                                ? this.props.domainDetails.org
-                                : 'N/A'}
-                        </ValueDiv>
-                        <LabelDiv>ORGANIZATION</LabelDiv>
                     </SectionDiv>
                     <SectionDiv>
                         <ValueDiv>
@@ -396,14 +665,20 @@ class DomainDetails extends React.Component {
                         </ValueDiv>
                         <LabelDiv>GCP PROJECT ID</LabelDiv>
                     </SectionDiv>
-                    <SectionDiv>
-                        <DivStyledBusinessService title={businessServiceTitle}>
-                            <StyledAnchor onClick={businessServiceItem}>
-                                {businessServiceTitle}
-                            </StyledAnchor>
-                        </DivStyledBusinessService>
-                        <LabelDiv>BUSINESS SERVICE</LabelDiv>
-                    </SectionDiv>
+                    <ValueDiv>More Details</ValueDiv>
+                    <IconContainer>
+                        <Icon
+                            icon={
+                                this.state.expandedDomain ? arrowup : arrowdown
+                            }
+                            dataWdio={'domain-details-expand-icon'}
+                            onClick={expandDomain}
+                            color={colors.icons}
+                            isLink
+                            size={'1.25em'}
+                            verticalAlign={'text-bottom'}
+                        />
+                    </IconContainer>
                     {showOnBoardToAWS && (
                         <SectionDiv>
                             <Button
@@ -432,6 +707,7 @@ class DomainDetails extends React.Component {
                             type='success'
                         />
                     ) : null}
+                    {pocModal}
                     {this.state.showBusinessService ? (
                         <BusinessServiceModal
                             isOpen={this.state.showBusinessService}
@@ -449,9 +725,90 @@ class DomainDetails extends React.Component {
                             validBusinessServicesAll={
                                 this.props.businessServicesAll
                             }
+                            onBusinessServiceInputChange={
+                                this.onBusinessServiceInputChange
+                            }
                         />
                     ) : null}
+                    {environmentModal}
+                    {slackChannelModal}
                 </DetailsDiv>
+                {this.state.expandedDomain ? (
+                    <DetailsDiv>
+                        <SectionDiv>
+                            <ValueDiv>
+                                {this.props.domainDetails.productId ? (
+                                    <StyledAnchorDiv
+                                        data-testid='pm-id'
+                                        onClick={() =>
+                                            window.open(
+                                                this.props.productMasterLink
+                                                    .url +
+                                                    this.props.domainDetails
+                                                        .productId,
+                                                this.props.productMasterLink
+                                                    .target
+                                            )
+                                        }
+                                    >
+                                        {this.props.domainDetails.productId}
+                                    </StyledAnchorDiv>
+                                ) : (
+                                    'N/A'
+                                )}
+                            </ValueDiv>
+                            <LabelDiv>Product ID</LabelDiv>
+                        </SectionDiv>
+                        <SectionDiv>
+                            <ValueDiv>
+                                {this.props.domainDetails.org
+                                    ? this.props.domainDetails.org
+                                    : 'N/A'}
+                            </ValueDiv>
+                            <LabelDiv>ORGANIZATION</LabelDiv>
+                        </SectionDiv>
+                        <SectionDiv>
+                            <DivStyledBusinessService
+                                title={businessServiceTitle}
+                            >
+                                <StyledAnchor
+                                    data-testid='add-business-service'
+                                    onClick={businessServiceItem}
+                                >
+                                    {businessServiceTitle}
+                                </StyledAnchor>
+                            </DivStyledBusinessService>
+                            <LabelDiv>BUSINESS SERVICE</LabelDiv>
+                        </SectionDiv>
+                        <SectionDiv>
+                            <DivStyledBusinessService
+                                title={this.state.environmentName}
+                            >
+                                <StyledAnchor
+                                    onClick={this.onClickEnvironment.bind(this)}
+                                >
+                                    {this.state.environmentName}
+                                </StyledAnchor>
+                            </DivStyledBusinessService>
+                            <LabelDiv>ENVIRONMENT</LabelDiv>
+                        </SectionDiv>
+                        <SectionDiv>
+                            <DivStyledBusinessService
+                                title={this.state.slackChannel}
+                            >
+                                <StyledAnchor
+                                    data-testid='add-slack-channel'
+                                    onClick={this.onClickSlackChannel.bind(
+                                        this
+                                    )}
+                                >
+                                    {this.state.slackChannel}
+                                </StyledAnchor>
+                            </DivStyledBusinessService>
+                            <LabelDiv>SLACK CHANNEL</LabelDiv>
+                        </SectionDiv>
+                    </DetailsDiv>
+                ) : null}
             </DomainSectionDiv>
         );
     }
@@ -466,6 +823,7 @@ const mapStateToProps = (state, props) => {
         businessServices: selectBusinessServices(state),
         businessServicesAll: selectBusinessServicesAll(state),
         timeZone: selectTimeZone(state),
+        userList: selectAllUsers(state),
     };
 };
 

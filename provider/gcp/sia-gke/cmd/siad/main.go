@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/AthenZ/athenz/libs/go/sia/agent"
+	sc "github.com/AthenZ/athenz/libs/go/sia/config"
 	"github.com/AthenZ/athenz/libs/go/sia/gcp/meta"
 	"github.com/AthenZ/athenz/libs/go/sia/host/utils"
 	"github.com/AthenZ/athenz/libs/go/sia/options"
@@ -85,7 +86,7 @@ func main() {
 	}
 
 	// backward compatibility sake, keeping the ConfigAccount struct
-	configAccount := &options.ConfigAccount{
+	configAccount := &sc.ConfigAccount{
 		Name:         fmt.Sprintf("%s.%s", config.Domain, config.Service),
 		User:         config.User,
 		Group:        config.Group,
@@ -102,11 +103,12 @@ func main() {
 		log.Fatalf("Unable to formulate options, error: %v\n", err)
 	}
 
+	opts.MetaEndPoint = *gkeMetaEndPoint
 	opts.Ssh = false
 	opts.ZTSCACertFile = *ztsCACert
 	opts.ZTSServerName = *ztsServerName
 	opts.ZTSCloudDomains = strings.Split(*dnsDomains, ",")
-	spiffeNamespace, addlSanDNSEntries := utils.GetK8SHostnames("cluster.local")
+	spiffeNamespace, addlSanDNSEntries := utils.GetK8SHostnames("cluster.local", false)
 	opts.SpiffeNamespace = spiffeNamespace
 	if len(addlSanDNSEntries) > 0 {
 		opts.AddlSanDNSEntries = append(opts.AddlSanDNSEntries, addlSanDNSEntries...)
@@ -123,5 +125,5 @@ func main() {
 	// opts.SshHostKeyType = hostkey.Ecdsa
 
 	agent.SetupAgent(opts, siaMainDir, "")
-	agent.RunAgent(*cmd, ztsUrl, *gkeMetaEndPoint, opts)
+	agent.RunAgent(*cmd, ztsUrl, opts)
 }

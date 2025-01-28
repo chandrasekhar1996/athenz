@@ -21,7 +21,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"k8s.io/utils/strings/slices"
 	"log"
 	"net"
 	"net/url"
@@ -31,13 +30,14 @@ import (
 
 	"github.com/AthenZ/athenz/libs/go/sia/access/config"
 	"github.com/AthenZ/athenz/libs/go/sia/agent/devel/ztsmock"
+	sc "github.com/AthenZ/athenz/libs/go/sia/config"
 	"github.com/AthenZ/athenz/libs/go/sia/host/ip"
+	"github.com/AthenZ/athenz/libs/go/sia/host/provider"
 	"github.com/AthenZ/athenz/libs/go/sia/host/signature"
-	"github.com/AthenZ/athenz/libs/go/sia/options"
 	"github.com/AthenZ/athenz/libs/go/sia/ssh/hostkey"
 	"github.com/AthenZ/athenz/libs/go/sia/util"
-
 	"github.com/stretchr/testify/assert"
+	"k8s.io/utils/strings/slices"
 )
 
 func setup() {
@@ -101,11 +101,11 @@ func (tp TestProvider) GetSanIp(map[string]bool, []net.IP, ip.Opts) []net.IP {
 	return nil
 }
 
-func (tp TestProvider) GetSuffix() string {
-	return ""
+func (tp TestProvider) GetSuffixes() []string {
+	return []string{}
 }
 
-func (tp TestProvider) CloudAttestationData(string, string, string) (string, error) {
+func (tp TestProvider) CloudAttestationData(*provider.AttestationRequest) (string, error) {
 	return "abc", nil
 }
 
@@ -199,9 +199,9 @@ func TestRegisterInstance(test *testing.T) {
 	tp := TestProvider{
 		Name: "athenz.aws.us-west-2",
 	}
-	opts := &options.Options{
+	opts := &sc.Options{
 		Domain: "athenz",
-		Services: []options.Service{
+		Services: []sc.Service{
 			{
 				Name: "hockey",
 				Uid:  util.ExecIdCommand("-u"),
@@ -211,14 +211,14 @@ func TestRegisterInstance(test *testing.T) {
 		KeyDir:           siaDir,
 		CertDir:          siaDir,
 		AthenzCACertFile: caCertFile,
-		ZTSAWSDomains:    []string{"zts-aws-cloud"},
+		ZTSCloudDomains:  []string{"zts-aws-cloud"},
 		Region:           "us-west-2",
 		InstanceId:       "pod-1234",
 		Provider:         tp,
 		SanDnsHostname:   true,
 	}
 
-	err := RegisterInstance("http://127.0.0.1:5084/zts/v1", "", opts, false)
+	err := RegisterInstance("http://127.0.0.1:5084/zts/v1", opts, false)
 	assert.Nil(test, err, "unable to register instance")
 
 	if err != nil {
@@ -247,7 +247,7 @@ func copyFile(src, dst string) error {
 	return os.WriteFile(dst, data, 0644)
 }
 
-func refreshServiceCertSetup(test *testing.T) (*options.Options, string) {
+func refreshServiceCertSetup(test *testing.T) (*sc.Options, string) {
 
 	siaDir := test.TempDir()
 
@@ -274,9 +274,9 @@ func refreshServiceCertSetup(test *testing.T) (*options.Options, string) {
 	tp := TestProvider{
 		Name: "athenz.aws.us-west-2",
 	}
-	opts := &options.Options{
+	opts := &sc.Options{
 		Domain: "athenz",
-		Services: []options.Service{
+		Services: []sc.Service{
 			{
 				Name:     "hockey",
 				Uid:      util.ExecIdCommand("-u"),
@@ -288,7 +288,7 @@ func refreshServiceCertSetup(test *testing.T) (*options.Options, string) {
 		CertDir:          siaDir,
 		AthenzCACertFile: caCertFile,
 		Provider:         tp,
-		ZTSAWSDomains:    []string{"zts-aws-cloud"},
+		ZTSCloudDomains:  []string{"zts-aws-cloud"},
 		Region:           "us-west-2",
 		InstanceId:       "pod-1234",
 	}
@@ -304,7 +304,7 @@ func TestRefreshInstance(test *testing.T) {
 		return
 	}
 
-	err := RefreshInstance("http://127.0.0.1:5084/zts/v1", "", opts)
+	err := RefreshInstance("http://127.0.0.1:5084/zts/v1", opts)
 	assert.Nil(test, err, fmt.Sprintf("unable to refresh instance: %v", err))
 
 	oldCert, _ := os.ReadFile("devel/data/cert.pem")
@@ -343,9 +343,9 @@ func TestRoleCertificateRequest(test *testing.T) {
 	tp := TestProvider{
 		Name: "athenz.aws.us-west-2",
 	}
-	opts := &options.Options{
+	opts := &sc.Options{
 		Domain: "athenz",
-		Services: []options.Service{
+		Services: []sc.Service{
 			{
 				Name:     "hockey",
 				Uid:      util.ExecIdCommand("-u"),
@@ -353,25 +353,25 @@ func TestRoleCertificateRequest(test *testing.T) {
 				FileMode: 0400,
 			},
 		},
-		Roles: []options.Role{
+		Roles: []sc.Role{
 			{
-				Name:     "athenz:role.writers",
-				Service:  "hockey",
-				Uid:      util.ExecIdCommand("-u"),
-				Gid:      util.ExecIdCommand("-g"),
-				Filename: roleCertFile,
-				FileMode: 0400,
+				Name:             "athenz:role.writers",
+				Service:          "hockey",
+				Uid:              util.ExecIdCommand("-u"),
+				Gid:              util.ExecIdCommand("-g"),
+				RoleCertFilename: roleCertFile,
+				FileMode:         0400,
 			},
 		},
 		KeyDir:           siaDir,
 		CertDir:          siaDir,
 		AthenzCACertFile: caCertFile,
-		ZTSAWSDomains:    []string{"zts-aws-cloud"},
+		ZTSCloudDomains:  []string{"zts-aws-cloud"},
 		Provider:         tp,
 	}
 
 	_, failures := GetRoleCertificates("http://127.0.0.1:5084/zts/v1", opts)
-	if failures != 0 {
+	if len(failures) != 0 {
 		test.Errorf("Unable to get role certificate: %v", err)
 		return
 	}
@@ -384,7 +384,7 @@ func TestRoleCertificateRequest(test *testing.T) {
 
 func TestShouldSkipRegister(test *testing.T) {
 	startTime := time.Now()
-	opts := &options.Options{
+	opts := &sc.Options{
 		EC2StartTime: &startTime,
 	}
 	//current time is valid
@@ -470,7 +470,7 @@ func TestUpdateSSHConfigFile(test *testing.T) {
 }
 
 func TestNilTokenOptions(test *testing.T) {
-	opts := &options.Options{
+	opts := &sc.Options{
 		Domain: "athenz",
 	}
 	token, err := tokenOptions(opts, "")
@@ -479,7 +479,7 @@ func TestNilTokenOptions(test *testing.T) {
 }
 
 func TestTokenStoreOptions(test *testing.T) {
-	opts := &options.Options{
+	opts := &sc.Options{
 		Domain: "athenz",
 		AccessTokens: []config.AccessToken{
 			{
@@ -529,13 +529,13 @@ func TestGetServiceHostname(test *testing.T) {
 				Name:     "testProvider",
 				Hostname: tt.providerHostname,
 			}
-			opts := options.Options{
+			opts := sc.Options{
 				SanDnsHostname: tt.sanDnsHostname,
 				HostnameSuffix: tt.hostnameSuffix,
 				Domain:         tt.domain,
 				Provider:       provider,
 			}
-			svc := options.Service{
+			svc := sc.Service{
 				Name: tt.service,
 			}
 			hostname := getServiceHostname(&opts, svc, false)
@@ -550,7 +550,7 @@ func TestServiceAlreadyRegistered(test *testing.T) {
 
 	keyDir := test.TempDir()
 	certDir := test.TempDir()
-	opts := options.Options{
+	opts := sc.Options{
 		KeyDir:  keyDir,
 		CertDir: certDir,
 		Domain:  "athenz",
@@ -580,7 +580,7 @@ func TestServiceAlreadyRegistered(test *testing.T) {
 	}
 	for _, tt := range tests {
 		test.Run(tt.name, func(t *testing.T) {
-			svc := options.Service{
+			svc := sc.Service{
 				Name:         "api",
 				KeyFilename:  tt.keyFileName,
 				CertFilename: tt.certFileName,
@@ -598,61 +598,63 @@ func TestGenerateSshRequest(test *testing.T) {
 	tp := TestProvider{
 		Name: "athenz.aws.us-west-2",
 	}
-	opts := options.Options{
+	opts := sc.Options{
 		Ssh:      false,
 		Provider: tp,
 	}
 	// ssh option false we should get success with nils and empty csr
-	sshReq, sshCsr, err := generateSshRequest(&opts, "backend", "hostname.athenz.io", "")
+	sshReq, sshCsr, err := generateSshRequest(&opts, "backend", "hostname.athenz.io")
 	assert.Nil(test, sshReq)
 	assert.Equal(test, "", sshCsr)
 	assert.Nil(test, err)
 	// ssh enabled but not for primary service we should get success with nils and empty csr
 	opts.Ssh = true
-	opts.Services = []options.Service{
+	opts.Services = []sc.Service{
 		{
 			Name: "api",
 		},
 	}
-	sshReq, sshCsr, err = generateSshRequest(&opts, "backend", "hostname.athenz.io", "")
+	sshReq, sshCsr, err = generateSshRequest(&opts, "backend", "hostname.athenz.io")
 	assert.Nil(test, sshReq)
 	assert.Equal(test, "", sshCsr)
 	assert.Nil(test, err)
 	// ssh enabled with primary service and key type is rsa - null cert request but valid csr
 	opts.SshPubKeyFile = "devel/data/cert.pem"
 	opts.Domain = "athenz"
-	opts.ZTSAWSDomains = []string{"athenz.io"}
+	opts.ZTSCloudDomains = []string{"athenz.io"}
 	opts.SshHostKeyType = hostkey.Rsa
-	sshReq, sshCsr, err = generateSshRequest(&opts, "api", "hostname.athenz.io", "")
+	sshReq, sshCsr, err = generateSshRequest(&opts, "api", "hostname.athenz.io")
 	assert.Nil(test, sshReq)
 	assert.NotEmpty(test, sshCsr)
 	assert.Nil(test, err)
 	// ssh enabled with primary service and key type is ecdsa - empty csr but not-nil cert request
 	opts.SshHostKeyType = hostkey.Ecdsa
-	sshReq, sshCsr, err = generateSshRequest(&opts, "api", "hostname.athenz.io", "")
+	sshReq, sshCsr, err = generateSshRequest(&opts, "api", "hostname.athenz.io")
 	assert.NotNil(test, sshReq)
-	assert.Equal(test, 3, len(sshReq.CertRequestData.Principals))
+	assert.Equal(test, 4, len(sshReq.CertRequestData.Principals))
 	assert.True(test, slices.Contains(sshReq.CertRequestData.Principals, "my-vm"))
 	assert.True(test, slices.Contains(sshReq.CertRequestData.Principals, "my-instance-id"))
+	assert.True(test, slices.Contains(sshReq.CertRequestData.Principals, "api.athenz.athenz.io"))
 	assert.Empty(test, sshCsr)
 	assert.Nil(test, err)
 	// ssh enabled with primary service and key type is ecdsa - empty csr but not-nil cert request, opts defines sshPrincipals
 	opts.SshHostKeyType = hostkey.Ecdsa
 	opts.SshPrincipals = "cname.athenz.io"
-	sshReq, sshCsr, err = generateSshRequest(&opts, "api", "hostname.athenz.io", "")
+	sshReq, sshCsr, err = generateSshRequest(&opts, "api", "hostname.athenz.io")
 	assert.NotNil(test, sshReq)
-	assert.Equal(test, 4, len(sshReq.CertRequestData.Principals))
+	assert.Equal(test, 5, len(sshReq.CertRequestData.Principals))
 	assert.True(test, slices.Contains(sshReq.CertRequestData.Principals, "hostname.athenz.io"))
 	assert.True(test, slices.Contains(sshReq.CertRequestData.Principals, "cname.athenz.io"))
 	assert.True(test, slices.Contains(sshReq.CertRequestData.Principals, "my-vm"))
 	assert.True(test, slices.Contains(sshReq.CertRequestData.Principals, "my-instance-id"))
+	assert.True(test, slices.Contains(sshReq.CertRequestData.Principals, "api.athenz.athenz.io"))
 	assert.Empty(test, sshCsr)
 	assert.Nil(test, err)
 }
 
 func TestShouldExitRightAwayCountsOnly(test *testing.T) {
 
-	opts := &options.Options{
+	opts := &sc.Options{
 		FailCountForExit: 2,
 	}
 
@@ -670,7 +672,7 @@ func TestShouldExitRightAwayCertificate(test *testing.T) {
 		return
 	}
 
-	err := RefreshInstance("http://127.0.0.1:5084/zts/v1", "", opts)
+	err := RefreshInstance("http://127.0.0.1:5084/zts/v1", opts)
 	assert.Nil(test, err, fmt.Sprintf("unable to refresh instance: %v", err))
 
 	// our certs are valid for 30 days, so we'll set the refresh

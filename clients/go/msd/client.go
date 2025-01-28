@@ -26,21 +26,19 @@ var _ = ioutil.NopCloser
 type MSDClient struct {
 	URL             string
 	Transport       http.RoundTripper
-	CredsHeader     *string
-	CredsToken      *string
+	CredsHeaders    map[string]string
 	Timeout         time.Duration
 	DisableRedirect bool
 }
 
 // NewClient creates and returns a new HTTP client object for the MSD service
 func NewClient(url string, transport http.RoundTripper) MSDClient {
-	return MSDClient{url, transport, nil, nil, 0, false}
+	return MSDClient{url, transport, make(map[string]string), 0, false}
 }
 
 // AddCredentials adds the credentials to the client for subsequent requests.
 func (client *MSDClient) AddCredentials(header string, token string) {
-	client.CredsHeader = &header
-	client.CredsToken = &token
+	client.CredsHeaders[header] = token
 }
 
 func (client MSDClient) getClient() *http.Client {
@@ -62,11 +60,14 @@ func (client MSDClient) getClient() *http.Client {
 }
 
 func (client MSDClient) addAuthHeader(req *http.Request) {
-	if client.CredsHeader != nil && client.CredsToken != nil {
-		if strings.HasPrefix(*client.CredsHeader, "Cookie.") {
-			req.Header.Add("Cookie", (*client.CredsHeader)[7:]+"="+*client.CredsToken)
+	if len(client.CredsHeaders) == 0 {
+		return
+	}
+	for key, value := range client.CredsHeaders {
+		if strings.HasPrefix(key, "Cookie.") {
+			req.Header.Add("Cookie", (key)[7:]+"="+value)
 		} else {
-			req.Header.Add(*client.CredsHeader, *client.CredsToken)
+			req.Header.Add(key, value)
 		}
 	}
 }
@@ -435,14 +436,18 @@ func (client MSDClient) GetTransportPolicyRulesByDomain(domainName DomainName, m
 	}
 }
 
-func (client MSDClient) PutTransportPolicy(domainName DomainName, serviceName EntityName, payload *TransportPolicyRequest) (*TransportPolicyRules, error) {
+func (client MSDClient) PutTransportPolicy(domainName DomainName, serviceName EntityName, auditRef string, resourceOwner string, payload *TransportPolicyRequest) (*TransportPolicyRules, error) {
 	var data *TransportPolicyRules
+	headers := map[string]string{
+		"Athenz-Resource-Owner": resourceOwner,
+		"Y-Audit-Ref":           auditRef,
+	}
 	url := client.URL + "/domain/" + fmt.Sprint(domainName) + "/service/" + fmt.Sprint(serviceName) + "/transportpolicy"
 	contentBytes, err := json.Marshal(payload)
 	if err != nil {
 		return data, err
 	}
-	resp, err := client.httpPut(url, nil, contentBytes)
+	resp, err := client.httpPut(url, headers, contentBytes)
 	if err != nil {
 		return data, err
 	}
@@ -470,6 +475,75 @@ func (client MSDClient) PutTransportPolicy(domainName DomainName, serviceName En
 			errobj.Message = string(contentBytes)
 		}
 		return data, errobj
+	}
+}
+
+func (client MSDClient) GetTransportPolicyRulesByService(domainName DomainName, serviceName EntityName, matchingTag string) (*TransportPolicyRules, string, error) {
+	var data *TransportPolicyRules
+	headers := map[string]string{
+		"If-None-Match": matchingTag,
+	}
+	url := client.URL + "/domain/" + fmt.Sprint(domainName) + "/service/" + fmt.Sprint(serviceName) + "/transportpolicies"
+	resp, err := client.httpGet(url, headers)
+	if err != nil {
+		return nil, "", err
+	}
+	defer resp.Body.Close()
+	switch resp.StatusCode {
+	case 200, 304:
+		if 304 != resp.StatusCode {
+			err = json.NewDecoder(resp.Body).Decode(&data)
+			if err != nil {
+				return nil, "", err
+			}
+		}
+		tag := resp.Header.Get(rdl.FoldHttpHeaderName("ETag"))
+		return data, tag, nil
+	default:
+		var errobj rdl.ResourceError
+		contentBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, "", err
+		}
+		json.Unmarshal(contentBytes, &errobj)
+		if errobj.Code == 0 {
+			errobj.Code = resp.StatusCode
+		}
+		if errobj.Message == "" {
+			errobj.Message = string(contentBytes)
+		}
+		return nil, "", errobj
+	}
+}
+
+func (client MSDClient) DeleteTransportPolicy(domainName DomainName, serviceName EntityName, id int64, auditRef string, resourceOwner string) error {
+	headers := map[string]string{
+		"Athenz-Resource-Owner": resourceOwner,
+		"Y-Audit-Ref":           auditRef,
+	}
+	url := client.URL + "/domain/" + fmt.Sprint(domainName) + "/service/" + fmt.Sprint(serviceName) + "/transportpolicy/" + fmt.Sprint(id)
+	resp, err := client.httpDelete(url, headers)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	switch resp.StatusCode {
+	case 204:
+		return nil
+	default:
+		var errobj rdl.ResourceError
+		contentBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		json.Unmarshal(contentBytes, &errobj)
+		if errobj.Code == 0 {
+			errobj.Code = resp.StatusCode
+		}
+		if errobj.Message == "" {
+			errobj.Message = string(contentBytes)
+		}
+		return errobj
 	}
 }
 
@@ -549,13 +623,16 @@ func (client MSDClient) GetWorkloadsByIP(ip string, matchingTag string) (*Worklo
 	}
 }
 
-func (client MSDClient) PutDynamicWorkload(domainName DomainName, serviceName EntityName, options *WorkloadOptions) error {
+func (client MSDClient) PutDynamicWorkload(domainName DomainName, serviceName EntityName, options *WorkloadOptions, resourceOwner string) error {
+	headers := map[string]string{
+		"Athenz-Resource-Owner": resourceOwner,
+	}
 	url := client.URL + "/domain/" + fmt.Sprint(domainName) + "/service/" + fmt.Sprint(serviceName) + "/workload/dynamic"
 	contentBytes, err := json.Marshal(options)
 	if err != nil {
 		return err
 	}
-	resp, err := client.httpPut(url, nil, contentBytes)
+	resp, err := client.httpPut(url, headers, contentBytes)
 	if err != nil {
 		return err
 	}
@@ -580,9 +657,12 @@ func (client MSDClient) PutDynamicWorkload(domainName DomainName, serviceName En
 	}
 }
 
-func (client MSDClient) DeleteDynamicWorkload(domainName DomainName, serviceName EntityName, instanceId PathElement) error {
+func (client MSDClient) DeleteDynamicWorkload(domainName DomainName, serviceName EntityName, instanceId PathElement, resourceOwner string) error {
+	headers := map[string]string{
+		"Athenz-Resource-Owner": resourceOwner,
+	}
 	url := client.URL + "/domain/" + fmt.Sprint(domainName) + "/service/" + fmt.Sprint(serviceName) + "/instanceId/" + fmt.Sprint(instanceId) + "/workload/dynamic"
-	resp, err := client.httpDelete(url, nil)
+	resp, err := client.httpDelete(url, headers)
 	if err != nil {
 		return err
 	}
@@ -607,13 +687,16 @@ func (client MSDClient) DeleteDynamicWorkload(domainName DomainName, serviceName
 	}
 }
 
-func (client MSDClient) PutStaticWorkload(domainName DomainName, serviceName EntityName, staticWorkload *StaticWorkload) error {
+func (client MSDClient) PutStaticWorkload(domainName DomainName, serviceName EntityName, staticWorkload *StaticWorkload, resourceOwner string) error {
+	headers := map[string]string{
+		"Athenz-Resource-Owner": resourceOwner,
+	}
 	url := client.URL + "/domain/" + fmt.Sprint(domainName) + "/service/" + fmt.Sprint(serviceName) + "/workload/static"
 	contentBytes, err := json.Marshal(staticWorkload)
 	if err != nil {
 		return err
 	}
-	resp, err := client.httpPut(url, nil, contentBytes)
+	resp, err := client.httpPut(url, headers, contentBytes)
 	if err != nil {
 		return err
 	}
@@ -638,9 +721,12 @@ func (client MSDClient) PutStaticWorkload(domainName DomainName, serviceName Ent
 	}
 }
 
-func (client MSDClient) DeleteStaticWorkload(domainName DomainName, serviceName EntityName, name StaticWorkloadName) error {
+func (client MSDClient) DeleteStaticWorkload(domainName DomainName, serviceName EntityName, name StaticWorkloadName, resourceOwner string) error {
+	headers := map[string]string{
+		"Athenz-Resource-Owner": resourceOwner,
+	}
 	url := client.URL + "/domain/" + fmt.Sprint(domainName) + "/service/" + fmt.Sprint(serviceName) + "/name/" + fmt.Sprint(name) + "/workload/static"
-	resp, err := client.httpDelete(url, nil)
+	resp, err := client.httpDelete(url, headers)
 	if err != nil {
 		return err
 	}
@@ -776,6 +862,70 @@ func (client MSDClient) GetWorkloadsByDomainAndService(request *BulkWorkloadRequ
 			errobj.Message = string(contentBytes)
 		}
 		return nil, "", errobj
+	}
+}
+
+func (client MSDClient) PutCompositeInstance(domainName DomainName, serviceName EntityName, instance *CompositeInstance, resourceOwner string) error {
+	headers := map[string]string{
+		"Athenz-Resource-Owner": resourceOwner,
+	}
+	url := client.URL + "/domain/" + fmt.Sprint(domainName) + "/service/" + fmt.Sprint(serviceName) + "/workload/discover/instance"
+	contentBytes, err := json.Marshal(instance)
+	if err != nil {
+		return err
+	}
+	resp, err := client.httpPut(url, headers, contentBytes)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	switch resp.StatusCode {
+	case 204:
+		return nil
+	default:
+		var errobj rdl.ResourceError
+		contentBytes, err = io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		json.Unmarshal(contentBytes, &errobj)
+		if errobj.Code == 0 {
+			errobj.Code = resp.StatusCode
+		}
+		if errobj.Message == "" {
+			errobj.Message = string(contentBytes)
+		}
+		return errobj
+	}
+}
+
+func (client MSDClient) DeleteCompositeInstance(domainName DomainName, serviceName EntityName, instance SimpleName, resourceOwner string) error {
+	headers := map[string]string{
+		"Athenz-Resource-Owner": resourceOwner,
+	}
+	url := client.URL + "/domain/" + fmt.Sprint(domainName) + "/service/" + fmt.Sprint(serviceName) + "/workload/discover/instance/" + fmt.Sprint(instance)
+	resp, err := client.httpDelete(url, headers)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	switch resp.StatusCode {
+	case 204:
+		return nil
+	default:
+		var errobj rdl.ResourceError
+		contentBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		json.Unmarshal(contentBytes, &errobj)
+		if errobj.Code == 0 {
+			errobj.Code = resp.StatusCode
+		}
+		if errobj.Message == "" {
+			errobj.Message = string(contentBytes)
+		}
+		return errobj
 	}
 }
 

@@ -174,6 +174,7 @@ class AddRole extends React.Component {
             category: 'regular',
             name: '',
             newMemberName: '',
+            memberNameInInput: '',
             memberExpiry: '',
             memberReviewReminder: '',
             members: [],
@@ -283,6 +284,7 @@ class AddRole extends React.Component {
             newMemberName: '',
             memberExpiry: '',
             memberReviewReminder: '',
+            memberNameInInput: '',
         });
     }
 
@@ -301,6 +303,13 @@ class AddRole extends React.Component {
         this.setState({
             trustDomain: evt.target.value,
         });
+    }
+
+    onInputValueChange(inputVal) {
+        this.setState({ ['memberNameInInput']: inputVal });
+        if (this.state.newMemberName && this.state.newMemberName !== inputVal) {
+            this.setState({ ['newMemberName']: '' });
+        }
     }
 
     onSubmit() {
@@ -350,6 +359,16 @@ class AddRole extends React.Component {
                 draft.trust = this.state.trustDomain;
             }
         });
+        if (
+            this.state.newMemberName.trim() !==
+            this.state.memberNameInInput.trim()
+        ) {
+            this.setState({
+                errorMessage:
+                    'Member must be selected in the dropdown or member input field must be empty.',
+            });
+            return;
+        }
         if (this.state.category === 'delegated') {
             if (!role.trust) {
                 this.setState({
@@ -476,6 +495,14 @@ class AddRole extends React.Component {
                         <ContentDiv style={reviewTriggerStyle}>
                             <AddMemberDiv>
                                 <StyledInputAutoComplete
+                                    value={this.state.memberNameInInput}
+                                    selectedDropdownValue={
+                                        this.state.newMemberName
+                                    } // marks value in dropdown selected
+                                    onInputValueChange={(inputVal) => {
+                                        // remove value from state if input changed
+                                        this.onInputValueChange(inputVal);
+                                    }}
                                     placeholder={ADD_ROLE_MEMBER_PLACEHOLDER}
                                     itemToString={(i) =>
                                         i === null ? '' : i.value
@@ -525,6 +552,7 @@ class AddRole extends React.Component {
                                 secondary
                                 size={'small'}
                                 onClick={this.addMember}
+                                data-wdio={'add-role-member'}
                             >
                                 Add
                             </StyledButton>
@@ -545,6 +573,7 @@ class AddRole extends React.Component {
                         <StyledInputLabel>Delegated to</StyledInputLabel>
                         <ContentDiv>
                             <StyledInput
+                                id={'delegated-to-input'}
                                 placeholder={
                                     ADD_ROLE_DELEGATED_DOMAIN_PLACEHOLDER
                                 }
@@ -559,6 +588,7 @@ class AddRole extends React.Component {
                 {this.getJustification()}
                 <SectionDiv>
                     <Icon
+                        id={'advanced-settings-icon'}
                         icon={this.state.showSettings ? arrowup : arrowdown}
                         onClick={this.expandSettings}
                         color={colors.icons}
@@ -592,6 +622,8 @@ class AddRole extends React.Component {
                                 members={members}
                                 role={this.state.role}
                                 reviewEnabled={this.state.reviewEnabled}
+                                // to disable all settings except description for delegated role
+                                delegated={this.state.category === 'delegated'}
                             />
                         </tbody>
                     </StyleTable>

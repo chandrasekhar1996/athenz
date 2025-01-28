@@ -16,9 +16,10 @@
 
 package com.yahoo.athenz.zms.notification;
 
+import com.yahoo.athenz.common.server.ServerResourceException;
 import com.yahoo.athenz.common.server.notification.*;
 import com.yahoo.athenz.zms.*;
-import com.yahoo.athenz.zms.store.AthenzDomain;
+import com.yahoo.athenz.common.server.store.AthenzDomain;
 import com.yahoo.rdl.Timestamp;
 import org.mockito.Mockito;
 import org.testng.annotations.Test;
@@ -33,17 +34,16 @@ import static com.yahoo.athenz.zms.notification.ZMSNotificationManagerTest.getNo
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.testng.Assert.*;
-import static org.testng.Assert.assertTrue;
-import static org.testng.AssertJUnit.assertEquals;
 
 public class RoleMemberReviewNotificationTaskTest {
     final NotificationToEmailConverterCommon notificationToEmailConverterCommon = new NotificationToEmailConverterCommon(null);
 
     @Test
-    public void testSendRoleMemberRemindersException() {
+    public void testSendRoleMemberRemindersException() throws ServerResourceException {
         DBService dbsvc = Mockito.mock(DBService.class);
         NotificationService mockNotificationService =  Mockito.mock(NotificationService.class);
-        NotificationServiceFactory testfact = () -> mockNotificationService;
+        NotificationServiceFactory testfact = Mockito.mock(NotificationServiceFactory.class);
+        Mockito.when(testfact.create(any())).thenReturn(mockNotificationService);
 
         // we're going to throw an exception when called
 
@@ -51,7 +51,8 @@ public class RoleMemberReviewNotificationTaskTest {
         NotificationManager notificationManager = getNotificationManager(dbsvc, testfact);
 
         RoleMemberReviewNotificationTask roleMemberReviewNotificationTask = new RoleMemberReviewNotificationTask(
-                dbsvc, USER_DOMAIN_PREFIX, notificationToEmailConverterCommon, false);
+                dbsvc, USER_DOMAIN_PREFIX, notificationToEmailConverterCommon);
+
         // to make sure we're not creating any notifications, we're going
         // to configure our mock to throw an exception
 
@@ -67,11 +68,12 @@ public class RoleMemberReviewNotificationTaskTest {
     }
 
     @Test
-    public void testSendRoleMemberReviewRemindersEmptySet() {
+    public void testSendRoleMemberReviewRemindersEmptySet() throws ServerResourceException {
 
         DBService dbsvc = Mockito.mock(DBService.class);
         NotificationService mockNotificationService =  Mockito.mock(NotificationService.class);
-        NotificationServiceFactory testfact = () -> mockNotificationService;
+        NotificationServiceFactory testfact = Mockito.mock(NotificationServiceFactory.class);
+        Mockito.when(testfact.create(any())).thenReturn(mockNotificationService);
         NotificationManager notificationManager = getNotificationManager(dbsvc, testfact);
 
         // to make sure we're not creating any notifications, we're going
@@ -80,18 +82,19 @@ public class RoleMemberReviewNotificationTaskTest {
         Mockito.when(mockNotificationService.notify(any())).thenThrow(new IllegalArgumentException());
 
         RoleMemberReviewNotificationTask roleMemberReviewNotificationTask = new RoleMemberReviewNotificationTask(
-                dbsvc, USER_DOMAIN_PREFIX, notificationToEmailConverterCommon, false);
+                dbsvc, USER_DOMAIN_PREFIX, notificationToEmailConverterCommon);
         assertEquals(roleMemberReviewNotificationTask.getNotifications(), new ArrayList<>());
 
         notificationManager.shutdown();
     }
 
     @Test
-    public void testSendRoleMemberReviewReminders() {
+    public void testSendRoleMemberReviewReminders() throws ServerResourceException {
 
         DBService dbsvc = Mockito.mock(DBService.class);
         NotificationService mockNotificationService =  Mockito.mock(NotificationService.class);
-        NotificationServiceFactory testfact = () -> mockNotificationService;
+        NotificationServiceFactory testfact = Mockito.mock(NotificationServiceFactory.class);
+        Mockito.when(testfact.create(any())).thenReturn(mockNotificationService);
 
         List<MemberRole> memberRoles = new ArrayList<>();
         memberRoles.add(new MemberRole().setRoleName("role1")
@@ -131,23 +134,22 @@ public class RoleMemberReviewNotificationTaskTest {
                 .thenReturn(adminRole);
 
         List<Notification> notifications = new RoleMemberReviewNotificationTask(dbsvc,
-                USER_DOMAIN_PREFIX, notificationToEmailConverterCommon, false).getNotifications();
+                USER_DOMAIN_PREFIX, notificationToEmailConverterCommon).getNotifications();
 
         // we should get 2 notifications - one for user and one for domain
         assertEquals(notifications.size(), 2);
 
         // Verify contents of notifications is as expected
-        Notification expectedFirstNotification = new Notification();
+        Notification expectedFirstNotification = new Notification(Notification.Type.ROLE_MEMBER_REVIEW);
         expectedFirstNotification.addRecipient("user.joe");
-        expectedFirstNotification.addDetails(NOTIFICATION_DETAILS_ROLES_LIST, "athenz1;role1;user.joe;1970-01-01T00:00:00.100Z");
+        expectedFirstNotification.addDetails(NOTIFICATION_DETAILS_ROLES_LIST, "athenz1;role1;user.joe;1970-01-01T00:00:00.100Z;");
         expectedFirstNotification.addDetails("member", "user.joe");
         expectedFirstNotification.setNotificationToEmailConverter(new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon));
         expectedFirstNotification.setNotificationToMetricConverter(new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToMetricConverter());
 
-        Notification expectedSecondNotification = new Notification();
+        Notification expectedSecondNotification = new Notification(Notification.Type.ROLE_MEMBER_REVIEW);
         expectedSecondNotification.addRecipient("user.jane");
-        expectedSecondNotification.addDetails(NOTIFICATION_DETAILS_MEMBERS_LIST, "athenz1;role1;user.joe;1970-01-01T00:00:00.100Z");
-        expectedSecondNotification.addDetails("domain", "athenz1");
+        expectedSecondNotification.addDetails(NOTIFICATION_DETAILS_MEMBERS_LIST, "athenz1;role1;user.joe;1970-01-01T00:00:00.100Z;");
         expectedSecondNotification.setNotificationToEmailConverter(
                 new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationToEmailConverterCommon));
         expectedSecondNotification.setNotificationToMetricConverter(
@@ -160,11 +162,12 @@ public class RoleMemberReviewNotificationTaskTest {
     }
 
     @Test
-    public void testSendRoleMemberReviewRemindersDisabledOverOneWeek() {
+    public void testSendRoleMemberReviewRemindersDisabledOverOneWeek() throws ServerResourceException {
 
         DBService dbsvc = Mockito.mock(DBService.class);
         NotificationService mockNotificationService =  Mockito.mock(NotificationService.class);
-        NotificationServiceFactory testfact = () -> mockNotificationService;
+        NotificationServiceFactory testfact = Mockito.mock(NotificationServiceFactory.class);
+        Mockito.when(testfact.create(any())).thenReturn(mockNotificationService);
 
         Timestamp twoWeekExpiry = Timestamp.fromMillis(System.currentTimeMillis() + TimeUnit.MILLISECONDS.convert(14, TimeUnit.DAYS));
         Timestamp oneDayExpiry = Timestamp.fromMillis(System.currentTimeMillis() + TimeUnit.MILLISECONDS.convert(1, TimeUnit.DAYS));
@@ -218,7 +221,7 @@ public class RoleMemberReviewNotificationTaskTest {
         Mockito.when(dbsvc.getRole("athenz1", "role2", false, false, false)).thenReturn(role);
 
         List<Notification> notifications = new RoleMemberReviewNotificationTask(dbsvc,
-                USER_DOMAIN_PREFIX, notificationToEmailConverterCommon, false).getNotifications();
+                USER_DOMAIN_PREFIX, notificationToEmailConverterCommon).getNotifications();
 
         // we should get 2 notifications - one for user and one for domain
         // role1 should be excluded and role2 should be included
@@ -226,17 +229,16 @@ public class RoleMemberReviewNotificationTaskTest {
         assertEquals(notifications.size(), 2);
 
         // Verify contents of notifications is as expected
-        Notification expectedFirstNotification = new Notification();
+        Notification expectedFirstNotification = new Notification(Notification.Type.ROLE_MEMBER_REVIEW);
         expectedFirstNotification.addRecipient("user.joe");
-        expectedFirstNotification.addDetails(NOTIFICATION_DETAILS_ROLES_LIST, "athenz1;role2;user.joe;" + oneDayExpiry);
+        expectedFirstNotification.addDetails(NOTIFICATION_DETAILS_ROLES_LIST, "athenz1;role2;user.joe;" + oneDayExpiry + ";");
         expectedFirstNotification.addDetails("member", "user.joe");
         expectedFirstNotification.setNotificationToEmailConverter(new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon));
         expectedFirstNotification.setNotificationToMetricConverter(new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToMetricConverter());
 
-        Notification expectedSecondNotification = new Notification();
+        Notification expectedSecondNotification = new Notification(Notification.Type.ROLE_MEMBER_REVIEW);
         expectedSecondNotification.addRecipient("user.jane");
-        expectedSecondNotification.addDetails(NOTIFICATION_DETAILS_MEMBERS_LIST, "athenz1;role2;user.joe;" + oneDayExpiry);
-        expectedSecondNotification.addDetails("domain", "athenz1");
+        expectedSecondNotification.addDetails(NOTIFICATION_DETAILS_MEMBERS_LIST, "athenz1;role2;user.joe;" + oneDayExpiry + ";");
         expectedSecondNotification.setNotificationToEmailConverter(
                 new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationToEmailConverterCommon));
         expectedSecondNotification.setNotificationToMetricConverter(
@@ -278,7 +280,7 @@ public class RoleMemberReviewNotificationTaskTest {
         Mockito.when(dbsvc.getAthenzDomain("athenz1", false)).thenReturn(null);
 
         List<Notification> notifications = new RoleMemberReviewNotificationTask(dbsvc, USER_DOMAIN_PREFIX,
-                notificationToEmailConverterCommon, false).getNotifications();
+                notificationToEmailConverterCommon).getNotifications();
 
         // we should get 0 notifications
         assertEquals(notifications, new ArrayList<>());
@@ -299,7 +301,7 @@ public class RoleMemberReviewNotificationTaskTest {
 
         // First try the review admin reminder
 
-        Notification notification = new Notification();
+        Notification notification = new Notification(Notification.Type.ROLE_MEMBER_REVIEW);
         notification.setDetails(details);
         RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter converter = new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationToEmailConverterCommon);
         NotificationEmail notificationAsEmail = converter.getNotificationAsEmail(notification);
@@ -317,7 +319,7 @@ public class RoleMemberReviewNotificationTaskTest {
         // with one bad entry that should be skipped
 
         details.put(NOTIFICATION_DETAILS_MEMBERS_LIST,
-                "athenz;role1;user.joe;2020-12-01T12:00:00.000Z|athenz;role1;user.jane;2020-12-01T12:00:00.000Z|athenz;role3;user.bad");
+                "athenz;role1;user.joe;2020-12-01T12:00:00.000Z;notify+details%20test|athenz;role1;user.jane;2020-12-01T12:00:00.000Z;|athenz;role3;user.bad");
 
         NotificationEmail notificationAsEmailWithMembers = converter.getNotificationAsEmail(notification);
         body = notificationAsEmailWithMembers.getBody();
@@ -326,6 +328,7 @@ public class RoleMemberReviewNotificationTaskTest {
         assertTrue(body.contains("user.jane"));
         assertTrue(body.contains("role1"));
         assertTrue(body.contains("2020-12-01T12:00:00.000Z"));
+        assertTrue(body.contains("notify details test"));
 
         // make sure the bad entries are not included
 
@@ -339,10 +342,10 @@ public class RoleMemberReviewNotificationTaskTest {
 
         // now try the review principal reminder
 
-        notification = new Notification();
+        notification = new Notification(Notification.Type.ROLE_MEMBER_REVIEW);
         notification.setDetails(details);
         details.put(NOTIFICATION_DETAILS_ROLES_LIST,
-                "athenz1;role1;user.joe;2020-12-01T12:00:00.000Z|athenz2;role2;user.joe;2020-12-01T12:00:00.000Z");
+                "athenz1;role1;user.joe;2020-12-01T12:00:00.000Z;notify+details|athenz2;role2;user.joe;2020-12-01T12:00:00.000Z;");
         RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter principalConverter =
                 new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon);
         NotificationEmail principalNotificationAsEmail = principalConverter.getNotificationAsEmail(notification);
@@ -354,6 +357,7 @@ public class RoleMemberReviewNotificationTaskTest {
         assertTrue(body.contains("role1"));
         assertTrue(body.contains("role2"));
         assertTrue(body.contains("2020-12-01T12:00:00.000Z"));
+        assertTrue(body.contains("notify details"));
 
         // Make sure support text and url do not appear
 
@@ -367,14 +371,14 @@ public class RoleMemberReviewNotificationTaskTest {
 
     @Test
     public void testGetEmailSubject() {
-        Notification notification = new Notification();
+        Notification notification = new Notification(Notification.Type.ROLE_MEMBER_REVIEW);
         RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter converter =
                 new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationToEmailConverterCommon);
         NotificationEmail notificationAsEmail = converter.getNotificationAsEmail(notification);
         String subject = notificationAsEmail.getSubject();
         assertEquals(subject, "Athenz Domain Role Member Review Notification");
 
-        notification = new Notification();
+        notification = new Notification(Notification.Type.ROLE_MEMBER_REVIEW);
         RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter principalConverter =
                 new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon);
         notificationAsEmail = principalConverter.getNotificationAsEmail(notification);
@@ -403,12 +407,12 @@ public class RoleMemberReviewNotificationTaskTest {
         memberRole.setAuditRef("testAuditRef");
 
         StringBuilder detailStringBuilder = stringer.getDetailString(memberRole);
-        String expectedStringBuilder = "testDomainName;testRoleName;testMemberName;1970-01-01T00:00:00.050Z";
+        String expectedStringBuilder = "testDomainName;testRoleName;testMemberName;1970-01-01T00:00:00.050Z;";
         assertEquals(detailStringBuilder.toString(), expectedStringBuilder);
 
         memberRole.setExpiration(null);
         detailStringBuilder = stringer.getDetailString(memberRole);
-        expectedStringBuilder = "testDomainName;testRoleName;testMemberName;1970-01-01T00:00:00.050Z";
+        expectedStringBuilder = "testDomainName;testRoleName;testMemberName;1970-01-01T00:00:00.050Z;";
         assertEquals(detailStringBuilder.toString(), expectedStringBuilder);
     }
 
@@ -420,28 +424,28 @@ public class RoleMemberReviewNotificationTaskTest {
 
         // Role where user review notifications disabled
         Map<String, TagValueList> tags = new HashMap<>();
-        tags.put("zms.DisableReminderNotifications", new TagValueList().setList(Arrays.asList("1")));
+        tags.put("zms.DisableReminderNotifications", new TagValueList().setList(List.of("1")));
         Role noUserNotif = new Role()
                 .setName("athenz1:role.no-user-notif")
                 .setTags(tags);
 
         // Role where user admin review notifications disabled
         tags = new HashMap<>();
-        tags.put("zms.DisableReminderNotifications", new TagValueList().setList(Arrays.asList("2")));
+        tags.put("zms.DisableReminderNotifications", new TagValueList().setList(List.of("2")));
         Role noAdminNotif = new Role()
                 .setName("athenz1:role.no-admin-notif")
                 .setTags(tags);
 
         // Role where all review notifications disabled
         tags = new HashMap<>();
-        tags.put("zms.DisableReminderNotifications", new TagValueList().setList(Arrays.asList("3")));
+        tags.put("zms.DisableReminderNotifications", new TagValueList().setList(List.of("3")));
         Role noNotifs = new Role()
                 .setName("athenz1:role.no-notifs")
                 .setTags(tags);
 
         // Role with invalid tags - all notifications enabled
         tags = new HashMap<>();
-        tags.put("zms.DisableReminderNotifications", new TagValueList().setList(Arrays.asList("notANumber")));
+        tags.put("zms.DisableReminderNotifications", new TagValueList().setList(List.of("notANumber")));
         Role invalid = new Role()
                 .setName("athenz1:role.invalid")
                 .setTags(tags);
@@ -473,21 +477,22 @@ public class RoleMemberReviewNotificationTaskTest {
                 .setMemberName("user.user5");
 
         RoleMemberReviewNotificationTask roleMemberReviewNotificationTask =
-                new RoleMemberReviewNotificationTask(dbsvc, USER_DOMAIN_PREFIX, notificationToEmailConverterCommon, false);
-        RoleMemberReviewNotificationTask.ReviewDisableRoleMemberNotificationFilter notificationFilter = roleMemberReviewNotificationTask.new ReviewDisableRoleMemberNotificationFilter();
+                new RoleMemberReviewNotificationTask(dbsvc, USER_DOMAIN_PREFIX, notificationToEmailConverterCommon);
+        RoleMemberReviewNotificationTask.ReviewDisableRoleMemberNotificationFilter notificationFilter =
+                roleMemberReviewNotificationTask.new ReviewDisableRoleMemberNotificationFilter();
         EnumSet<DisableNotificationEnum> disabledNotificationState = notificationFilter.getDisabledNotificationState(memberRole);
         assertTrue(disabledNotificationState.isEmpty());
 
         disabledNotificationState = notificationFilter.getDisabledNotificationState(memberRoleDisabledUserNotif);
-        assertEquals(1, disabledNotificationState.size());
+        assertEquals(disabledNotificationState.size(), 1);
         assertTrue(disabledNotificationState.contains(DisableNotificationEnum.USER));
 
         disabledNotificationState = notificationFilter.getDisabledNotificationState(memberRoleDisabledAdminNotif);
-        assertEquals(1, disabledNotificationState.size());
+        assertEquals(disabledNotificationState.size(), 1);
         assertTrue(disabledNotificationState.contains(DisableNotificationEnum.ADMIN));
 
         disabledNotificationState = notificationFilter.getDisabledNotificationState(memberRoleDisabledNotifs);
-        assertEquals(2, disabledNotificationState.size());
+        assertEquals(disabledNotificationState.size(), 2);
         assertTrue(disabledNotificationState.containsAll(Arrays.asList(DisableNotificationEnum.ADMIN, DisableNotificationEnum.USER)));
 
         disabledNotificationState = notificationFilter.getDisabledNotificationState(memberRoleInvalid);
@@ -505,7 +510,7 @@ public class RoleMemberReviewNotificationTaskTest {
         details.put(NOTIFICATION_DETAILS_MEMBERS_LIST,
                 "dom1;role1;user.joe;" + twentyFiveDaysFromNow + "|dom1;role1;user.jane;" + twentyDaysFromNow + "|dom1;role1;user.bad");
 
-        Notification notification = new Notification();
+        Notification notification = new Notification(Notification.Type.ROLE_MEMBER_REVIEW);
         notification.setDetails(details);
 
         RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToMetricConverter domainConverter =
@@ -539,7 +544,7 @@ public class RoleMemberReviewNotificationTaskTest {
                 "athenz1;role1;user.joe;" + twentyFiveDaysFromNow + "|athenz2;role2;user.joe;" + twentyDaysFromNow);
         details.put(NOTIFICATION_DETAILS_MEMBER, "user.joe");
 
-        notification = new Notification();
+        notification = new Notification(Notification.Type.ROLE_MEMBER_REVIEW);
         notification.setDetails(details);
 
         RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToMetricConverter principalConverter =

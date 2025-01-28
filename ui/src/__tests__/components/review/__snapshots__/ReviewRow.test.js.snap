@@ -6,8 +6,6 @@ exports[`ReviewRow should render 1`] = `
   margin-top: 10px;
   box-shadow: 0 1px 4px #d9d9d9;
   border: 1px solid #fff;
-  -webkit-border-image: none;
-  border-image: none;
   -webkit-border-image: initial;
   border-image: initial;
   height: 50px;
@@ -149,14 +147,14 @@ exports[`ReviewRow should render 1`] = `
       data-testid="radiobutton-wrapper"
     >
       <input
-        checked=""
-        id="radiobutton-undefined50-extend"
-        name="undefined50"
+        disabled=""
+        id="radiobutton-50-extend"
+        name="50"
         type="radio"
         value="extend"
       />
       <label
-        for="radiobutton-undefined50-extend"
+        for="radiobutton-50-extend"
       />
     </div>
   </td>
@@ -169,13 +167,14 @@ exports[`ReviewRow should render 1`] = `
       data-testid="radiobutton-wrapper"
     >
       <input
-        id="radiobutton-undefined50-no-action"
-        name="undefined50"
+        checked=""
+        id="radiobutton-50-no-action"
+        name="50"
         type="radio"
         value="no-action"
       />
       <label
-        for="radiobutton-undefined50-no-action"
+        for="radiobutton-50-no-action"
       />
     </div>
   </td>
@@ -188,13 +187,13 @@ exports[`ReviewRow should render 1`] = `
       data-testid="radiobutton-wrapper"
     >
       <input
-        id="radiobutton-undefined50-delete"
-        name="undefined50"
+        id="radiobutton-50-delete"
+        name="50"
         type="radio"
         value="delete"
       />
       <label
-        for="radiobutton-undefined50-delete"
+        for="radiobutton-50-delete"
       />
     </div>
   </td>

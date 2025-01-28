@@ -15,23 +15,24 @@
  */
 package com.yahoo.athenz.instance.provider.impl;
 
-import com.amazonaws.services.identitymanagement.AmazonIdentityManagement;
-import com.amazonaws.services.identitymanagement.AmazonIdentityManagementClientBuilder;
-import com.amazonaws.services.identitymanagement.model.ListOpenIDConnectProvidersRequest;
-import com.amazonaws.services.identitymanagement.model.ListOpenIDConnectProvidersResult;
-import com.amazonaws.services.identitymanagement.model.OpenIDConnectProviderListEntry;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
-import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
-import com.amazonaws.services.securitytoken.model.AssumeRoleResult;
-import com.amazonaws.services.securitytoken.model.Credentials;
+import com.yahoo.athenz.auth.Authorizer;
 import com.yahoo.athenz.auth.token.jwts.JwtsHelper;
 import com.yahoo.athenz.auth.util.Crypto;
 import com.yahoo.athenz.instance.provider.InstanceConfirmation;
 import com.yahoo.athenz.instance.provider.InstanceProvider;
-import com.yahoo.athenz.instance.provider.ResourceException;
+import com.yahoo.athenz.instance.provider.ProviderResourceException;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.testng.annotations.Test;
+import software.amazon.awssdk.services.iam.IamClient;
+import software.amazon.awssdk.services.iam.IamClientBuilder;
+import software.amazon.awssdk.services.iam.model.ListOpenIdConnectProvidersRequest;
+import software.amazon.awssdk.services.iam.model.ListOpenIdConnectProvidersResponse;
+import software.amazon.awssdk.services.iam.model.OpenIDConnectProviderListEntry;
+import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
+import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
+import software.amazon.awssdk.services.sts.model.Credentials;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,6 +40,7 @@ import java.security.PublicKey;
 import java.security.interfaces.ECPublicKey;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 
 import static com.yahoo.athenz.instance.provider.InstanceProvider.ZTS_INSTANCE_SAN_DNS;
 import static com.yahoo.athenz.instance.provider.impl.CommonKubernetesDistributionValidator.ZTS_PROP_K8S_ATTESTATION_EXPECTED_AUDIENCE;
@@ -52,6 +54,7 @@ import static org.testng.Assert.*;
 public class InstanceK8SProviderTest {
 
     private static final File ecPublicKey = new File("./src/test/resources/unit_test_ec_public.key");
+
     @Test
     public void testInitializeDefaults() {
         InstanceK8SProvider provider = new InstanceK8SProvider();
@@ -59,10 +62,12 @@ public class InstanceK8SProviderTest {
         assertEquals(provider.getProviderScheme(), InstanceProvider.Scheme.CLASS);
         provider.close();
     }
+
     @Test
     public void testInitializeNullValues() {
         InstanceK8SProvider provider = new InstanceK8SProvider();
-        System.setProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS, "com.yahoo.athenz.instance.provider.impl.MockKubernetesDistributionValidatorFactory");
+        System.setProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS,
+                "com.yahoo.athenz.instance.provider.impl.MockKubernetesDistributionValidatorFactory");
         try {
             provider.initialize("k8sprovider", "com.yahoo.athenz.instance.provider.impl.InstanceK8SProvider", null, null);
         }catch(Exception ex) {
@@ -71,10 +76,12 @@ public class InstanceK8SProviderTest {
         System.clearProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS);
         provider.close();
     }
+
     @Test
     public void testNewOIDCIssuerValidatorFactoryException() {
         InstanceK8SProvider provider = new InstanceK8SProvider();
-        System.setProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS, "com.yahoo.athenz.instance.provider.impl.invalid");
+        System.setProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS,
+                "com.yahoo.athenz.instance.provider.impl.invalid");
         try {
             provider.newKubernetesDistributionValidatorFactory();
             fail();
@@ -83,13 +90,15 @@ public class InstanceK8SProviderTest {
         provider.close();
         System.clearProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS);
     }
+
     @Test
     public void testError() {
         InstanceK8SProvider provider = new InstanceK8SProvider();
-        ResourceException re = provider.error("error");
+        ProviderResourceException re = provider.error("error");
         assertEquals(re.getCode(), 403);
         provider.close();
     }
+
     @Test
     public void testRefreshInstance() {
         InstanceK8SProvider provider = new InstanceK8SProvider();
@@ -97,8 +106,8 @@ public class InstanceK8SProviderTest {
         try {
             provider.refreshInstance(confirmation);
             fail();
-        } catch (ResourceException re){
-            assertEquals(re.getCode(), ResourceException.FORBIDDEN);
+        } catch (ProviderResourceException re){
+            assertEquals(re.getCode(), ProviderResourceException.FORBIDDEN);
         }
         provider.close();
     }
@@ -110,14 +119,19 @@ public class InstanceK8SProviderTest {
         PublicKey publicKey = Crypto.loadPublicKey(ecPublicKey);
         createOpenIdConfigFileWithKey(configFile, jwksUri, true, (ECPublicKey)publicKey);
         System.setProperty(InstanceGCPProvider.GCP_PROP_DNS_SUFFIX, "gcp.athenz.cloud");
-        System.setProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS, "com.yahoo.athenz.instance.provider.impl.DefaultKubernetesDistributionValidatorFactory");
+        System.setProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS,
+                "com.yahoo.athenz.instance.provider.impl.DefaultKubernetesDistributionValidatorFactory");
         System.setProperty(AWS_PROP_REGION_NAME, "us-west-2");
         System.setProperty(ZTS_PROP_K8S_ATTESTATION_EXPECTED_AUDIENCE, "https://zts.athenz.io/zts/v1");
         InstanceK8SProvider provider = new InstanceK8SProvider();
+        Authorizer authorizer = Mockito.mock(Authorizer.class);
+        when(authorizer.access(any(), any(), any(), any())).thenReturn(true);
+        provider.setAuthorizer(authorizer);
         provider.initialize("k8sprovider", "com.yahoo.athenz.instance.provider.impl.InstanceK8SProvider", null, null);
 
         DefaultGCPGoogleKubernetesEngineValidator.getInstance().jwtsHelper = Mockito.mock(JwtsHelper.class);
-        when(DefaultGCPGoogleKubernetesEngineValidator.getInstance().jwtsHelper.extractJwksUri(any(), any())).thenReturn("file://" + jwksUri.getCanonicalPath());
+        when(DefaultGCPGoogleKubernetesEngineValidator.getInstance().jwtsHelper.extractJwksUri(any(), any()))
+                .thenReturn("file://" + jwksUri.getCanonicalPath());
 
         InstanceConfirmation confirmation = new InstanceConfirmation();
         confirmation.setDomain("my-domain");
@@ -133,8 +147,7 @@ public class InstanceK8SProviderTest {
             assertEquals(confirmation.getAttributes().size(), 2);
             assertEquals(confirmation.getAttributes().get(InstanceProvider.ZTS_CERT_REFRESH), "false");
             assertEquals(confirmation.getAttributes().get(InstanceProvider.ZTS_CERT_EXPIRY_TIME), "10080");
-
-        } catch (ResourceException re) {
+        } catch (ProviderResourceException re) {
             fail();
         }
         provider.close();
@@ -153,15 +166,19 @@ public class InstanceK8SProviderTest {
         PublicKey publicKey = Crypto.loadPublicKey(ecPublicKey);
         createOpenIdConfigFileWithKey(configFile, jwksUri, true, (ECPublicKey)publicKey);
         System.setProperty(InstanceAWSProvider.AWS_PROP_DNS_SUFFIX, "aws.athenz.cloud");
-        System.setProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS, "com.yahoo.athenz.instance.provider.impl.DefaultKubernetesDistributionValidatorFactory");
+        System.setProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS,
+                "com.yahoo.athenz.instance.provider.impl.DefaultKubernetesDistributionValidatorFactory");
         System.setProperty(AWS_PROP_REGION_NAME, "us-west-2");
         System.setProperty(ZTS_PROP_K8S_ATTESTATION_EXPECTED_AUDIENCE, "https://zts.athenz.io/zts/v1");
         InstanceK8SProvider provider = new InstanceK8SProvider();
+        Authorizer authorizer = Mockito.mock(Authorizer.class);
+        when(authorizer.access(any(), any(), any(), any())).thenReturn(true);
+        provider.setAuthorizer(authorizer);
         provider.initialize("k8sprovider", "com.yahoo.athenz.instance.provider.impl.InstanceK8SProvider", null, null);
 
         DefaultAWSElasticKubernetesServiceValidator.getInstance().jwtsHelper = Mockito.mock(JwtsHelper.class);
-        when(DefaultAWSElasticKubernetesServiceValidator.getInstance().jwtsHelper.extractJwksUri(any(), any())).thenReturn("file://" + jwksUri.getCanonicalPath());
-
+        when(DefaultAWSElasticKubernetesServiceValidator.getInstance().jwtsHelper.extractJwksUri(any(), any()))
+                .thenReturn("file://" + jwksUri.getCanonicalPath());
 
         InstanceConfirmation confirmation = new InstanceConfirmation();
         confirmation.setDomain("my-domain");
@@ -169,39 +186,42 @@ public class InstanceK8SProviderTest {
         confirmation.setAttributes(new HashMap<>());
         confirmation.getAttributes().put(InstanceProvider.ZTS_INSTANCE_CLOUD, "aws");
         confirmation.getAttributes().put(InstanceProvider.ZTS_INSTANCE_AWS_ACCOUNT, "123456789012");
-        confirmation.getAttributes().put(ZTS_INSTANCE_SAN_DNS, "my-service.my-domain.aws.athenz.cloud,abs2-ddce-221-32df.instanceid.athenz.aws.athenz.cloud");
+        confirmation.getAttributes().put(ZTS_INSTANCE_SAN_DNS,
+                "my-service.my-domain.aws.athenz.cloud,abs2-ddce-221-32df.instanceid.athenz.aws.athenz.cloud");
         confirmation.setAttestationData("{\"identityToken\": \"" + createToken("system:serviceaccount:default:my-domain.my-service",
                 "https://zts.athenz.io/zts/v1", "https://oidc.eks.us-east-1.amazonaws.com/id/123456789012") +  "\"}");
 
-        AWSSecurityTokenService sts = Mockito.mock(AWSSecurityTokenService.class);
-        AWSSecurityTokenService stsOrig = DefaultAWSElasticKubernetesServiceValidator.getInstance().stsClient;
+        StsClient sts = Mockito.mock(StsClient.class);
+        StsClient stsOrig = DefaultAWSElasticKubernetesServiceValidator.getInstance().stsClient;
         DefaultAWSElasticKubernetesServiceValidator.getInstance().stsClient = sts;
-        AssumeRoleResult assumeRoleResult = Mockito.mock(AssumeRoleResult.class);
+        AssumeRoleResponse assumeRoleResult = Mockito.mock(AssumeRoleResponse.class);
         Credentials creds = Mockito.mock(Credentials.class);
-        when(creds.getAccessKeyId()).thenReturn("abc");
-        when(creds.getSecretAccessKey()).thenReturn("def");
-        when(creds.getSessionToken()).thenReturn("ghi");
-        when(assumeRoleResult.getCredentials()).thenReturn(creds);
+        when(creds.accessKeyId()).thenReturn("abc");
+        when(creds.secretAccessKey()).thenReturn("def");
+        when(creds.sessionToken()).thenReturn("ghi");
+        when(assumeRoleResult.credentials()).thenReturn(creds);
         when(sts.assumeRole(any(AssumeRoleRequest.class))).thenReturn(assumeRoleResult);
 
-        try (MockedStatic<AmazonIdentityManagementClientBuilder> iamClientBuilderStatic = Mockito.mockStatic(AmazonIdentityManagementClientBuilder.class)) {
-            AmazonIdentityManagementClientBuilder iamClientBuilder = Mockito.mock(AmazonIdentityManagementClientBuilder.class);
-            AmazonIdentityManagement iamClient = Mockito.mock(AmazonIdentityManagement.class);
+        try (MockedStatic<IamClient> iamClientStatic = Mockito.mockStatic(IamClient.class)) {
+            IamClientBuilder iamClientBuilder = Mockito.mock(IamClientBuilder.class);
 
-            iamClientBuilderStatic.when(AmazonIdentityManagementClientBuilder::standard).thenReturn(iamClientBuilder);
-            when(iamClientBuilder.withCredentials(any())).thenReturn(iamClientBuilder);
-            when(iamClientBuilder.withRegion(Mockito.anyString())).thenReturn(iamClientBuilder);
+            IamClient iamClient = Mockito.mock(IamClient.class);
+
+            iamClientStatic.when(IamClient::builder).thenReturn(iamClientBuilder);
+            when(iamClientBuilder.credentialsProvider(any())).thenReturn(iamClientBuilder);
+            when(iamClientBuilder.region(any())).thenReturn(iamClientBuilder);
             when(iamClientBuilder.build()).thenReturn(iamClient);
-            List<OpenIDConnectProviderListEntry> providers = List.of(new OpenIDConnectProviderListEntry().withArn("arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/123456789012"));
-            when(iamClient.listOpenIDConnectProviders(any(ListOpenIDConnectProvidersRequest.class))).thenReturn(new ListOpenIDConnectProvidersResult().withOpenIDConnectProviderList(providers));
+
+            List<OpenIDConnectProviderListEntry> providers = List.of(
+                    OpenIDConnectProviderListEntry.builder().arn("arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/123456789012").build());
+            when(iamClient.listOpenIDConnectProviders(any(ListOpenIdConnectProvidersRequest.class)))
+                    .thenReturn(ListOpenIdConnectProvidersResponse.builder().openIDConnectProviderList(providers).build());
 
             provider.confirmInstance(confirmation);
             assertEquals(confirmation.getAttributes().size(), 2);
             assertEquals(confirmation.getAttributes().get(InstanceProvider.ZTS_CERT_REFRESH), "false");
             assertEquals(confirmation.getAttributes().get(InstanceProvider.ZTS_CERT_EXPIRY_TIME), "10080");
-
-
-        } catch (ResourceException re) {
+        } catch (ProviderResourceException re) {
             fail();
         }
 
@@ -218,7 +238,8 @@ public class InstanceK8SProviderTest {
     @Test
     public void testConfirmInstanceInvalidIssuer() {
         System.setProperty(InstanceGCPProvider.GCP_PROP_DNS_SUFFIX, "gcp.athenz.cloud");
-        System.setProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS, "com.yahoo.athenz.instance.provider.impl.DefaultKubernetesDistributionValidatorFactory");
+        System.setProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS,
+                "com.yahoo.athenz.instance.provider.impl.DefaultKubernetesDistributionValidatorFactory");
         System.setProperty(AWS_PROP_REGION_NAME, "us-west-2");
         System.setProperty(ZTS_PROP_K8S_ATTESTATION_EXPECTED_AUDIENCE, "https://zts.athenz.io/zts/v1");
         InstanceK8SProvider provider = new InstanceK8SProvider();
@@ -230,15 +251,16 @@ public class InstanceK8SProviderTest {
         confirmation.setAttributes(new HashMap<>());
         confirmation.getAttributes().put(InstanceProvider.ZTS_INSTANCE_CLOUD, "gcp");
         confirmation.getAttributes().put(InstanceProvider.ZTS_INSTANCE_GCP_PROJECT, "my-project");
-        confirmation.getAttributes().put(ZTS_INSTANCE_SAN_DNS, "my-service.my-domain.gcp.athenz.cloud,abs2-ddce-221-32df.instanceid.athenz.gcp.athenz.cloud");
+        confirmation.getAttributes().put(ZTS_INSTANCE_SAN_DNS,
+                "my-service.my-domain.gcp.athenz.cloud,abs2-ddce-221-32df.instanceid.athenz.gcp.athenz.cloud");
         confirmation.setAttestationData("{\"identityToken\": \"" + createToken("system:serviceaccount:default:my-domain.my-service",
                 "https://zts.athenz.io/zts/v1", "invalid") +  "\"}");
         try {
             provider.confirmInstance(confirmation);
             fail();
 
-        } catch (ResourceException re) {
-            assertEquals(re.getCode(), ResourceException.FORBIDDEN);
+        } catch (ProviderResourceException re) {
+            assertEquals(re.getCode(), ProviderResourceException.FORBIDDEN);
         }
         provider.close();
         System.clearProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS);
@@ -250,7 +272,8 @@ public class InstanceK8SProviderTest {
     @Test
     public void testConfirmInstanceNoSupportedProvider() {
         System.setProperty(InstanceGCPProvider.GCP_PROP_DNS_SUFFIX, "gcp.athenz.cloud");
-        System.setProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS, "com.yahoo.athenz.instance.provider.impl.DefaultKubernetesDistributionValidatorFactory");
+        System.setProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS,
+                "com.yahoo.athenz.instance.provider.impl.DefaultKubernetesDistributionValidatorFactory");
         System.setProperty(AWS_PROP_REGION_NAME, "us-west-2");
         System.setProperty(ZTS_PROP_K8S_ATTESTATION_EXPECTED_AUDIENCE, "https://zts.athenz.io/zts/v1");
         InstanceK8SProvider provider = new InstanceK8SProvider();
@@ -262,38 +285,44 @@ public class InstanceK8SProviderTest {
         confirmation.setAttributes(new HashMap<>());
         confirmation.getAttributes().put(InstanceProvider.ZTS_INSTANCE_CLOUD, "azure");
         confirmation.getAttributes().put(InstanceProvider.ZTS_INSTANCE_GCP_PROJECT, "my-project");
-        confirmation.getAttributes().put(ZTS_INSTANCE_SAN_DNS, "my-service.my-domain.gcp.athenz.cloud,abs2-ddce-221-32df.instanceid.athenz.gcp.athenz.cloud");
+        confirmation.getAttributes().put(ZTS_INSTANCE_SAN_DNS,
+                "my-service.my-domain.gcp.athenz.cloud,abs2-ddce-221-32df.instanceid.athenz.gcp.athenz.cloud");
         confirmation.setAttestationData("{\"identityToken\": \"" + createToken("system:serviceaccount:default:my-domain.my-service",
                 "https://zts.athenz.io/zts/v1", "https://container.googleapis.com/v1/projects/my-project/zones/us-east1-a/clusters/my-cluster") +  "\"}");
         try {
             provider.confirmInstance(confirmation);
             fail();
 
-        } catch (ResourceException re) {
-            assertEquals(re.getCode(), ResourceException.FORBIDDEN);
+        } catch (ProviderResourceException re) {
+            assertEquals(re.getCode(), ProviderResourceException.FORBIDDEN);
         }
         provider.close();
         System.clearProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS);
         System.clearProperty(AWS_PROP_REGION_NAME);
         System.clearProperty(ZTS_PROP_K8S_ATTESTATION_EXPECTED_AUDIENCE);
         System.clearProperty(InstanceGCPProvider.GCP_PROP_DNS_SUFFIX);
-
     }
 
     @Test
-    public void testConfirmInstanceInvalidAttestationData() throws IOException {
-        File configFile = new File("./src/test/resources/codesigning-openid.json");
-        File jwksUri = new File("./src/test/resources/codesigning-jwks.json");
-        createOpenIdConfigFile(configFile, jwksUri, true);
+    public void testConfirmInstanceInvalidAttestationData() {
+
         System.setProperty(InstanceGCPProvider.GCP_PROP_DNS_SUFFIX, "gcp.athenz.cloud");
-        System.setProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS, "com.yahoo.athenz.instance.provider.impl.DefaultKubernetesDistributionValidatorFactory");
+        System.setProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS,
+                "com.yahoo.athenz.instance.provider.impl.DefaultKubernetesDistributionValidatorFactory");
         System.setProperty(AWS_PROP_REGION_NAME, "us-west-2");
         System.setProperty(ZTS_PROP_K8S_ATTESTATION_EXPECTED_AUDIENCE, "https://zts.athenz.io/zts/v1");
+
         InstanceK8SProvider provider = new InstanceK8SProvider();
+        Authorizer authorizer = Mockito.mock(Authorizer.class);
+        when(authorizer.access(any(), any(), any(), any())).thenReturn(true);
+        provider.setAuthorizer(authorizer);
         provider.initialize("k8sprovider", "com.yahoo.athenz.instance.provider.impl.InstanceK8SProvider", null, null);
 
         DefaultGCPGoogleKubernetesEngineValidator.getInstance().jwtsHelper = Mockito.mock(JwtsHelper.class);
-        when(DefaultGCPGoogleKubernetesEngineValidator.getInstance().jwtsHelper.extractJwksUri(any(), any())).thenReturn("file://" + jwksUri.getCanonicalPath());
+        ClassLoader classLoader = this.getClass().getClassLoader();
+        final String jwksUri = Objects.requireNonNull(classLoader.getResource("jwt_jwks_empty.json")).toString();
+        when(DefaultGCPGoogleKubernetesEngineValidator.getInstance().jwtsHelper.extractJwksUri(any(), any()))
+                .thenReturn(jwksUri);
         DefaultGCPGoogleKubernetesEngineValidator.getInstance().issuersMap.clear();
 
         InstanceConfirmation confirmation = new InstanceConfirmation();
@@ -302,40 +331,50 @@ public class InstanceK8SProviderTest {
         confirmation.setAttributes(new HashMap<>());
         confirmation.getAttributes().put(InstanceProvider.ZTS_INSTANCE_CLOUD, "gcp");
         confirmation.getAttributes().put(InstanceProvider.ZTS_INSTANCE_GCP_PROJECT, "my-project");
-        confirmation.getAttributes().put(ZTS_INSTANCE_SAN_DNS, "my-service.my-domain.gcp.athenz.cloud,abs2-ddce-221-32df.instanceid.athenz.gcp.athenz.cloud");
+        confirmation.getAttributes().put(ZTS_INSTANCE_SAN_DNS,
+                "my-service.my-domain.gcp.athenz.cloud,abs2-ddce-221-32df.instanceid.athenz.gcp.athenz.cloud");
         confirmation.setAttestationData("{\"identityToken\": \"" + createToken("system:serviceaccount:default:my-domain.my-service",
                 "https://zts.athenz.io/zts/v1", "https://container.googleapis.com/v1/projects/my-project/zones/us-east1-a/clusters/my-cluster") +  "\"}");
+
         try {
             provider.confirmInstance(confirmation);
             fail();
-
-        } catch (ResourceException re) {
-            assertEquals(re.getCode(), ResourceException.FORBIDDEN);
+        } catch (ProviderResourceException re) {
+            assertEquals(re.getCode(), ProviderResourceException.FORBIDDEN);
         }
         provider.close();
+
         System.clearProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS);
         System.clearProperty(AWS_PROP_REGION_NAME);
         System.clearProperty(ZTS_PROP_K8S_ATTESTATION_EXPECTED_AUDIENCE);
         System.clearProperty(InstanceGCPProvider.GCP_PROP_DNS_SUFFIX);
         DefaultGCPGoogleKubernetesEngineValidator.getInstance().jwtsHelper = new JwtsHelper();
-        removeOpenIdConfigFile(configFile, jwksUri);
     }
 
     @Test
     public void testConfirmInstanceInvalidSanDNS() throws IOException {
+
         File configFile = new File("./src/test/resources/codesigning-openid.json");
         File jwksUri = new File("./src/test/resources/codesigning-jwks.json");
         PublicKey publicKey = Crypto.loadPublicKey(ecPublicKey);
-        createOpenIdConfigFileWithKey(configFile, jwksUri, true, (ECPublicKey)publicKey);
+        createOpenIdConfigFileWithKey(configFile, jwksUri, true, (ECPublicKey) publicKey);
+
         System.setProperty(InstanceGCPProvider.GCP_PROP_DNS_SUFFIX, "gcp.athenz.cloud");
-        System.setProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS, "com.yahoo.athenz.instance.provider.impl.DefaultKubernetesDistributionValidatorFactory");
+        System.setProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS,
+                "com.yahoo.athenz.instance.provider.impl.DefaultKubernetesDistributionValidatorFactory");
         System.setProperty(AWS_PROP_REGION_NAME, "us-west-2");
         System.setProperty(ZTS_PROP_K8S_ATTESTATION_EXPECTED_AUDIENCE, "https://zts.athenz.io/zts/v1");
+
         InstanceK8SProvider provider = new InstanceK8SProvider();
+        Authorizer authorizer = Mockito.mock(Authorizer.class);
+        when(authorizer.access(any(), any(), any(), any())).thenReturn(true);
+        provider.setAuthorizer(authorizer);
         provider.initialize("k8sprovider", "com.yahoo.athenz.instance.provider.impl.InstanceK8SProvider", null, null);
 
         DefaultGCPGoogleKubernetesEngineValidator.getInstance().jwtsHelper = Mockito.mock(JwtsHelper.class);
-        when(DefaultGCPGoogleKubernetesEngineValidator.getInstance().jwtsHelper.extractJwksUri(any(), any())).thenReturn("file://" + jwksUri.getCanonicalPath());
+        when(DefaultGCPGoogleKubernetesEngineValidator.getInstance().jwtsHelper.extractJwksUri(any(), any()))
+                .thenReturn("file://" + jwksUri.getCanonicalPath());
+        DefaultGCPGoogleKubernetesEngineValidator.getInstance().issuersMap.clear();
 
         InstanceConfirmation confirmation = new InstanceConfirmation();
         confirmation.setDomain("my-domain");
@@ -349,9 +388,9 @@ public class InstanceK8SProviderTest {
         try {
             provider.confirmInstance(confirmation);
             fail();
-
-        } catch (ResourceException re) {
-            assertEquals(re.getCode(), ResourceException.FORBIDDEN);
+        } catch (ProviderResourceException ex) {
+            assertEquals(ex.getCode(), ProviderResourceException.FORBIDDEN);
+            assertTrue(ex.getMessage().contains("Unable to validate certificate request hostnames"), ex.getMessage());
         }
         provider.close();
         System.clearProperty(ZTS_PROP_K8S_PROVIDER_DISTRIBUTION_VALIDATOR_FACTORY_CLASS);

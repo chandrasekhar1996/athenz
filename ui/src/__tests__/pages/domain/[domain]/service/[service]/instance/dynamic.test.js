@@ -23,6 +23,7 @@ import {
     renderWithRedux,
 } from '../../../../../../../tests_utils/ComponentsTestUtils';
 import DynamicInstancePage from '../../../../../../../pages/domain/[domain]/service/[service]/instance/dynamic';
+import { listUserDomains_response } from '../../../../../../../mock/MockData';
 
 const testInstancedetails = {
     workLoadData: [
@@ -48,10 +49,6 @@ const testInstancedetails = {
 describe('DynamicInstancePage', () => {
     afterEach(() => MockApi.cleanMockApi());
     it('should render', async () => {
-        let domains = [];
-        let instanceDetails = testInstancedetails;
-        domains.push({ name: 'athens' });
-        domains.push({ name: 'athens.ci' });
         let query = {
             domain: 'dom',
             service: 'serv',
@@ -76,10 +73,12 @@ describe('DynamicInstancePage', () => {
             },
         };
         let serviceHeaderDetails = {
-            description:
-                'Here you can add / see instances which can not obtain Athenz identity because of limitations, but would be associated with your service.',
-            url: '',
-            target: '_blank',
+            dynamic: {
+                description:
+                    'Here you can see instances which are running with this service identity',
+                url: '',
+                target: '_blank',
+            },
         };
         let services = {
             'dom.serv': {
@@ -96,7 +95,10 @@ describe('DynamicInstancePage', () => {
                 .mockReturnValue(Promise.resolve([])),
             listUserDomains: jest
                 .fn()
-                .mockReturnValue(Promise.resolve(domains)),
+                .mockReturnValue(Promise.resolve(listUserDomains_response)),
+            getReviewGroups: jest.fn().mockReturnValue([]),
+            getReviewRoles: jest.fn().mockReturnValue([]),
+            getPageFeatureFlag: jest.fn().mockResolvedValue({}),
         };
         MockApi.setMockApi(api);
         const { getByTestId } = renderWithRedux(

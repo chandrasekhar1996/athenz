@@ -18,13 +18,14 @@ package sia
 
 import (
 	"encoding/json"
-	"github.com/AthenZ/athenz/libs/go/sia/aws/options"
-	"github.com/AthenZ/athenz/libs/go/sia/util"
 	"log"
 	"os"
 	"time"
 
 	"github.com/AthenZ/athenz/libs/go/sia/aws/meta"
+	"github.com/AthenZ/athenz/libs/go/sia/aws/options"
+	sc "github.com/AthenZ/athenz/libs/go/sia/config"
+	"github.com/AthenZ/athenz/libs/go/sia/util"
 )
 
 func getDocValue(docMap map[string]interface{}, key string) string {
@@ -59,6 +60,14 @@ func GetEC2DocumentDetails(metaEndPoint string) ([]byte, []byte, string, string,
 	return document, signature, account, instanceId, region, privateIp, &timeCheck, err
 }
 
+func GetEC2PublicIP(metaEndPoint string) (string, error) {
+	publicIP, err := meta.GetData(metaEndPoint, "/latest/meta-data/public-ipv4")
+	if err != nil {
+		return "", err
+	}
+	return string(publicIP), nil
+}
+
 func GetECSOnEC2TaskId() string {
 	ecs := os.Getenv("ECS_CONTAINER_METADATA_FILE")
 	if ecs == "" {
@@ -85,7 +94,7 @@ func GetECSOnEC2TaskId() string {
 	return taskId
 }
 
-func GetEC2Config(configFile, profileConfigFile, profileRestrictToKey, metaEndpoint string, useRegionalSTS bool, region, account string) (*options.Config, *options.ConfigAccount, *options.AccessProfileConfig, error) {
+func GetEC2Config(configFile, profileConfigFile, profileRestrictToKey, metaEndpoint string, useRegionalSTS bool, region, account string) (*sc.Config, *sc.ConfigAccount, *sc.AccessProfileConfig, error) {
 	config, configAccount, err := options.InitFileConfig(configFile, metaEndpoint, useRegionalSTS, region, account)
 	if err != nil {
 		log.Printf("Unable to process configuration file '%s': %v\n", configFile, err)
@@ -95,7 +104,7 @@ func GetEC2Config(configFile, profileConfigFile, profileRestrictToKey, metaEndpo
 			log.Printf("Unable to process environment settings: %v\n", err)
 			// if we do not have settings in our environment, we're going
 			// to use fallback to <domain>.<service>-service naming structure
-			log.Println("Trying to determine service name security credentials...")
+			log.Println("Trying to determine service name from security credentials...")
 			configAccount, _, err = options.InitCredsConfig("-service", "@", useRegionalSTS, region)
 			if err != nil {
 				log.Printf("Unable to process security credentials: %v\n", err)
@@ -116,7 +125,7 @@ func GetEC2Config(configFile, profileConfigFile, profileRestrictToKey, metaEndpo
 	return config, configAccount, profileConfig, nil
 }
 
-func GetEC2AccessProfile(configFile, profileRestrictToKey, metaEndpoint string, useRegionalSTS bool, region string) (*options.AccessProfileConfig, error) {
+func GetEC2AccessProfile(configFile, profileRestrictToKey, metaEndpoint string, useRegionalSTS bool, region string) (*sc.AccessProfileConfig, error) {
 	accessProfileConfig, err := options.InitAccessProfileFileConfig(configFile)
 	if err != nil {
 		log.Printf("Unable to process configuration file '%s': %v\n", configFile, err)

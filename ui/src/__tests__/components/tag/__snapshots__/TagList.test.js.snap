@@ -7,9 +7,6 @@ exports[`TagList should add new role tag 1`] = `
 
 .emotion-2 {
   padding-bottom: 20px;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   -webkit-box-pack: justify;
   -webkit-justify-content: space-between;
@@ -28,7 +25,7 @@ exports[`TagList should add new role tag 1`] = `
 .emotion-4 {
   border: none;
   border-radius: 2px;
-  box-shadow: 0 0 0 1px transparent inset,0 0 0 0 #d5d5d5 inset;
+  box-shadow: 0 0 0 1px #3697f2 inset;
   box-sizing: border-box;
   cursor: pointer;
   display: inline-block;
@@ -47,7 +44,6 @@ exports[`TagList should add new role tag 1`] = `
   vertical-align: baseline;
   white-space: nowrap;
   background: transparent;
-  box-shadow: 0 0 0 1px #3697f2 inset;
   color: #3697f2;
 }
 
@@ -145,9 +141,6 @@ exports[`TagList should add new role tag 1`] = `
   border-radius: 0 14px 14px 0;
   box-shadow: none;
   box-sizing: border-box;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 28px;
   -webkit-box-pack: center;
@@ -284,6 +277,7 @@ exports[`TagList should add new role tag 1`] = `
               <svg
                 class="emotion-26"
                 data-testid="icon"
+                data-wdio=""
                 height="20px"
                 id=""
                 viewBox="0 0 1024 1024"
@@ -316,6 +310,7 @@ exports[`TagList should add new role tag 1`] = `
               <svg
                 class="emotion-26"
                 data-testid="icon"
+                data-wdio=""
                 height="20px"
                 id=""
                 viewBox="0 0 1024 1024"
@@ -339,6 +334,7 @@ exports[`TagList should add new role tag 1`] = `
             <svg
               class="emotion-35"
               data-testid="icon"
+              data-wdio=""
               height="1.25em"
               id=""
               viewBox="0 0 1024 1024"
@@ -361,6 +357,7 @@ exports[`TagList should add new role tag 1`] = `
             <svg
               class="emotion-35"
               data-testid="icon"
+              data-wdio=""
               height="1.25em"
               id=""
               viewBox="0 0 1024 1024"
@@ -391,9 +388,6 @@ exports[`TagList should add new tag 1`] = `
 
 .emotion-2 {
   padding-bottom: 20px;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   -webkit-box-pack: justify;
   -webkit-justify-content: space-between;
@@ -412,7 +406,7 @@ exports[`TagList should add new tag 1`] = `
 .emotion-4 {
   border: none;
   border-radius: 2px;
-  box-shadow: 0 0 0 1px transparent inset,0 0 0 0 #d5d5d5 inset;
+  box-shadow: 0 0 0 1px #3697f2 inset;
   box-sizing: border-box;
   cursor: pointer;
   display: inline-block;
@@ -431,7 +425,6 @@ exports[`TagList should add new tag 1`] = `
   vertical-align: baseline;
   white-space: nowrap;
   background: transparent;
-  box-shadow: 0 0 0 1px #3697f2 inset;
   color: #3697f2;
 }
 
@@ -529,9 +522,6 @@ exports[`TagList should add new tag 1`] = `
   border-radius: 0 14px 14px 0;
   box-shadow: none;
   box-sizing: border-box;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 28px;
   -webkit-box-pack: center;
@@ -668,6 +658,7 @@ exports[`TagList should add new tag 1`] = `
               <svg
                 class="emotion-26"
                 data-testid="icon"
+                data-wdio=""
                 height="20px"
                 id=""
                 viewBox="0 0 1024 1024"
@@ -700,6 +691,7 @@ exports[`TagList should add new tag 1`] = `
               <svg
                 class="emotion-26"
                 data-testid="icon"
+                data-wdio=""
                 height="20px"
                 id=""
                 viewBox="0 0 1024 1024"
@@ -723,6 +715,7 @@ exports[`TagList should add new tag 1`] = `
             <svg
               class="emotion-35"
               data-testid="icon"
+              data-wdio=""
               height="1.25em"
               id=""
               viewBox="0 0 1024 1024"
@@ -745,6 +738,7 @@ exports[`TagList should add new tag 1`] = `
             <svg
               class="emotion-35"
               data-testid="icon"
+              data-wdio=""
               height="1.25em"
               id=""
               viewBox="0 0 1024 1024"
@@ -775,9 +769,6 @@ exports[`TagList should delete role tag 1`] = `
 
 .emotion-2 {
   padding-bottom: 20px;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   -webkit-box-pack: justify;
   -webkit-justify-content: space-between;
@@ -796,7 +787,7 @@ exports[`TagList should delete role tag 1`] = `
 .emotion-4 {
   border: none;
   border-radius: 2px;
-  box-shadow: 0 0 0 1px transparent inset,0 0 0 0 #d5d5d5 inset;
+  box-shadow: 0 0 0 1px #3697f2 inset;
   box-sizing: border-box;
   cursor: pointer;
   display: inline-block;
@@ -815,7 +806,6 @@ exports[`TagList should delete role tag 1`] = `
   vertical-align: baseline;
   white-space: nowrap;
   background: transparent;
-  box-shadow: 0 0 0 1px #3697f2 inset;
   color: #3697f2;
 }
 
@@ -913,9 +903,6 @@ exports[`TagList should delete role tag 1`] = `
   border-radius: 0 14px 14px 0;
   box-shadow: none;
   box-sizing: border-box;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 28px;
   -webkit-box-pack: center;
@@ -1052,6 +1039,7 @@ exports[`TagList should delete role tag 1`] = `
               <svg
                 class="emotion-26"
                 data-testid="icon"
+                data-wdio=""
                 height="20px"
                 id=""
                 viewBox="0 0 1024 1024"
@@ -1084,6 +1072,7 @@ exports[`TagList should delete role tag 1`] = `
               <svg
                 class="emotion-26"
                 data-testid="icon"
+                data-wdio=""
                 height="20px"
                 id=""
                 viewBox="0 0 1024 1024"
@@ -1107,6 +1096,7 @@ exports[`TagList should delete role tag 1`] = `
             <svg
               class="emotion-35"
               data-testid="icon"
+              data-wdio=""
               height="1.25em"
               id=""
               viewBox="0 0 1024 1024"
@@ -1129,6 +1119,7 @@ exports[`TagList should delete role tag 1`] = `
             <svg
               class="emotion-35"
               data-testid="icon"
+              data-wdio=""
               height="1.25em"
               id=""
               viewBox="0 0 1024 1024"
@@ -1159,9 +1150,6 @@ exports[`TagList should delete tag 1`] = `
 
 .emotion-2 {
   padding-bottom: 20px;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   -webkit-box-pack: justify;
   -webkit-justify-content: space-between;
@@ -1180,7 +1168,7 @@ exports[`TagList should delete tag 1`] = `
 .emotion-4 {
   border: none;
   border-radius: 2px;
-  box-shadow: 0 0 0 1px transparent inset,0 0 0 0 #d5d5d5 inset;
+  box-shadow: 0 0 0 1px #3697f2 inset;
   box-sizing: border-box;
   cursor: pointer;
   display: inline-block;
@@ -1199,7 +1187,6 @@ exports[`TagList should delete tag 1`] = `
   vertical-align: baseline;
   white-space: nowrap;
   background: transparent;
-  box-shadow: 0 0 0 1px #3697f2 inset;
   color: #3697f2;
 }
 
@@ -1297,9 +1284,6 @@ exports[`TagList should delete tag 1`] = `
   border-radius: 0 14px 14px 0;
   box-shadow: none;
   box-sizing: border-box;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 28px;
   -webkit-box-pack: center;
@@ -1436,6 +1420,7 @@ exports[`TagList should delete tag 1`] = `
               <svg
                 class="emotion-26"
                 data-testid="icon"
+                data-wdio=""
                 height="20px"
                 id=""
                 viewBox="0 0 1024 1024"
@@ -1468,6 +1453,7 @@ exports[`TagList should delete tag 1`] = `
               <svg
                 class="emotion-26"
                 data-testid="icon"
+                data-wdio=""
                 height="20px"
                 id=""
                 viewBox="0 0 1024 1024"
@@ -1491,6 +1477,7 @@ exports[`TagList should delete tag 1`] = `
             <svg
               class="emotion-35"
               data-testid="icon"
+              data-wdio=""
               height="1.25em"
               id=""
               viewBox="0 0 1024 1024"
@@ -1513,6 +1500,7 @@ exports[`TagList should delete tag 1`] = `
             <svg
               class="emotion-35"
               data-testid="icon"
+              data-wdio=""
               height="1.25em"
               id=""
               viewBox="0 0 1024 1024"
@@ -1543,9 +1531,6 @@ exports[`TagList should display add tag 1`] = `
 
 .emotion-2 {
   padding-bottom: 20px;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   -webkit-box-pack: justify;
   -webkit-justify-content: space-between;
@@ -1564,7 +1549,7 @@ exports[`TagList should display add tag 1`] = `
 .emotion-4 {
   border: none;
   border-radius: 2px;
-  box-shadow: 0 0 0 1px transparent inset,0 0 0 0 #d5d5d5 inset;
+  box-shadow: 0 0 0 1px #3697f2 inset;
   box-sizing: border-box;
   cursor: pointer;
   display: inline-block;
@@ -1583,7 +1568,6 @@ exports[`TagList should display add tag 1`] = `
   vertical-align: baseline;
   white-space: nowrap;
   background: transparent;
-  box-shadow: 0 0 0 1px #3697f2 inset;
   color: #3697f2;
 }
 
@@ -1631,9 +1615,6 @@ exports[`TagList should display delete tag 1`] = `
 
 .emotion-2 {
   padding-bottom: 20px;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   -webkit-box-pack: justify;
   -webkit-justify-content: space-between;
@@ -1652,7 +1633,7 @@ exports[`TagList should display delete tag 1`] = `
 .emotion-4 {
   border: none;
   border-radius: 2px;
-  box-shadow: 0 0 0 1px transparent inset,0 0 0 0 #d5d5d5 inset;
+  box-shadow: 0 0 0 1px #3697f2 inset;
   box-sizing: border-box;
   cursor: pointer;
   display: inline-block;
@@ -1671,7 +1652,6 @@ exports[`TagList should display delete tag 1`] = `
   vertical-align: baseline;
   white-space: nowrap;
   background: transparent;
-  box-shadow: 0 0 0 1px #3697f2 inset;
   color: #3697f2;
 }
 
@@ -1769,9 +1749,6 @@ exports[`TagList should display delete tag 1`] = `
   border-radius: 0 14px 14px 0;
   box-shadow: none;
   box-sizing: border-box;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 28px;
   -webkit-box-pack: center;
@@ -1908,6 +1885,7 @@ exports[`TagList should display delete tag 1`] = `
               <svg
                 class="emotion-26"
                 data-testid="icon"
+                data-wdio=""
                 height="20px"
                 id=""
                 viewBox="0 0 1024 1024"
@@ -1940,6 +1918,7 @@ exports[`TagList should display delete tag 1`] = `
               <svg
                 class="emotion-26"
                 data-testid="icon"
+                data-wdio=""
                 height="20px"
                 id=""
                 viewBox="0 0 1024 1024"
@@ -1963,6 +1942,7 @@ exports[`TagList should display delete tag 1`] = `
             <svg
               class="emotion-35"
               data-testid="icon"
+              data-wdio=""
               height="1.25em"
               id=""
               viewBox="0 0 1024 1024"
@@ -1985,6 +1965,7 @@ exports[`TagList should display delete tag 1`] = `
             <svg
               class="emotion-35"
               data-testid="icon"
+              data-wdio=""
               height="1.25em"
               id=""
               viewBox="0 0 1024 1024"
@@ -2015,9 +1996,6 @@ exports[`TagList should display delete tag single value 1`] = `
 
 .emotion-2 {
   padding-bottom: 20px;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   -webkit-box-pack: justify;
   -webkit-justify-content: space-between;
@@ -2036,7 +2014,7 @@ exports[`TagList should display delete tag single value 1`] = `
 .emotion-4 {
   border: none;
   border-radius: 2px;
-  box-shadow: 0 0 0 1px transparent inset,0 0 0 0 #d5d5d5 inset;
+  box-shadow: 0 0 0 1px #3697f2 inset;
   box-sizing: border-box;
   cursor: pointer;
   display: inline-block;
@@ -2055,7 +2033,6 @@ exports[`TagList should display delete tag single value 1`] = `
   vertical-align: baseline;
   white-space: nowrap;
   background: transparent;
-  box-shadow: 0 0 0 1px #3697f2 inset;
   color: #3697f2;
 }
 
@@ -2153,9 +2130,6 @@ exports[`TagList should display delete tag single value 1`] = `
   border-radius: 0 14px 14px 0;
   box-shadow: none;
   box-sizing: border-box;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 28px;
   -webkit-box-pack: center;
@@ -2292,6 +2266,7 @@ exports[`TagList should display delete tag single value 1`] = `
               <svg
                 class="emotion-26"
                 data-testid="icon"
+                data-wdio=""
                 height="20px"
                 id=""
                 viewBox="0 0 1024 1024"
@@ -2315,6 +2290,7 @@ exports[`TagList should display delete tag single value 1`] = `
             <svg
               class="emotion-29"
               data-testid="icon"
+              data-wdio=""
               height="1.25em"
               id=""
               viewBox="0 0 1024 1024"
@@ -2337,6 +2313,7 @@ exports[`TagList should display delete tag single value 1`] = `
             <svg
               class="emotion-29"
               data-testid="icon"
+              data-wdio=""
               height="1.25em"
               id=""
               viewBox="0 0 1024 1024"
@@ -2367,9 +2344,6 @@ exports[`TagList should display delete tag value 1`] = `
 
 .emotion-2 {
   padding-bottom: 20px;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   -webkit-box-pack: justify;
   -webkit-justify-content: space-between;
@@ -2388,7 +2362,7 @@ exports[`TagList should display delete tag value 1`] = `
 .emotion-4 {
   border: none;
   border-radius: 2px;
-  box-shadow: 0 0 0 1px transparent inset,0 0 0 0 #d5d5d5 inset;
+  box-shadow: 0 0 0 1px #3697f2 inset;
   box-sizing: border-box;
   cursor: pointer;
   display: inline-block;
@@ -2407,7 +2381,6 @@ exports[`TagList should display delete tag value 1`] = `
   vertical-align: baseline;
   white-space: nowrap;
   background: transparent;
-  box-shadow: 0 0 0 1px #3697f2 inset;
   color: #3697f2;
 }
 
@@ -2505,9 +2478,6 @@ exports[`TagList should display delete tag value 1`] = `
   border-radius: 0 14px 14px 0;
   box-shadow: none;
   box-sizing: border-box;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 28px;
   -webkit-box-pack: center;
@@ -2644,6 +2614,7 @@ exports[`TagList should display delete tag value 1`] = `
               <svg
                 class="emotion-26"
                 data-testid="icon"
+                data-wdio=""
                 height="20px"
                 id=""
                 viewBox="0 0 1024 1024"
@@ -2676,6 +2647,7 @@ exports[`TagList should display delete tag value 1`] = `
               <svg
                 class="emotion-26"
                 data-testid="icon"
+                data-wdio=""
                 height="20px"
                 id=""
                 viewBox="0 0 1024 1024"
@@ -2699,6 +2671,7 @@ exports[`TagList should display delete tag value 1`] = `
             <svg
               class="emotion-35"
               data-testid="icon"
+              data-wdio=""
               height="1.25em"
               id=""
               viewBox="0 0 1024 1024"
@@ -2721,6 +2694,7 @@ exports[`TagList should display delete tag value 1`] = `
             <svg
               class="emotion-35"
               data-testid="icon"
+              data-wdio=""
               height="1.25em"
               id=""
               viewBox="0 0 1024 1024"
@@ -2751,9 +2725,6 @@ exports[`TagList should display edit tag 1`] = `
 
 .emotion-2 {
   padding-bottom: 20px;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   -webkit-box-pack: justify;
   -webkit-justify-content: space-between;
@@ -2772,7 +2743,7 @@ exports[`TagList should display edit tag 1`] = `
 .emotion-4 {
   border: none;
   border-radius: 2px;
-  box-shadow: 0 0 0 1px transparent inset,0 0 0 0 #d5d5d5 inset;
+  box-shadow: 0 0 0 1px #3697f2 inset;
   box-sizing: border-box;
   cursor: pointer;
   display: inline-block;
@@ -2791,7 +2762,6 @@ exports[`TagList should display edit tag 1`] = `
   vertical-align: baseline;
   white-space: nowrap;
   background: transparent;
-  box-shadow: 0 0 0 1px #3697f2 inset;
   color: #3697f2;
 }
 
@@ -2889,9 +2859,6 @@ exports[`TagList should display edit tag 1`] = `
   border-radius: 0 14px 14px 0;
   box-shadow: none;
   box-sizing: border-box;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 28px;
   -webkit-box-pack: center;
@@ -3028,6 +2995,7 @@ exports[`TagList should display edit tag 1`] = `
               <svg
                 class="emotion-26"
                 data-testid="icon"
+                data-wdio=""
                 height="20px"
                 id=""
                 viewBox="0 0 1024 1024"
@@ -3060,6 +3028,7 @@ exports[`TagList should display edit tag 1`] = `
               <svg
                 class="emotion-26"
                 data-testid="icon"
+                data-wdio=""
                 height="20px"
                 id=""
                 viewBox="0 0 1024 1024"
@@ -3083,6 +3052,7 @@ exports[`TagList should display edit tag 1`] = `
             <svg
               class="emotion-35"
               data-testid="icon"
+              data-wdio=""
               height="1.25em"
               id=""
               viewBox="0 0 1024 1024"
@@ -3105,6 +3075,7 @@ exports[`TagList should display edit tag 1`] = `
             <svg
               class="emotion-35"
               data-testid="icon"
+              data-wdio=""
               height="1.25em"
               id=""
               viewBox="0 0 1024 1024"
@@ -3135,9 +3106,6 @@ exports[`TagList should render 1`] = `
 
 .emotion-2 {
   padding-bottom: 20px;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   -webkit-box-pack: justify;
   -webkit-justify-content: space-between;
@@ -3156,7 +3124,7 @@ exports[`TagList should render 1`] = `
 .emotion-4 {
   border: none;
   border-radius: 2px;
-  box-shadow: 0 0 0 1px transparent inset,0 0 0 0 #d5d5d5 inset;
+  box-shadow: 0 0 0 1px #3697f2 inset;
   box-sizing: border-box;
   cursor: pointer;
   display: inline-block;
@@ -3175,7 +3143,6 @@ exports[`TagList should render 1`] = `
   vertical-align: baseline;
   white-space: nowrap;
   background: transparent;
-  box-shadow: 0 0 0 1px #3697f2 inset;
   color: #3697f2;
 }
 

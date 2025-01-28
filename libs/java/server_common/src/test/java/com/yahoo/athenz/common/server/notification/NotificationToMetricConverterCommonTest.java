@@ -19,8 +19,7 @@ package com.yahoo.athenz.common.server.notification;
 import com.yahoo.rdl.Timestamp;
 import org.testng.annotations.Test;
 
-
-import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.Assert.assertEquals;
 
 public class NotificationToMetricConverterCommonTest {
 
@@ -34,10 +33,10 @@ public class NotificationToMetricConverterCommonTest {
         Timestamp yesterdayTimeStamp = Timestamp.fromMillis(1601828361000L);
         Timestamp monthFromNowTimeStamp = Timestamp.fromMillis(1604594993000L);
 
-        assertEquals("0", notificationToMetricConverterCommon.getNumberOfDaysBetweenTimestamps(currentTimeStamp.toString(), currentTimeStamp.toString()));
-        assertEquals("1", notificationToMetricConverterCommon.getNumberOfDaysBetweenTimestamps(currentTimeStamp.toString(), tomorrowTimeStamp.toString()));
-        assertEquals("-1", notificationToMetricConverterCommon.getNumberOfDaysBetweenTimestamps(currentTimeStamp.toString(), yesterdayTimeStamp.toString()));
-        assertEquals("31", notificationToMetricConverterCommon.getNumberOfDaysBetweenTimestamps(currentTimeStamp.toString(), monthFromNowTimeStamp.toString()));
+        assertEquals(notificationToMetricConverterCommon.getNumberOfDaysBetweenTimestamps(currentTimeStamp.toString(), currentTimeStamp.toString()), "0");
+        assertEquals(notificationToMetricConverterCommon.getNumberOfDaysBetweenTimestamps(currentTimeStamp.toString(), tomorrowTimeStamp.toString()), "1");
+        assertEquals(notificationToMetricConverterCommon.getNumberOfDaysBetweenTimestamps(currentTimeStamp.toString(), yesterdayTimeStamp.toString()), "-1");
+        assertEquals(notificationToMetricConverterCommon.getNumberOfDaysBetweenTimestamps(currentTimeStamp.toString(), monthFromNowTimeStamp.toString()), "31");
     }
 
     @Test
@@ -45,8 +44,8 @@ public class NotificationToMetricConverterCommonTest {
         Timestamp currentTimeStamp = Timestamp.fromMillis(1601914761000L);
         String badTimeStamp = "bad";
 
-        assertEquals("", notificationToMetricConverterCommon.getNumberOfDaysBetweenTimestamps(currentTimeStamp.toString(), badTimeStamp));
-        assertEquals("", notificationToMetricConverterCommon.getNumberOfDaysBetweenTimestamps(badTimeStamp, currentTimeStamp.toString()));
-        assertEquals("", notificationToMetricConverterCommon.getNumberOfDaysBetweenTimestamps(badTimeStamp, badTimeStamp));
+        assertEquals(notificationToMetricConverterCommon.getNumberOfDaysBetweenTimestamps(currentTimeStamp.toString(), badTimeStamp), "");
+        assertEquals(notificationToMetricConverterCommon.getNumberOfDaysBetweenTimestamps(badTimeStamp, currentTimeStamp.toString()), "");
+        assertEquals(notificationToMetricConverterCommon.getNumberOfDaysBetweenTimestamps(badTimeStamp, badTimeStamp), "");
     }
 }

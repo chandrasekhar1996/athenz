@@ -24,17 +24,16 @@ import org.eclipse.jetty.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.amazonaws.regions.Regions;
-import com.amazonaws.auth.BasicSessionCredentials;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
-import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest;
-import com.amazonaws.services.securitytoken.model.GetCallerIdentityResult;
+import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.model.GetCallerIdentityRequest;
+import software.amazon.awssdk.services.sts.model.GetCallerIdentityResponse;
 import com.yahoo.athenz.auth.KeyStore;
 import com.yahoo.athenz.instance.provider.InstanceConfirmation;
 import com.yahoo.athenz.instance.provider.InstanceProvider;
-import com.yahoo.athenz.instance.provider.ResourceException;
+import com.yahoo.athenz.instance.provider.ProviderResourceException;
 import com.yahoo.rdl.JSON;
 import com.yahoo.rdl.Struct;
 import com.yahoo.rdl.Timestamp;
@@ -77,7 +76,7 @@ public class InstanceAWSProvider implements InstanceProvider {
 
     @Override
     public Scheme getProviderScheme() {
-        return Scheme.HTTP;
+        return Scheme.CLASS;
     }
 
     @Override
@@ -134,13 +133,13 @@ public class InstanceAWSProvider implements InstanceProvider {
         return eksClusterNames.getStringsList();
     }
 
-    public ResourceException error(String message) {
-        return error(ResourceException.FORBIDDEN, message);
+    public ProviderResourceException error(String message) {
+        return error(ProviderResourceException.FORBIDDEN, message);
     }
     
-    public ResourceException error(int errorCode, String message) {
+    public ProviderResourceException error(int errorCode, String message) {
         LOGGER.error(message);
-        return new ResourceException(errorCode, message);
+        return new ProviderResourceException(errorCode, message);
     }
 
     boolean validateAWSAccount(final String awsAccount, final String docAccount, StringBuilder errMsg) {
@@ -252,7 +251,7 @@ public class InstanceAWSProvider implements InstanceProvider {
     }
     
     @Override
-    public InstanceConfirmation confirmInstance(InstanceConfirmation confirmation) {
+    public InstanceConfirmation confirmInstance(InstanceConfirmation confirmation) throws ProviderResourceException {
         
         AWSAttestationData info = JSON.fromString(confirmation.getAttestationData(),
                 AWSAttestationData.class);
@@ -302,7 +301,7 @@ public class InstanceAWSProvider implements InstanceProvider {
             
         // set the attributes to be returned to the ZTS server
 
-        setConfirmationAttributes(confirmation, instanceDocumentCreds, privateIp.toString());
+        setConfirmationAttributes(confirmation, instanceDocumentCreds, privateIp.toString(), instanceId.toString());
 
         // verify that the temporary credentials specified in the request
         // can be used to assume the given role thus verifying the
@@ -316,7 +315,7 @@ public class InstanceAWSProvider implements InstanceProvider {
     }
 
     @Override
-    public InstanceConfirmation refreshInstance(InstanceConfirmation confirmation) {
+    public InstanceConfirmation refreshInstance(InstanceConfirmation confirmation) throws ProviderResourceException {
         
         // if we don't have an attestation data then we're going to
         // return not found exception unless the provider is required
@@ -324,7 +323,7 @@ public class InstanceAWSProvider implements InstanceProvider {
         
         final String attestationData = confirmation.getAttestationData();
         if (attestationData == null || attestationData.isEmpty()) {
-            int errorCode = supportRefresh ? ResourceException.FORBIDDEN : ResourceException.NOT_FOUND;
+            int errorCode = supportRefresh ? ProviderResourceException.FORBIDDEN : ProviderResourceException.NOT_FOUND;
             throw error(errorCode, "No attestation data provided");
         }
         
@@ -338,7 +337,7 @@ public class InstanceAWSProvider implements InstanceProvider {
         // object has an associated aws account id
         
         final String awsAccount = InstanceUtils.getInstanceProperty(instanceAttributes, ZTS_INSTANCE_AWS_ACCOUNT);
-        if (awsAccount == null) {
+        if (StringUtil.isEmpty(awsAccount)) {
             throw error("Unable to extract AWS Account id");
         }
 
@@ -374,7 +373,7 @@ public class InstanceAWSProvider implements InstanceProvider {
 
         // set the attributes to be returned to the ZTS server
 
-        setConfirmationAttributes(confirmation, instanceDocumentCreds, privateIp.toString());
+        setConfirmationAttributes(confirmation, instanceDocumentCreds, privateIp.toString(), instanceId.toString());
         
         // verify that the temporary credentials specified in the request
         // can be used to assume the given role thus verifying the
@@ -388,7 +387,7 @@ public class InstanceAWSProvider implements InstanceProvider {
     }
 
     public void validateSanDnsNames(final Map<String, String> instanceAttributes, final String instanceDomain,
-                                    final String instanceService, StringBuilder instanceId) {
+                                    final String instanceService, StringBuilder instanceId) throws ProviderResourceException {
         if (!InstanceUtils.validateCertRequestSanDnsNames(instanceAttributes, instanceDomain,
                 instanceService, getDnsSuffixes(), getEksDnsSuffixes(), getEksClusterNames(),
                 true, instanceId, null)) {
@@ -397,7 +396,7 @@ public class InstanceAWSProvider implements InstanceProvider {
     }
 
     protected void setConfirmationAttributes(InstanceConfirmation confirmation, boolean instanceDocumentCreds,
-                                   final String privateIp) {
+            final String privateIp, final String instanceId) {
 
         Map<String, String> attributes = new HashMap<>();
         attributes.put(InstanceProvider.ZTS_CERT_SSH, Boolean.toString(instanceDocumentCreds));
@@ -407,58 +406,62 @@ public class InstanceAWSProvider implements InstanceProvider {
         if (!privateIp.isEmpty()) {
             attributes.put(InstanceProvider.ZTS_INSTANCE_PRIVATE_IP, privateIp);
         }
+        if (!instanceId.isEmpty()) {
+            attributes.put(InstanceProvider.ZTS_ATTESTED_SSH_CERT_PRINCIPALS, instanceId);
+        }
         confirmation.setAttributes(attributes);
     }
-    
-    AWSSecurityTokenService getInstanceClient(AWSAttestationData info) {
-        
-        String access = info.getAccess();
-        if (access == null || access.isEmpty()) {
-            LOGGER.error("getInstanceClient: No access key id available in instance document");
-            return null;
-        }
-        
-        String secret = info.getSecret();
-        if (secret == null || secret.isEmpty()) {
-            LOGGER.error("getInstanceClient: No secret access key available in instance document");
-            return null;
-        }
-        
-        String token = info.getToken();
-        if (token == null || token.isEmpty()) {
-            LOGGER.error("getInstanceClient: No token available in instance document");
-            return null;
-        }
-        
-        BasicSessionCredentials creds = new BasicSessionCredentials(access, secret, token);
 
-        return AWSSecurityTokenServiceClientBuilder.standard()
-                .withCredentials(new AWSStaticCredentialsProvider(creds))
-                .withRegion(Regions.fromName(awsRegion))
-                .build();
+    StsClient getInstanceClient(AWSAttestationData info) {
+        
+        final String accessKey = info.getAccess();
+        if (StringUtil.isEmpty(accessKey)) {
+            LOGGER.error("getInstanceClient: No access key available in instance document");
+            return null;
+        }
+        
+        final String secretKey = info.getSecret();
+        if (StringUtil.isEmpty(secretKey)) {
+            LOGGER.error("getInstanceClient: No secret key available in instance document");
+            return null;
+        }
+        
+        final String sessionToken = info.getToken();
+        if (StringUtil.isEmpty(sessionToken)) {
+            LOGGER.error("getInstanceClient: No session token available in instance document");
+            return null;
+        }
+
+        // Create Static Credentials Provider
+
+        StaticCredentialsProvider credentialsProvider = StaticCredentialsProvider.create(
+                AwsSessionCredentials.create(accessKey, secretKey, sessionToken));
+
+        // Create STS Client
+
+        return StsClient.builder().credentialsProvider(credentialsProvider).region(Region.of(awsRegion)).build();
     }
     
     boolean verifyInstanceIdentity(AWSAttestationData info, final String awsAccount) {
-        
-        GetCallerIdentityRequest req = new GetCallerIdentityRequest();
-        
+
         try {
-            AWSSecurityTokenService client = getInstanceClient(info);
-            if (client == null) {
+            StsClient stsClient = getInstanceClient(info);
+            if (stsClient == null) {
                 LOGGER.error("verifyInstanceIdentity - unable to get AWS STS client object");
                 return false;
             }
-            
-            GetCallerIdentityResult res = client.getCallerIdentity(req);
-            if (res == null) {
+
+            GetCallerIdentityRequest request = GetCallerIdentityRequest.builder().build();
+            GetCallerIdentityResponse response = stsClient.getCallerIdentity(request);
+            if (response == null) {
                 LOGGER.error("verifyInstanceIdentity - unable to get caller identity");
                 return false;
             }
              
             String arn = "arn:aws:sts::" + awsAccount + ":assumed-role/" + info.getRole() + "/";
-            if (!res.getArn().startsWith(arn)) {
-                LOGGER.error("verifyInstanceIdentity - ARN mismatch - request: {} caller-idenity: {}",
-                        arn, res.getArn());
+            if (!response.arn().startsWith(arn)) {
+                LOGGER.error("verifyInstanceIdentity - ARN mismatch - request: {} caller-identity: {}",
+                        arn, response.arn());
                 return false;
             }
             

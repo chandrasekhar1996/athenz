@@ -16,9 +16,6 @@ exports[`Groups Tag Page should render 1`] = `
   backface-visibility: hidden;
   box-sizing: border-box;
   color: #fff;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   -webkit-flex: 0 0 60px;
   -ms-flex: 0 0 60px;
@@ -54,9 +51,6 @@ exports[`Groups Tag Page should render 1`] = `
   -ms-flex-align: center;
   align-items: center;
   box-sizing: border-box;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 60px;
   position: relative;
@@ -93,9 +87,6 @@ exports[`Groups Tag Page should render 1`] = `
   -ms-flex-align: center;
   align-items: center;
   color: #fff;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   font-family: Helvetica,Arial,sans-serif;
   font-size: 16px;
@@ -128,9 +119,6 @@ exports[`Groups Tag Page should render 1`] = `
   -webkit-box-align: center;
   -ms-flex-align: center;
   align-items: center;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 34px;
 }
@@ -177,9 +165,6 @@ exports[`Groups Tag Page should render 1`] = `
   -ms-flex-align: center;
   align-items: center;
   box-sizing: border-box;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 60px;
   position: relative;
@@ -217,9 +202,6 @@ exports[`Groups Tag Page should render 1`] = `
   -ms-flex-align: center;
   align-items: center;
   color: #fff;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   font-family: Helvetica,Arial,sans-serif;
   font-size: 16px;
@@ -252,9 +234,6 @@ exports[`Groups Tag Page should render 1`] = `
   -webkit-box-align: center;
   -ms-flex-align: center;
   align-items: center;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 34px;
 }
@@ -286,10 +265,26 @@ exports[`Groups Tag Page should render 1`] = `
 }
 
 .emotion-9 {
+  display: flex;
+  width: 100%;
+}
+
+.emotion-11 {
+  background: #ffffff;
+  width: 35%;
+}
+
+.emotion-13 {
+  position: relative;
+  width: 100%;
+}
+
+.emotion-13 input {
+  cursor: pointer;
+}
+
+.emotion-14 {
   box-sizing: border-box;
-  display: -webkit-inline-box;
-  display: -webkit-inline-flex;
-  display: -ms-inline-flexbox;
   display: inline-flex;
   -webkit-box-flex-flow: row nowrap;
   -webkit-flex-flow: row nowrap;
@@ -302,7 +297,7 @@ exports[`Groups Tag Page should render 1`] = `
   width: 100%;
 }
 
-.emotion-9 input {
+.emotion-14 input {
   -webkit-appearance: none;
   -moz-appearance: none;
   -ms-appearance: none;
@@ -328,42 +323,42 @@ exports[`Groups Tag Page should render 1`] = `
   width: 100%;
 }
 
-.emotion-9.animated input {
+.emotion-14.animated input {
   -webkit-transition: background-color 0.2s ease-in-out,color 0.2s ease-in-out,border 0.2s ease-in-out;
   transition: background-color 0.2s ease-in-out,color 0.2s ease-in-out,border 0.2s ease-in-out;
 }
 
-.emotion-9 input::-webkit-input-placeholder {
+.emotion-14 input::-webkit-input-placeholder {
   color: rgba(48,48,48,0.6);
 }
 
-.emotion-9 input::-moz-placeholder {
+.emotion-14 input::-moz-placeholder {
   color: rgba(48,48,48,0.6);
 }
 
-.emotion-9 input:-ms-input-placeholder {
+.emotion-14 input:-ms-input-placeholder {
   color: rgba(48,48,48,0.6);
 }
 
-.emotion-9 input::placeholder {
+.emotion-14 input::placeholder {
   color: rgba(48,48,48,0.6);
 }
 
-.emotion-9 input.focused,
-.emotion-9 input:active,
-.emotion-9 input:focus {
+.emotion-14 input.focused,
+.emotion-14 input:active,
+.emotion-14 input:focus {
   background: rgba(53,112,244,0.05);
   border-bottom: 2px solid #3570f4;
   color: #303030;
 }
 
-.emotion-9 input:invalid {
+.emotion-14 input:invalid {
   background: rgba(53,112,244,0.05);
   border-bottom: 2px solid #d01111;
   color: #303030;
 }
 
-.emotion-9 .message {
+.emotion-14 .message {
   font-size: 12px;
   left: 0;
   line-height: 1.8;
@@ -371,88 +366,71 @@ exports[`Groups Tag Page should render 1`] = `
   top: 2.571rem;
 }
 
-.emotion-9.error input,
-.emotion-9.error input.focused,
-.emotion-9.error input:active,
-.emotion-9.error input:focus {
+.emotion-14.error input,
+.emotion-14.error input.focused,
+.emotion-14.error input:active,
+.emotion-14.error input:focus {
   border-bottom: 2px solid #d01111;
 }
 
-.emotion-9.error .message {
+.emotion-14.error .message {
   color: #d01111;
 }
 
-.emotion-9 input {
-  background: rgba(242,242,242,0.1);
-  color: #fff;
-}
-
-.emotion-9 input::-webkit-input-placeholder {
-  color: rgba(255,255,255,0.6);
-}
-
-.emotion-9 input::-moz-placeholder {
-  color: rgba(255,255,255,0.6);
-}
-
-.emotion-9 input:-ms-input-placeholder {
-  color: rgba(255,255,255,0.6);
-}
-
-.emotion-9 input::placeholder {
-  color: rgba(255,255,255,0.6);
-}
-
-.emotion-9 input.focused,
-.emotion-9 input:active,
-.emotion-9 input:focus {
-  background: rgba(242,242,242,0.1);
-  border-bottom: 2px solid #3570f4;
-  color: #fff;
-}
-
-.emotion-9 input {
+.emotion-14 input {
   padding-right: 36px;
 }
 
-.emotion-9 .input-icon {
+.emotion-14 .input-icon {
   -webkit-align-items: center;
   -webkit-box-align: center;
   -ms-flex-align: center;
   align-items: center;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 36px;
   position: absolute;
   right: 6px;
 }
 
-.emotion-10 {
+.emotion-15 {
+  fill: #d5d5d5;
+  cursor: pointer;
+  vertical-align: text-bottom;
+}
+
+.emotion-16 {
+  background: #ffffff;
+  width: 65%;
+  margin-left: 5px;
+}
+
+.emotion-19 {
   fill: #3570f4;
   cursor: inherit;
   vertical-align: text-bottom;
 }
 
-.emotion-12 {
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
+.emotion-21 {
   display: flex;
 }
 
-.emotion-14 {
+.emotion-23 {
   fill: #fff;
   cursor: pointer;
   vertical-align: text-bottom;
 }
 
-.emotion-15 {
+.emotion-24 {
+  position: relative;
+  width: 0;
+  height: 0;
+}
+
+.emotion-26 {
   margin-left: 15px;
 }
 
-.emotion-18 {
+.emotion-29 {
   -webkit-flex: 1 1 calc(100vh - 60px);
   -ms-flex: 1 1 calc(100vh - 60px);
   flex: 1 1 calc(100vh - 60px);
@@ -460,7 +438,7 @@ exports[`Groups Tag Page should render 1`] = `
   font: 300 14px HelveticaNeue-Reg,Helvetica,Arial,sans-serif;
 }
 
-.emotion-20 {
+.emotion-31 {
   -webkit-align-items: stretch;
   -webkit-box-align: stretch;
   -ms-flex-align: stretch;
@@ -470,9 +448,6 @@ exports[`Groups Tag Page should render 1`] = `
   -ms-flex-flow: row nowrap;
   flex-flow: row nowrap;
   height: 100%;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   -webkit-box-pack: start;
   -ms-flex-pack: start;
@@ -480,7 +455,7 @@ exports[`Groups Tag Page should render 1`] = `
   justify-content: flex-start;
 }
 
-.emotion-22 {
+.emotion-33 {
   -webkit-align-items: stretch;
   -webkit-box-align: stretch;
   -ms-flex-align: stretch;
@@ -490,40 +465,34 @@ exports[`Groups Tag Page should render 1`] = `
   flex: 1 1;
   height: calc(100vh - 60px);
   overflow: auto;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   -webkit-flex-direction: column;
   -ms-flex-direction: column;
   flex-direction: column;
 }
 
-.emotion-26 {
+.emotion-37 {
   background: linear-gradient(to top, #f2f2f2, #fff);
   padding: 20px 30px 0;
 }
 
-.emotion-28 {
+.emotion-39 {
   font: 600 20px HelveticaNeue-Reg,Helvetica,Arial,sans-serif;
   margin-bottom: 10px;
 }
 
-.emotion-30 {
+.emotion-41 {
   color: #3570f4;
   -webkit-text-decoration: none;
   text-decoration: none;
   cursor: pointer;
 }
 
-.emotion-32 {
+.emotion-43 {
   margin: 20px 0;
 }
 
-.emotion-34 {
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
+.emotion-45 {
   display: flex;
   -webkit-box-flex-flow: row nowrap;
   -webkit-flex-flow: row nowrap;
@@ -531,21 +500,21 @@ exports[`Groups Tag Page should render 1`] = `
   flex-flow: row nowrap;
 }
 
-.emotion-36 {
+.emotion-47 {
   padding-right: 50px;
 }
 
-.emotion-38 {
+.emotion-49 {
   font-weight: 600;
 }
 
-.emotion-40 {
+.emotion-51 {
   color: #9a9a9a;
   font-size: 12px;
   text-transform: uppercase;
 }
 
-.emotion-48 {
+.emotion-59 {
   -webkit-align-items: stretch;
   -webkit-box-align: stretch;
   -ms-flex-align: stretch;
@@ -560,11 +529,8 @@ exports[`Groups Tag Page should render 1`] = `
   position: relative;
 }
 
-.emotion-48.vertical {
+.emotion-59.vertical {
   background: #f5f8fe;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   -webkit-flex-direction: column;
   -ms-flex-direction: column;
@@ -576,7 +542,7 @@ exports[`Groups Tag Page should render 1`] = `
   width: 300px;
 }
 
-.emotion-49 {
+.emotion-60 {
   font-family: Helvetica,Arial,sans-serif;
   font-size: 14px;
   font-weight: 300;
@@ -587,9 +553,6 @@ exports[`Groups Tag Page should render 1`] = `
   background: #f5f8fe;
   color: #3697f2;
   cursor: pointer;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   -webkit-box-pack: center;
   -ms-flex-pack: center;
@@ -600,11 +563,11 @@ exports[`Groups Tag Page should render 1`] = `
   z-index: 1;
 }
 
-.emotion-49:hover {
+.emotion-60:hover {
   color: #3570f4;
 }
 
-.emotion-49.active {
+.emotion-60.active {
   background: #fff;
   border-top-left-radius: 2px;
   border-top-right-radius: 2px;
@@ -612,11 +575,11 @@ exports[`Groups Tag Page should render 1`] = `
   cursor: initial;
 }
 
-.emotion-49.active:hover {
+.emotion-60.active:hover {
   color: #303030;
 }
 
-.emotion-49.vertical {
+.emotion-60.vertical {
   background: #f5f8fe;
   border-left: solid 4px #f5f8fe;
   height: 24px;
@@ -628,25 +591,22 @@ exports[`Groups Tag Page should render 1`] = `
   text-align: left;
 }
 
-.emotion-49.vertical.active {
+.emotion-60.vertical.active {
   background: #fff;
   border-left: solid 4px #3697f2;
   color: #303030;
 }
 
-.emotion-49.vertical.active:hover {
+.emotion-60.vertical.active:hover {
   color: #303030;
 }
 
-.emotion-55 {
+.emotion-66 {
   margin: 20px;
 }
 
-.emotion-57 {
+.emotion-68 {
   padding-bottom: 20px;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   -webkit-box-pack: justify;
   -webkit-justify-content: space-between;
@@ -662,10 +622,10 @@ exports[`Groups Tag Page should render 1`] = `
   float: right;
 }
 
-.emotion-59 {
+.emotion-70 {
   border: none;
   border-radius: 2px;
-  box-shadow: 0 0 0 1px transparent inset,0 0 0 0 #d5d5d5 inset;
+  box-shadow: 0 0 0 1px #3697f2 inset;
   box-sizing: border-box;
   cursor: pointer;
   display: inline-block;
@@ -684,29 +644,28 @@ exports[`Groups Tag Page should render 1`] = `
   vertical-align: baseline;
   white-space: nowrap;
   background: transparent;
-  box-shadow: 0 0 0 1px #3697f2 inset;
   color: #3697f2;
 }
 
-.emotion-59:first-of-type {
+.emotion-70:first-of-type {
   margin-left: 0;
 }
 
-.emotion-59:disabled {
+.emotion-70:disabled {
   background: rgba(48,48,48,0.1);
   color: rgba(48,48,48,0.2);
   cursor: not-allowed;
 }
 
-.emotion-59:disabled {
+.emotion-70:disabled {
   box-shadow: 0 0 0 1px rgba(48,48,48,0.1) inset;
 }
 
-.emotion-59:hover:not(:disabled) {
+.emotion-70:hover:not(:disabled) {
   background: #d7e2fd;
 }
 
-.emotion-60 {
+.emotion-71 {
   width: 100%;
   border-spacing: 0;
   display: table;
@@ -714,7 +673,7 @@ exports[`Groups Tag Page should render 1`] = `
   border-color: #9a9a9a;
 }
 
-.emotion-62 {
+.emotion-73 {
   text-align: left;
   border-bottom: 2px solid #d5d5d5;
   color: #9a9a9a;
@@ -726,7 +685,7 @@ exports[`Groups Tag Page should render 1`] = `
   word-break: break-all;
 }
 
-.emotion-66 {
+.emotion-77 {
   text-align: center;
   border-bottom: 2px solid #d5d5d5;
   color: #9a9a9a;
@@ -738,7 +697,7 @@ exports[`Groups Tag Page should render 1`] = `
   word-break: break-all;
 }
 
-.emotion-72 {
+.emotion-83 {
   background-color: #3570f40D;
   text-align: left;
   padding: 5px 0 5px 15px;
@@ -746,7 +705,7 @@ exports[`Groups Tag Page should render 1`] = `
   word-break: break-all;
 }
 
-.emotion-76 {
+.emotion-87 {
   font-family: Helvetica,Arial,sans-serif;
   background: rgba(53, 112, 244, 0.08);
   border-radius: 14px;
@@ -769,11 +728,11 @@ exports[`Groups Tag Page should render 1`] = `
   white-space: nowrap;
 }
 
-.emotion-76:hover {
+.emotion-87:hover {
   background: #cbd9f9;
 }
 
-.emotion-76 .tag-remove {
+.emotion-87 .tag-remove {
   -webkit-align-items: center;
   -webkit-box-align: center;
   -ms-flex-align: center;
@@ -782,9 +741,6 @@ exports[`Groups Tag Page should render 1`] = `
   border-radius: 0 14px 14px 0;
   box-shadow: none;
   box-sizing: border-box;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 28px;
   -webkit-box-pack: center;
@@ -801,13 +757,13 @@ exports[`Groups Tag Page should render 1`] = `
   width: 28px;
 }
 
-.emotion-76:hover .tag-remove {
+.emotion-87:hover .tag-remove {
   box-shadow: -4px 0 5px -1px rgba(48,48,48,0.2);
   opacity: 1;
   right: 0;
 }
 
-.emotion-77 {
+.emotion-88 {
   color: #d5d5d5;
   font-size: 14px;
   height: 28px;
@@ -817,22 +773,22 @@ exports[`Groups Tag Page should render 1`] = `
   background: rgba(53, 112, 244, 0.08);
 }
 
-.emotion-77:hover {
+.emotion-88:hover {
   background: #ffffff;
 }
 
-.emotion-79 {
+.emotion-90 {
   -webkit-text-decoration: none;
   text-decoration: none;
 }
 
-.emotion-81 {
+.emotion-92 {
   fill: rgba(48,48,48,0.6);
   cursor: pointer;
   vertical-align: text-bottom;
 }
 
-.emotion-88 {
+.emotion-99 {
   background-color: #3570f40D;
   text-align: center;
   padding: 5px 0 5px 15px;
@@ -840,13 +796,13 @@ exports[`Groups Tag Page should render 1`] = `
   word-break: break-all;
 }
 
-.emotion-90 {
+.emotion-101 {
   fill: #188fff;
   cursor: pointer;
   vertical-align: text-bottom;
 }
 
-.emotion-94 {
+.emotion-105 {
   -webkit-align-items: center;
   -webkit-box-align: center;
   -ms-flex-align: center;
@@ -856,9 +812,6 @@ exports[`Groups Tag Page should render 1`] = `
   border-left: 1px solid #d5d5d5;
   border-top: 1px solid #d5d5d5;
   cursor: pointer;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 20px;
   -webkit-box-pack: center;
@@ -872,13 +825,13 @@ exports[`Groups Tag Page should render 1`] = `
   width: 20px;
 }
 
-.emotion-96 {
+.emotion-107 {
   fill: #303030;
   cursor: inherit;
   vertical-align: text-bottom;
 }
 
-.emotion-97 {
+.emotion-108 {
   margin-right: 0;
   border-left: 1px solid #d5d5d5;
   -webkit-flex: 0 0 350px;
@@ -893,14 +846,11 @@ exports[`Groups Tag Page should render 1`] = `
   width: 350px;
 }
 
-.emotion-99 {
+.emotion-110 {
   -webkit-align-items: baseline;
   -webkit-box-align: baseline;
   -ms-flex-align: baseline;
   align-items: baseline;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   -webkit-box-flex-flow: row nowrap;
   -webkit-flex-flow: row nowrap;
@@ -912,41 +862,38 @@ exports[`Groups Tag Page should render 1`] = `
   padding: 20px 30px 20px 15px;
 }
 
-.emotion-101 {
+.emotion-112 {
   font-size: 16px;
   font-weight: 600;
 }
 
-.emotion-103 {
+.emotion-114 {
   color: #3570f4;
   -webkit-text-decoration: none;
   text-decoration: none;
   cursor: pointer;
 }
 
-.emotion-105 {
+.emotion-116 {
   padding: 0 5px;
   color: #d5d5d5;
 }
 
-.emotion-109 {
+.emotion-120 {
   padding: 0 30px 0 15px;
 }
 
-.emotion-111 {
+.emotion-122 {
   padding: 10px 0;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
 }
 
-.emotion-113 {
+.emotion-124 {
   font-size: 1.25em;
   margin-right: 5px;
 }
 
-.emotion-115 {
+.emotion-126 {
   fill: #303030;
   cursor: inherit;
   vertical-align: baseline;
@@ -984,39 +931,102 @@ exports[`Groups Tag Page should render 1`] = `
           data-testid="navbar-item"
         >
           <div
-            class="emotion-9 denali-input animated"
-            data-testid="input-wrapper"
+            class="emotion-9 emotion-10"
           >
-            <input
-              autocomplete="off"
-              data-testid="input-node"
-              name="search"
-              placeholder="Enter domain name"
-              value=""
-            />
             <div
-              class="input-icon"
+              class="emotion-11 emotion-12"
             >
-              <svg
-                class="emotion-10"
-                data-testid="icon"
-                height="24px"
-                id=""
-                viewBox="0 0 1024 1024"
-                width="24px"
+              <div
+                aria-expanded="false"
+                aria-haspopup="listbox"
+                aria-labelledby="downshift-1-label"
+                class="emotion-13 denali-input-dropdown"
+                data-testid="input-dropdown"
+                role="combobox"
               >
-                <title>
-                  search
-                </title>
-                <path
-                  d="M659.413 599.68c40.125-53.054 64.27-120.136 64.27-192.857 0-177.556-143.937-321.493-321.493-321.493s-321.493 143.937-321.493 321.493c0 177.556 143.937 321.493 321.493 321.493 74.297 0 142.708-25.203 197.149-67.525l-0.726 0.543 267.307 264.96c7.723 7.731 18.396 12.514 30.187 12.514s22.464-4.782 30.186-12.513l0-0c7.795-7.733 12.621-18.45 12.621-30.293s-4.826-22.56-12.618-30.291l-0.003-0.003zM444.8 637.227c-11.829 2.113-25.446 3.322-39.345 3.322-129.603 0-234.667-105.064-234.667-234.667s105.064-234.667 234.667-234.667c129.603 0 234.667 105.064 234.667 234.667 0 13.899-1.208 27.516-3.526 40.752l0.204-1.407c-17.178 98.349-93.651 174.822-190.593 191.796l-1.407 0.204z"
-                />
-              </svg>
+                <div
+                  class="emotion-14 denali-input animated"
+                  data-testid="input-wrapper"
+                >
+                  <input
+                    aria-autocomplete="list"
+                    aria-labelledby="downshift-1-label"
+                    autocomplete="off"
+                    autocorrect="off"
+                    data-testid="input-node"
+                    id="downshift-1-input"
+                    name="search-type"
+                    readonly=""
+                    spellcheck="false"
+                    value="Domain"
+                  />
+                  <div
+                    class="input-icon"
+                  >
+                    <svg
+                      class="emotion-15"
+                      data-testid="icon"
+                      data-wdio=""
+                      height="24px"
+                      id=""
+                      viewBox="0 0 1024 1024"
+                      width="24px"
+                    >
+                      <title>
+                        arrowhead-down
+                      </title>
+                      <path
+                        d="M512 580.267l-226.133-226.133c-7.461-8.401-18.291-13.668-30.351-13.668-13.957 0-26.267 7.055-33.558 17.793l-0.091 0.142c-5.319 7.276-8.51 16.4-8.51 26.27 0 12.199 4.876 23.259 12.785 31.338l-0.008-0.008 256 253.867c7.434 8.083 18.061 13.13 29.867 13.13s22.432-5.047 29.84-13.101l0.026-0.029 256-253.867c7.901-8.071 12.777-19.131 12.777-31.33 0-9.87-3.192-18.994-8.599-26.397l0.088 0.127c-7.382-10.88-19.691-17.934-33.649-17.934-12.060 0-22.89 5.267-30.315 13.626l-0.036 0.042z"
+                      />
+                    </svg>
+                  </div>
+                  <div
+                    class="message"
+                    data-testid="message"
+                  />
+                </div>
+              </div>
             </div>
             <div
-              class="message"
-              data-testid="message"
-            />
+              class="emotion-16 emotion-17"
+            >
+              <div
+                class="emotion-14 denali-input animated"
+                data-testid="input-wrapper"
+              >
+                <input
+                  autocomplete="off"
+                  data-testid="input-node"
+                  name="search-text"
+                  placeholder="Search"
+                  value=""
+                />
+                <div
+                  class="input-icon"
+                >
+                  <svg
+                    class="emotion-19"
+                    data-testid="icon"
+                    data-wdio=""
+                    height="24px"
+                    id=""
+                    viewBox="0 0 1024 1024"
+                    width="24px"
+                  >
+                    <title>
+                      search
+                    </title>
+                    <path
+                      d="M659.413 599.68c40.125-53.054 64.27-120.136 64.27-192.857 0-177.556-143.937-321.493-321.493-321.493s-321.493 143.937-321.493 321.493c0 177.556 143.937 321.493 321.493 321.493 74.297 0 142.708-25.203 197.149-67.525l-0.726 0.543 267.307 264.96c7.723 7.731 18.396 12.514 30.187 12.514s22.464-4.782 30.186-12.513l0-0c7.795-7.733 12.621-18.45 12.621-30.293s-4.826-22.56-12.618-30.291l-0.003-0.003zM444.8 637.227c-11.829 2.113-25.446 3.322-39.345 3.322-129.603 0-234.667-105.064-234.667-234.667s105.064-234.667 234.667-234.667c129.603 0 234.667 105.064 234.667 234.667 0 13.899-1.208 27.516-3.526 40.752l0.204-1.407c-17.178 98.349-93.651 174.822-190.593 191.796l-1.407 0.204z"
+                    />
+                  </svg>
+                </div>
+                <div
+                  class="message"
+                  data-testid="message"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1025,14 +1035,15 @@ exports[`Groups Tag Page should render 1`] = `
         data-testid="navbar-item"
       >
         <div
-          class="emotion-12 emotion-13"
+          class="emotion-21 emotion-22"
           data-testid="header-menu"
         >
           <svg
-            class="emotion-14"
+            class="emotion-23"
             data-testid="icon"
+            data-wdio=""
             height="25px"
-            id=""
+            id="notifications-icon"
             viewBox="0 0 1024 1024"
             width="25px"
           >
@@ -1044,11 +1055,15 @@ exports[`Groups Tag Page should render 1`] = `
             />
           </svg>
           <div
-            class="emotion-15 emotion-16"
+            class="emotion-24 emotion-25"
+          />
+          <div
+            class="emotion-26 emotion-27"
           >
             <svg
-              class="emotion-14"
+              class="emotion-23"
               data-testid="icon"
+              data-wdio=""
               height="25px"
               id=""
               viewBox="0 0 1024 1024"
@@ -1073,26 +1088,27 @@ exports[`Groups Tag Page should render 1`] = `
     </div>
   </div>
   <div
-    class="emotion-18 emotion-19"
+    class="emotion-29 emotion-30"
   >
     <div
-      class="emotion-20 emotion-21"
+      class="emotion-31 emotion-32"
     >
       <div
-        class="emotion-22 emotion-23"
+        class="emotion-33 emotion-34"
       >
         <div
-          class="emotion-24 emotion-25"
+          class="emotion-35 emotion-36"
         >
           <div
-            class="emotion-26 emotion-27"
+            class="emotion-37 emotion-38"
           >
             <div
-              class="emotion-28 emotion-29"
+              class="emotion-39 emotion-40"
               data-testid="collection-name-header"
             >
               <a
-                class="emotion-30 emotion-31"
+                class="emotion-41 emotion-42"
+                href="/domain/dom/group"
               >
                 dom
               </a>
@@ -1102,36 +1118,36 @@ exports[`Groups Tag Page should render 1`] = `
               expiration
             </div>
             <div
-              class="emotion-32 emotion-33"
+              class="emotion-43 emotion-44"
               data-testid="collection-details"
             >
               <div
-                class="emotion-34 emotion-35"
+                class="emotion-45 emotion-46"
               >
                 <div
-                  class="emotion-36 emotion-37"
+                  class="emotion-47 emotion-48"
                 >
                   <div
-                    class="emotion-38 emotion-39"
+                    class="emotion-49 emotion-50"
                   >
                     2022-10-02 14:37 UTC
                   </div>
                   <div
-                    class="emotion-40 emotion-41"
+                    class="emotion-51 emotion-52"
                   >
                     MODIFIED DATE
                   </div>
                 </div>
                 <div
-                  class="emotion-36 emotion-37"
+                  class="emotion-47 emotion-48"
                 >
                   <div
-                    class="emotion-38 emotion-39"
+                    class="emotion-49 emotion-50"
                   >
                     N/A
                   </div>
                   <div
-                    class="emotion-40 emotion-41"
+                    class="emotion-51 emotion-52"
                   >
                     REVIEWED DATE
                   </div>
@@ -1139,41 +1155,41 @@ exports[`Groups Tag Page should render 1`] = `
               </div>
             </div>
             <div
-              class="emotion-48 denali-tab-group"
+              class="emotion-59 denali-tab-group"
               data-testid="tabgroup"
             >
               <div
-                class="emotion-49 denali-tab"
+                class="emotion-60 denali-tab"
                 data-active="false"
               >
                 Members
               </div>
               <div
-                class="emotion-49 denali-tab"
+                class="emotion-60 denali-tab"
                 data-active="false"
               >
                 Review
               </div>
               <div
-                class="emotion-49 denali-tab"
+                class="emotion-60 denali-tab"
                 data-active="false"
               >
                 Roles
               </div>
               <div
-                class="emotion-49 denali-tab active"
+                class="emotion-60 denali-tab active"
                 data-active="true"
               >
                 Tags
               </div>
               <div
-                class="emotion-49 denali-tab"
+                class="emotion-60 denali-tab"
                 data-active="false"
               >
                 Settings
               </div>
               <div
-                class="emotion-49 denali-tab"
+                class="emotion-60 denali-tab"
                 data-active="false"
               >
                 History
@@ -1181,42 +1197,42 @@ exports[`Groups Tag Page should render 1`] = `
             </div>
           </div>
           <div
-            class="emotion-55 emotion-56"
+            class="emotion-66 emotion-67"
             data-testid="tag-list"
           >
             <div
-              class="emotion-57 emotion-58"
+              class="emotion-68 emotion-69"
             >
               <div>
                 <button
-                  class="emotion-59 denali-button"
+                  class="emotion-70 denali-button"
                 >
                   Add Tag
                 </button>
               </div>
             </div>
             <table
-              class="emotion-60 emotion-61"
+              class="emotion-71 emotion-72"
             >
               <thead>
                 <tr>
                   <th
-                    class="emotion-62 emotion-63"
+                    class="emotion-73 emotion-74"
                   >
                     TAG NAME
                   </th>
                   <th
-                    class="emotion-62 emotion-63"
+                    class="emotion-73 emotion-74"
                   >
                     TAG VALUES
                   </th>
                   <th
-                    class="emotion-66 emotion-63"
+                    class="emotion-77 emotion-74"
                   >
                     EDIT
                   </th>
                   <th
-                    class="emotion-66 emotion-63"
+                    class="emotion-77 emotion-74"
                   >
                     DELETE
                   </th>
@@ -1224,25 +1240,25 @@ exports[`Groups Tag Page should render 1`] = `
               </thead>
               <tbody>
                 <tr
-                  class="emotion-70 emotion-71"
+                  class="emotion-81 emotion-82"
                   data-testid="tag-row"
                 >
                   <td
-                    class="emotion-72 emotion-73"
+                    class="emotion-83 emotion-84"
                     color="#3570f40D"
                   >
                     tag
                   </td>
                   <td
-                    class="emotion-72 emotion-73"
+                    class="emotion-83 emotion-84"
                     color="#3570f40D"
                   >
                     <div
-                      class="emotion-76 denali-tag emotion-77 emotion-78"
+                      class="emotion-87 denali-tag emotion-88 emotion-89"
                       data-testid="tag"
                     >
                       <a
-                        class="emotion-79 emotion-80"
+                        class="emotion-90 emotion-91"
                         style="color: rgb(53, 112, 244);"
                       >
                          
@@ -1253,8 +1269,9 @@ exports[`Groups Tag Page should render 1`] = `
                         class="tag-remove"
                       >
                         <svg
-                          class="emotion-81"
+                          class="emotion-92"
                           data-testid="icon"
+                          data-wdio=""
                           height="20px"
                           id=""
                           viewBox="0 0 1024 1024"
@@ -1270,11 +1287,11 @@ exports[`Groups Tag Page should render 1`] = `
                       </div>
                     </div>
                     <div
-                      class="emotion-76 denali-tag emotion-77 emotion-78"
+                      class="emotion-87 denali-tag emotion-88 emotion-89"
                       data-testid="tag"
                     >
                       <a
-                        class="emotion-79 emotion-80"
+                        class="emotion-90 emotion-91"
                         style="color: rgb(53, 112, 244);"
                       >
                          
@@ -1285,8 +1302,9 @@ exports[`Groups Tag Page should render 1`] = `
                         class="tag-remove"
                       >
                         <svg
-                          class="emotion-81"
+                          class="emotion-92"
                           data-testid="icon"
+                          data-wdio=""
                           height="20px"
                           id=""
                           viewBox="0 0 1024 1024"
@@ -1303,13 +1321,14 @@ exports[`Groups Tag Page should render 1`] = `
                     </div>
                   </td>
                   <td
-                    class="emotion-88 emotion-73"
+                    class="emotion-99 emotion-84"
                     color="#3570f40D"
                   >
                     <span>
                       <svg
-                        class="emotion-90"
+                        class="emotion-101"
                         data-testid="icon"
+                        data-wdio=""
                         height="1.25em"
                         id=""
                         viewBox="0 0 1024 1024"
@@ -1325,13 +1344,14 @@ exports[`Groups Tag Page should render 1`] = `
                     </span>
                   </td>
                   <td
-                    class="emotion-88 emotion-73"
+                    class="emotion-99 emotion-84"
                     color="#3570f40D"
                   >
                     <span>
                       <svg
-                        class="emotion-90"
+                        class="emotion-101"
                         data-testid="icon"
+                        data-wdio=""
                         height="1.25em"
                         id=""
                         viewBox="0 0 1024 1024"
@@ -1359,12 +1379,13 @@ exports[`Groups Tag Page should render 1`] = `
         data-testid="user-domains"
       >
         <div
-          class="emotion-94 emotion-95"
+          class="emotion-105 emotion-106"
           data-testid="toggle-domain"
         >
           <svg
-            class="emotion-96"
+            class="emotion-107"
             data-testid="icon"
+            data-wdio=""
             height="1em"
             id=""
             viewBox="0 0 1024 1024"
@@ -1379,46 +1400,49 @@ exports[`Groups Tag Page should render 1`] = `
           </svg>
         </div>
         <div
-          class="emotion-97 emotion-98"
+          class="emotion-108 emotion-109"
         >
           <div
-            class="emotion-99 emotion-100"
+            class="emotion-110 emotion-111"
           >
             <div
-              class="emotion-101 emotion-102"
+              class="emotion-112 emotion-113"
             >
               My Domains
             </div>
             <div>
               <a
-                class="emotion-103 emotion-104"
+                class="emotion-114 emotion-115"
+                href="/domain/create"
               >
                 Create
               </a>
               <span
-                class="emotion-105 emotion-106"
+                class="emotion-116 emotion-117"
               >
                  | 
               </span>
               <a
-                class="emotion-103 emotion-104"
+                class="emotion-114 emotion-115"
+                href="/domain/manage"
               >
                 Manage
               </a>
             </div>
           </div>
           <div
-            class="emotion-109 emotion-110"
+            class="emotion-120 emotion-121"
           >
             <div
-              class="emotion-111 emotion-112"
+              class="emotion-122 emotion-123"
             >
               <div
-                class="emotion-113 emotion-114"
+                class="emotion-124 emotion-125"
               >
                 <svg
-                  class="emotion-115"
+                  class="emotion-126"
                   data-testid="icon"
+                  data-wdio=""
                   height="1em"
                   id=""
                   viewBox="0 0 1024 1024"
@@ -1439,20 +1463,22 @@ exports[`Groups Tag Page should render 1`] = `
                 </svg>
               </div>
               <a
-                class="emotion-103 emotion-104"
+                class="emotion-114 emotion-115"
+                href="/domain/athens/role"
               >
                 athens
               </a>
             </div>
             <div
-              class="emotion-111 emotion-112"
+              class="emotion-122 emotion-123"
             >
               <div
-                class="emotion-113 emotion-114"
+                class="emotion-124 emotion-125"
               >
                 <svg
-                  class="emotion-115"
+                  class="emotion-126"
                   data-testid="icon"
+                  data-wdio=""
                   height="1em"
                   id=""
                   viewBox="0 0 1024 1024"
@@ -1473,7 +1499,8 @@ exports[`Groups Tag Page should render 1`] = `
                 </svg>
               </div>
               <a
-                class="emotion-103 emotion-104"
+                class="emotion-114 emotion-115"
+                href="/domain/athens.ci/role"
               >
                 athens.ci
               </a>

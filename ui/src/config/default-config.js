@@ -109,6 +109,7 @@ const config = {
             {
                 id: 'aws_instance_launch_provider',
                 name: 'AWS EC2/EKS/Fargate launches instances for the service',
+                service: 'athens.aws.us-east-1',
             },
         ],
         createDomainMessage:
@@ -127,6 +128,9 @@ const config = {
         pageFeatureFlag: {
             microsegmentation: {
                 policyValidation: true,
+            },
+            roleGroupReview: {
+                roleGroupReviewFeatureFlag: true,
             },
         },
         serviceHeaderLinks: [
@@ -170,6 +174,14 @@ const config = {
             },
         ],
         featureFlag: true,
+        pageFeatureFlag: {
+            microsegmentation: {
+                policyValidation: true,
+            },
+            roleGroupReview: {
+                roleGroupReviewFeatureFlag: true,
+            },
+        },
         serviceHeaderLinks: [
             {
                 description:

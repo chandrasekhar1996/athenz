@@ -14,15 +14,16 @@
  * limitations under the License.
  */
 import React from 'react';
-import RoleRow from '../../../components/role/RoleRow';
+import RoleRow, { isReviewRequired } from '../../../components/role/RoleRow';
 import { colors } from '../../../components/denali/styles';
 import { renderWithRedux } from '../../../tests_utils/ComponentsTestUtils';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { configure } from '@testing-library/dom';
-import { act } from 'react-dom/test-utils';
-import { USER_DOMAIN } from '../../../components/constants/constants';
+import { fireEvent, screen } from '@testing-library/react';
 
-describe('RoleRow', () => {
+describe('RoleRow', (object, method) => {
+    afterAll(() => {
+        jest.clearAllMocks();
+    });
+
     it('should render', () => {
         const details = {
             name: 'athens:role.ztssia_cert_rotate',

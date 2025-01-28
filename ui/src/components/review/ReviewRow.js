@@ -44,7 +44,9 @@ export default class ReviewRow extends React.Component {
         super(props);
         this.api = this.props.api;
         this.onReview = this.onReview.bind(this);
-        let selectedOption = 'extend';
+        let selectedOption = this.props.expiryOrReviewSettingIsSet
+            ? 'extend'
+            : 'no-action';
         this.state = {
             selectedOption: selectedOption,
         };
@@ -124,15 +126,16 @@ export default class ReviewRow extends React.Component {
                 )}
                 <TDStyled color={color} align={center}>
                     <RadioButton
-                        name={this.props.collection + this.props.idx}
+                        name={this.props.idx}
                         value='extend'
                         checked={this.state.selectedOption === 'extend'}
                         onChange={this.onReview}
+                        disabled={!this.props.expiryOrReviewSettingIsSet}
                     />
                 </TDStyled>
                 <TDStyled color={color} align={center}>
                     <RadioButton
-                        name={this.props.collection + this.props.idx}
+                        name={this.props.idx}
                         value='no-action'
                         checked={this.state.selectedOption === 'no-action'}
                         onChange={this.onReview}
@@ -140,7 +143,7 @@ export default class ReviewRow extends React.Component {
                 </TDStyled>
                 <TDStyled color={color} align={center}>
                     <RadioButton
-                        name={this.props.collection + this.props.idx}
+                        name={this.props.idx}
                         value='delete'
                         checked={this.state.selectedOption === 'delete'}
                         onChange={this.onReview}

@@ -36,11 +36,11 @@ const Api = (req) => {
             return undefined;
         },
 
-        listUserDomains(roleName) {
+        listUserDomains() {
             return new Promise((resolve, reject) => {
                 fetchr
-                    .read('domain-list')
-                    .params({ roleName })
+                    .read('domain-role-member')
+                    .params({ expand: true })
                     .end((err, data) => {
                         if (err) {
                             reject(err);
@@ -811,6 +811,25 @@ const Api = (req) => {
             });
         },
 
+        searchServices(serviceName) {
+            return new Promise((resolve, reject) => {
+                fetchr
+                    .read('search-services')
+                    .params({ serviceName, substringMatch: true })
+                    .end((err, data) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            if (data) {
+                                resolve(data);
+                            } else {
+                                resolve([]);
+                            }
+                        }
+                    });
+            });
+        },
+
         getServices(domainName, publickeys, hosts) {
             return new Promise((resolve, reject) => {
                 fetchr
@@ -1058,10 +1077,10 @@ const Api = (req) => {
             });
         },
 
-        getProvider(domainName, serviceName) {
+        getProviderAccess(domainName, serviceName) {
             return new Promise((resolve, reject) => {
                 fetchr
-                    .read('provider')
+                    .read('access')
                     .params({ domainName, serviceName })
                     .end((err, data) => {
                         if (err) {
@@ -2178,6 +2197,30 @@ const Api = (req) => {
                             resolve(data);
                         }
                     });
+            });
+        },
+
+        getReviewRoles() {
+            return new Promise((resolve, reject) => {
+                fetchr.read('roles-review').end((err, data) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(data);
+                    }
+                });
+            });
+        },
+
+        getReviewGroups() {
+            return new Promise((resolve, reject) => {
+                fetchr.read('groups-review').end((err, data) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(data);
+                    }
+                });
             });
         },
     };

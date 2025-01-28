@@ -16,9 +16,6 @@ exports[`RoleTable should render 1`] = `
   text-transform: uppercase;
   padding: 5px 0px 5px 15px;
   word-break: break-all;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
 }
 
@@ -42,13 +39,8 @@ exports[`RoleTable should render 1`] = `
   margin-top: 10px;
   box-shadow: 0 1px 4px #d9d9d9;
   border: 1px solid #fff;
-  -webkit-border-image: none;
-  border-image: none;
   -webkit-border-image: initial;
   border-image: initial;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   padding: 5px 0 5px 15px;
 }
@@ -148,6 +140,7 @@ exports[`RoleTable should render 1`] = `
   <div
     class="emotion-24 emotion-25"
     data-testid="role-row"
+    data-wdio="a-role-row"
   >
     <div
       class="emotion-26 emotion-27"
@@ -176,6 +169,7 @@ exports[`RoleTable should render 1`] = `
         <svg
           class="emotion-36"
           data-testid="icon"
+          data-wdio="a-view-members"
           height="1.25em"
           id=""
           viewBox="0 0 1024 1024"
@@ -203,14 +197,12 @@ exports[`RoleTable should render 1`] = `
         <svg
           class="emotion-36"
           data-testid="icon"
+          data-wdio="a-review"
           height="1.25em"
           id=""
           viewBox="0 0 1024 1024"
           width="1.25em"
         >
-          <title>
-            assignment-priority
-          </title>
           <path
             d="M512 640c23.564 0 42.667-19.103 42.667-42.667v0-256c0-23.564-19.103-42.667-42.667-42.667s-42.667 19.103-42.667 42.667v0 256c0 23.564 19.103 42.667 42.667 42.667v0z"
           />
@@ -230,6 +222,7 @@ exports[`RoleTable should render 1`] = `
         <svg
           class="emotion-36"
           data-testid="icon"
+          data-wdio=""
           height="1.25em"
           id=""
           viewBox="0 0 1024 1024"
@@ -251,6 +244,7 @@ exports[`RoleTable should render 1`] = `
         <svg
           class="emotion-36"
           data-testid="icon"
+          data-wdio=""
           height="1.25em"
           id=""
           viewBox="0 0 1024 1024"
@@ -275,8 +269,9 @@ exports[`RoleTable should render 1`] = `
         <svg
           class="emotion-36"
           data-testid="icon"
+          data-wdio=""
           height="1.25em"
-          id=""
+          id="a-setting-role-button"
           viewBox="0 0 1024 1024"
           width="1.25em"
         >
@@ -299,8 +294,9 @@ exports[`RoleTable should render 1`] = `
         <svg
           class="emotion-36"
           data-testid="icon"
+          data-wdio=""
           height="1.25em"
-          id=""
+          id="a-history-role-button"
           viewBox="0 0 1024 1024"
           width="1.25em"
         >
@@ -323,6 +319,7 @@ exports[`RoleTable should render 1`] = `
         <svg
           class="emotion-36"
           data-testid="icon"
+          data-wdio=""
           height="1.25em"
           id="a-delete-role-button"
           viewBox="0 0 1024 1024"
@@ -344,6 +341,7 @@ exports[`RoleTable should render 1`] = `
   <div
     class="emotion-24 emotion-25"
     data-testid="role-row"
+    data-wdio="b-role-row"
   >
     <div
       class="emotion-26 emotion-27"
@@ -372,6 +370,7 @@ exports[`RoleTable should render 1`] = `
         <svg
           class="emotion-36"
           data-testid="icon"
+          data-wdio="b-view-members"
           height="1.25em"
           id=""
           viewBox="0 0 1024 1024"
@@ -399,14 +398,12 @@ exports[`RoleTable should render 1`] = `
         <svg
           class="emotion-36"
           data-testid="icon"
+          data-wdio="b-review"
           height="1.25em"
           id=""
           viewBox="0 0 1024 1024"
           width="1.25em"
         >
-          <title>
-            assignment-priority
-          </title>
           <path
             d="M512 640c23.564 0 42.667-19.103 42.667-42.667v0-256c0-23.564-19.103-42.667-42.667-42.667s-42.667 19.103-42.667 42.667v0 256c0 23.564 19.103 42.667 42.667 42.667v0z"
           />
@@ -426,6 +423,7 @@ exports[`RoleTable should render 1`] = `
         <svg
           class="emotion-36"
           data-testid="icon"
+          data-wdio=""
           height="1.25em"
           id=""
           viewBox="0 0 1024 1024"
@@ -447,6 +445,7 @@ exports[`RoleTable should render 1`] = `
         <svg
           class="emotion-36"
           data-testid="icon"
+          data-wdio=""
           height="1.25em"
           id=""
           viewBox="0 0 1024 1024"
@@ -471,8 +470,9 @@ exports[`RoleTable should render 1`] = `
         <svg
           class="emotion-36"
           data-testid="icon"
+          data-wdio=""
           height="1.25em"
-          id=""
+          id="b-setting-role-button"
           viewBox="0 0 1024 1024"
           width="1.25em"
         >
@@ -495,8 +495,9 @@ exports[`RoleTable should render 1`] = `
         <svg
           class="emotion-36"
           data-testid="icon"
+          data-wdio=""
           height="1.25em"
-          id=""
+          id="b-history-role-button"
           viewBox="0 0 1024 1024"
           width="1.25em"
         >
@@ -519,6 +520,7 @@ exports[`RoleTable should render 1`] = `
         <svg
           class="emotion-36"
           data-testid="icon"
+          data-wdio=""
           height="1.25em"
           id="b-delete-role-button"
           viewBox="0 0 1024 1024"

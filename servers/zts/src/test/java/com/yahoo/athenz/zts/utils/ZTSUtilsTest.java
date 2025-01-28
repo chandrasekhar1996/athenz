@@ -74,26 +74,26 @@ public class ZTSUtilsTest {
     public void testRetrieveConfigSetting() {
         
         System.setProperty("prop1", "1001");
-        assertEquals(1001, ConfigProperties.retrieveConfigSetting("prop1", 99));
-        assertEquals(99, ConfigProperties.retrieveConfigSetting("prop2", 99));
+        assertEquals(ConfigProperties.retrieveConfigSetting("prop1", 99), 1001);
+        assertEquals(ConfigProperties.retrieveConfigSetting("prop2", 99), 99);
 
         System.setProperty("prop1", "-101");
-        assertEquals(99, ConfigProperties.retrieveConfigSetting("prop1", 99));
+        assertEquals(ConfigProperties.retrieveConfigSetting("prop1", 99), 99);
 
         System.setProperty("prop1", "0");
-        assertEquals(99, ConfigProperties.retrieveConfigSetting("prop1", 99));
+        assertEquals(ConfigProperties.retrieveConfigSetting("prop1", 99), 99);
         
         System.setProperty("prop1", "abc");
-        assertEquals(99, ConfigProperties.retrieveConfigSetting("prop1", 99));
+        assertEquals(ConfigProperties.retrieveConfigSetting("prop1", 99), 99);
     }
     
     @Test
     public void testCreateSSLContextObject() {
         
-        System.setProperty(ZTSConsts.ZTS_PROP_KEYSTORE_PATH, "file:///tmp/keystore");
+        System.setProperty(ZTSConsts.ZTS_PROP_KEYSTORE_PATH, Resources.getResource("keystore.pkcs12").getFile());
         System.setProperty(ZTSConsts.ZTS_PROP_KEYSTORE_TYPE, "PKCS12");
         System.setProperty(ZTSConsts.ZTS_PROP_KEYSTORE_PASSWORD, "pass123");
-        System.setProperty(ZTSConsts.ZTS_PROP_TRUSTSTORE_PATH, "file:///tmp/truststore");
+        System.setProperty(ZTSConsts.ZTS_PROP_TRUSTSTORE_PATH, Resources.getResource("truststore.jks").getFile());
         System.setProperty(ZTSConsts.ZTS_PROP_TRUSTSTORE_TYPE, "PKCS12");
         System.setProperty(ZTSConsts.ZTS_PROP_TRUSTSTORE_PASSWORD, "pass123");
         System.setProperty(ZTSConsts.ZTS_PROP_KEYMANAGER_PASSWORD, "pass123");
@@ -103,9 +103,9 @@ public class ZTSUtilsTest {
         
         SslContextFactory.Client sslContextFactory = ZTSUtils.createSSLContextObject(null, null);
         assertNotNull(sslContextFactory);
-        assertEquals(sslContextFactory.getKeyStorePath(), "file:///tmp/keystore");
+        assertEquals(sslContextFactory.getKeyStorePath(), "file://" + Resources.getResource("keystore.pkcs12").getFile());
         assertEquals(sslContextFactory.getKeyStoreType(), "PKCS12");
-        assertEquals(sslContextFactory.getTrustStoreResource().toString(), "file:///tmp/truststore");
+        assertEquals(sslContextFactory.getTrustStoreResource().toString(), "file://" + Resources.getResource("truststore.jks").getFile());
         assertEquals(sslContextFactory.getTrustStoreType(), "PKCS12");
         assertEquals(sslContextFactory.getExcludeCipherSuites(), ZTSUtils.ZTS_DEFAULT_EXCLUDED_CIPHER_SUITES.split(","));
         assertEquals(sslContextFactory.getExcludeProtocols(), ZTSUtils.ZTS_DEFAULT_EXCLUDED_PROTOCOLS.split(","));
@@ -128,7 +128,7 @@ public class ZTSUtilsTest {
     @Test
     public void testCreateSSLContextObjectNoKeyStore() {
         
-        System.setProperty(ZTSConsts.ZTS_PROP_TRUSTSTORE_PATH, "file:///tmp/truststore");
+        System.setProperty(ZTSConsts.ZTS_PROP_TRUSTSTORE_PATH, Resources.getResource("truststore.jks").getFile());
         System.setProperty(ZTSConsts.ZTS_PROP_TRUSTSTORE_TYPE, "PKCS12");
         System.setProperty(ZTSConsts.ZTS_PROP_TRUSTSTORE_PASSWORD, "pass123");
         System.setProperty(ZTSConsts.ZTS_PROP_KEYMANAGER_PASSWORD, "pass123");
@@ -138,14 +138,14 @@ public class ZTSUtilsTest {
         assertNull(sslContextFactory.getKeyStoreResource());
         // store type always defaults to PKCS12
         assertEquals(sslContextFactory.getKeyStoreType(), "PKCS12");
-        assertEquals(sslContextFactory.getTrustStoreResource().toString(), "file:///tmp/truststore");
+        assertEquals(sslContextFactory.getTrustStoreResource().toString(), "file://" + Resources.getResource("truststore.jks").getFile());
         assertEquals(sslContextFactory.getTrustStoreType(), "PKCS12");
     }
     
     @Test
     public void testCreateSSLContextObjectNoTrustStore() {
         
-        System.setProperty(ZTSConsts.ZTS_PROP_KEYSTORE_PATH, "file:///tmp/keystore");
+        System.setProperty(ZTSConsts.ZTS_PROP_KEYSTORE_PATH, Resources.getResource("keystore.pkcs12").getFile());
         System.setProperty(ZTSConsts.ZTS_PROP_KEYSTORE_TYPE, "PKCS12");
         System.setProperty(ZTSConsts.ZTS_PROP_KEYSTORE_PASSWORD, "pass123");
         System.setProperty(ZTSConsts.ZTS_PROP_EXCLUDED_CIPHER_SUITES, ZTSUtils.ZTS_DEFAULT_EXCLUDED_CIPHER_SUITES);
@@ -154,7 +154,7 @@ public class ZTSUtilsTest {
 
         SslContextFactory.Client sslContextFactory = ZTSUtils.createSSLContextObject(null, null);
         assertNotNull(sslContextFactory);
-        assertEquals(sslContextFactory.getKeyStorePath(), "file:///tmp/keystore");
+        assertEquals(sslContextFactory.getKeyStorePath(), "file://" + Resources.getResource("keystore.pkcs12").getFile());
         assertEquals(sslContextFactory.getKeyStoreType(), "PKCS12");
         assertNull(sslContextFactory.getTrustStoreResource());
         // store type always defaults to PKCS12
@@ -167,13 +167,14 @@ public class ZTSUtilsTest {
     public void testGenerateIdentityFailure() throws IOException {
         
         InstanceCertManager certManager = Mockito.mock(InstanceCertManager.class);
-        Mockito.when(certManager.generateX509Certificate(Mockito.any(), Mockito.any(),
-                Mockito.any(), Mockito.any(), Mockito.anyInt(), Mockito.any())).thenReturn(null);
+        Mockito.when(certManager.generateX509Certificate(Mockito.any(), Mockito.any(), Mockito.any(),
+                Mockito.any(), Mockito.anyInt(), Mockito.any(), Mockito.any())).thenReturn(null);
         
         Path path = Paths.get("src/test/resources/valid.csr");
         String csr = new String(Files.readAllBytes(path));
         
-        Identity identity = ZTSUtils.generateIdentity(certManager, "aws", "us-west-2", csr, "unknown.syncer", null, 0);
+        Identity identity = ZTSUtils.generateIdentity(certManager, "aws", "us-west-2", csr, "unknown.syncer",
+                null, 0, null);
         assertNull(identity);
     }
     
@@ -319,14 +320,14 @@ public class ZTSUtilsTest {
     
     @Test
     public void testGetApplicationSecret() {
-        assertEquals(ZTSUtils.getApplicationSecret(null, "appname", "pass"), "pass");
+        assertEquals(ZTSUtils.getApplicationSecret(null, "appname", "pass", null), "pass");
         
         PrivateKeyStore keyStore = Mockito.mock(PrivateKeyStore.class);
-        Mockito.when(keyStore.getSecret(null, "pass")).thenReturn("app234".toCharArray());
-        assertEquals(ZTSUtils.getSecret(keyStore, null, "pass"), "app234".toCharArray());
+        Mockito.when(keyStore.getSecret(null, null, "pass")).thenReturn("app234".toCharArray());
+        assertEquals(ZTSUtils.getSecret(keyStore, null, "pass", null), "app234".toCharArray());
         
-        Mockito.when(keyStore.getSecret("appname", "passname")).thenReturn("app123".toCharArray());
-        assertEquals(ZTSUtils.getSecret(keyStore, "appname", "passname"), "app123".toCharArray());
+        Mockito.when(keyStore.getSecret("appname", null, "passname")).thenReturn("app123".toCharArray());
+        assertEquals(ZTSUtils.getSecret(keyStore, "appname", "passname", null), "app123".toCharArray());
     }
 
     @Test
@@ -584,10 +585,10 @@ public class ZTSUtilsTest {
 
     @Test
     public void testParseInt() {
-        assertEquals(0, ZTSUtils.parseInt(null, 0));
-        assertEquals(-1, ZTSUtils.parseInt("", -1));
-        assertEquals(100, ZTSUtils.parseInt("100", 1));
-        assertEquals(0, ZTSUtils.parseInt("abc", 0));
+        assertEquals(ZTSUtils.parseInt(null, 0), 0);
+        assertEquals(ZTSUtils.parseInt("", -1), -1);
+        assertEquals(ZTSUtils.parseInt("100", 1), 100);
+        assertEquals(ZTSUtils.parseInt("abc", 0), 0);
     }
 
     @Test
@@ -643,5 +644,10 @@ public class ZTSUtilsTest {
         assertTrue(ZTSUtils.valueEndsWith("test.athenz.cloud", Arrays.asList(".athenz2.cloud", "athenz.cloud")));
         assertFalse(ZTSUtils.valueEndsWith("test.athenz1.cloud", Collections.singletonList(".athenz2.cloud")));
         assertFalse(ZTSUtils.valueEndsWith("test.athenz1.cloud", Arrays.asList(".athenz2.cloud", "athenz.cloud")));
+    }
+
+    @Test
+    public void testConstructor() {
+        new ZTSUtils();
     }
 }

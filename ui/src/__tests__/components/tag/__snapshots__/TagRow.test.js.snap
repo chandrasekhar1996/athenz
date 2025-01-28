@@ -44,9 +44,6 @@ exports[`TagRow should click edit and delete 1`] = `
   border-radius: 0 14px 14px 0;
   box-shadow: none;
   box-sizing: border-box;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 28px;
   -webkit-box-pack: center;
@@ -137,6 +134,7 @@ exports[`TagRow should click edit and delete 1`] = `
         <svg
           class="emotion-11"
           data-testid="icon"
+          data-wdio=""
           height="20px"
           id=""
           viewBox="0 0 1024 1024"
@@ -169,6 +167,7 @@ exports[`TagRow should click edit and delete 1`] = `
         <svg
           class="emotion-11"
           data-testid="icon"
+          data-wdio=""
           height="20px"
           id=""
           viewBox="0 0 1024 1024"
@@ -191,6 +190,7 @@ exports[`TagRow should click edit and delete 1`] = `
       <svg
         class="emotion-20"
         data-testid="icon"
+        data-wdio=""
         height="1.25em"
         id=""
         viewBox="0 0 1024 1024"
@@ -212,6 +212,7 @@ exports[`TagRow should click edit and delete 1`] = `
       <svg
         class="emotion-20"
         data-testid="icon"
+        data-wdio=""
         height="1.25em"
         id=""
         viewBox="0 0 1024 1024"
@@ -276,9 +277,6 @@ exports[`TagRow should render tag row 1`] = `
   border-radius: 0 14px 14px 0;
   box-shadow: none;
   box-sizing: border-box;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
   display: flex;
   height: 28px;
   -webkit-box-pack: center;
@@ -369,6 +367,7 @@ exports[`TagRow should render tag row 1`] = `
         <svg
           class="emotion-11"
           data-testid="icon"
+          data-wdio=""
           height="20px"
           id=""
           viewBox="0 0 1024 1024"
@@ -401,6 +400,7 @@ exports[`TagRow should render tag row 1`] = `
         <svg
           class="emotion-11"
           data-testid="icon"
+          data-wdio=""
           height="20px"
           id=""
           viewBox="0 0 1024 1024"
@@ -423,6 +423,7 @@ exports[`TagRow should render tag row 1`] = `
       <svg
         class="emotion-20"
         data-testid="icon"
+        data-wdio=""
         height="1.25em"
         id=""
         viewBox="0 0 1024 1024"
@@ -444,6 +445,7 @@ exports[`TagRow should render tag row 1`] = `
       <svg
         class="emotion-20"
         data-testid="icon"
+        data-wdio=""
         height="1.25em"
         id=""
         viewBox="0 0 1024 1024"

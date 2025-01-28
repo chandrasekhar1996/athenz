@@ -169,6 +169,14 @@ export const ADD_ROLE_REVIEW_DESC =
     'Flag indicates whether or not role updates require another review and approval';
 export const ADD_ROLE_SELF_SERVICE_DESC =
     'Flag indicates whether or not role allows self service';
+export const ADD_ROLE_SELF_RENEW_DESC =
+    'Flag indicates whether or not role allows self renew';
+export const SELF_RENEW_MINS_DESC =
+    'Number of minutes members can renew their membership if self review option is enabled';
+export const ADD_ROLE_MAX_MEMBERS_DESC =
+    'Maximum number of members allowed in the role';
+export const GROUP_ROLE_DOMAIN_FILTER_DESC =
+    'Membership filtered based on configured principal domains';
 export const ADD_ROLE_MEMBER_EXPIRY_DAYS_DESC =
     'All user members in the role will have specified max expiry days';
 export const ADD_ROLE_MEMBER_REVIEW_DAYS_DESC =
@@ -204,8 +212,14 @@ export const MICROSEG_CONDITION_DELETE_JUSTIFICATION =
     'Microsegmentation Assertion Condition deletion';
 export const MICROSEG_TRANSPORT_RULE_DELETE_JUSTIFICATION =
     'Microsegmentation Transport Rule deletion';
-export const WORKFLOW_ADMIN_VIEW_TAB = 'Admin View';
-export const WORKFLOW_DOMAIN_VIEW_TAB = 'Domain View';
+export const WORKFLOW_PENDING_MEMBERS_APPROVAL_ADMIN_VIEW_TAB =
+    'Pending Members Approval (Admin View)';
+export const WORKFLOW_PENDING_MEMBERS_APPROVAL_DOMAIN_VIEW_TAB =
+    'Pending Members Approval (Domain View)';
+export const WORKFLOW_DOMAIN_VIEW_TAB = 'Domain Member Approval';
+export const WORKFLOW_ROLE_REVIEW = 'Role Review';
+export const WORKFLOW_GROUP_REVIEW = 'Group Review';
+export const WORKFLOW_TITLE = 'Action Required';
 export const WORKFLOW_DOMAIN_VIEW_DROPDOWN_PLACEHOLDER =
     'Select a Domain to View Pending Members';
 export const VIEW_PENDING_MEMBERS_BY_DOMAIN_TITLE =
@@ -216,12 +230,20 @@ export const ADD_GROUP_DELETE_PROTECTION_DESC =
     'Flag indicates whether or not the group will be protected from accidental deletions';
 export const WORKFLOW_TABS = [
     {
-        label: WORKFLOW_ADMIN_VIEW_TAB,
+        label: WORKFLOW_PENDING_MEMBERS_APPROVAL_ADMIN_VIEW_TAB,
         name: 'admin',
     },
     {
-        label: WORKFLOW_DOMAIN_VIEW_TAB,
+        label: WORKFLOW_PENDING_MEMBERS_APPROVAL_DOMAIN_VIEW_TAB,
         name: 'domain',
+    },
+    {
+        label: WORKFLOW_ROLE_REVIEW,
+        name: 'roleReview',
+    },
+    {
+        label: WORKFLOW_GROUP_REVIEW,
+        name: 'groupReview',
     },
 ];
 
@@ -243,3 +265,22 @@ export const PENDING_STATE_ENUM = Object.freeze({
     ADD: 'ADD',
     DELETE: 'DELETE',
 });
+export const REVIEW_CARDS_SIZE = 5;
+
+export const ENVIRONMENT_DROPDOWN_OPTIONS = [
+    { value: 'production', name: 'PRODUCTION' },
+    { value: 'integration', name: 'INTEGRATION' },
+    { value: 'staging', name: 'STAGING' },
+    { value: 'sandbox', name: 'SANDBOX' },
+    { value: 'qa', name: 'QA' },
+    { value: 'development', name: 'DEVELOPMENT' },
+];
+
+export const MEMBER_AUTHORITY_FILTER_DISABLED = 1;
+export const MEMBER_AUTHORITY_SYSTEM_SUSPENDED = 2;
+export const MEMBER_ATHENZ_SYSTEM_DISABLED = 4;
+
+export const PERCENTAGE_OF_DAYS_TILL_NEXT_REVIEW = 0.2;
+
+export const SEARCH_MAX_100_RESULTS_CAN_BE_DISPLAYED =
+    'Maximum 100 results can be searched for at a time. Specify more characters in the search criteria to get better results.';

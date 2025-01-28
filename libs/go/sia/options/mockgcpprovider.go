@@ -6,11 +6,13 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"fmt"
-	"github.com/AthenZ/athenz/libs/go/sia/gcp/attestation"
-	"github.com/AthenZ/athenz/libs/go/sia/host/ip"
-	"github.com/AthenZ/athenz/libs/go/sia/host/signature"
 	"net"
 	"net/url"
+
+	"github.com/AthenZ/athenz/libs/go/sia/gcp/attestation"
+	"github.com/AthenZ/athenz/libs/go/sia/host/ip"
+	"github.com/AthenZ/athenz/libs/go/sia/host/provider"
+	"github.com/AthenZ/athenz/libs/go/sia/host/signature"
 )
 
 type MockGCPProvider struct {
@@ -24,7 +26,7 @@ func (tp MockGCPProvider) GetName() string {
 }
 
 // GetHostname returns the hostname as per the provider
-func (tp MockGCPProvider) GetHostname() string {
+func (tp MockGCPProvider) GetHostname(bool) string {
 	return tp.Hostname
 }
 
@@ -60,11 +62,11 @@ func (tp MockGCPProvider) GetSanIp(docIp map[string]bool, ips []net.IP, opts ip.
 	return nil
 }
 
-func (tp MockGCPProvider) GetSuffix() string {
-	return ""
+func (tp MockGCPProvider) GetSuffixes() []string {
+	return []string{}
 }
 
-func (tp MockGCPProvider) CloudAttestationData(base, svc, ztsServerName string) (string, error) {
+func (tp MockGCPProvider) CloudAttestationData(*provider.AttestationRequest) (string, error) {
 	a, _ := json.Marshal(&attestation.GoogleAttestationData{
 		IdentityToken: "abc",
 	})

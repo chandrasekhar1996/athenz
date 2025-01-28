@@ -17,6 +17,7 @@ package com.yahoo.athenz.zts.cert.impl.crypki;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,26 +30,31 @@ import com.yahoo.athenz.auth.PrivateKeyStore;
 import com.yahoo.athenz.auth.PrivateKeyStoreFactory;
 import com.yahoo.athenz.common.server.cert.CertSigner;
 import com.yahoo.athenz.common.server.cert.Priority;
-import com.yahoo.athenz.common.server.rest.ResourceException;
 import com.yahoo.athenz.common.server.util.config.dynamic.DynamicConfigBoolean;
 import com.yahoo.athenz.common.server.util.config.dynamic.DynamicConfigInteger;
 import com.yahoo.athenz.instance.provider.InstanceProvider;
+import com.yahoo.athenz.zts.ResourceException;
 import com.yahoo.athenz.zts.ZTSConsts;
 import com.yahoo.athenz.zts.utils.ZTSUtils;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.config.Registry;
-import org.apache.http.config.RegistryBuilder;
-import org.apache.http.conn.socket.ConnectionSocketFactory;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.classic.methods.HttpUriRequest;
+import org.apache.hc.client5.http.config.ConnectionConfig;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.config.TlsConfig;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.DefaultClientTlsStrategy;
+import org.apache.hc.client5.http.ssl.TlsSocketStrategy;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.http.ssl.TLS;
+import org.apache.hc.core5.pool.PoolConcurrencyPolicy;
+import org.apache.hc.core5.pool.PoolReusePolicy;
+import org.apache.hc.core5.util.TimeValue;
+import org.apache.hc.core5.util.Timeout;
 import org.eclipse.jetty.util.StringUtil;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.slf4j.Logger;
@@ -92,10 +98,7 @@ public class HttpCertSigner implements CertSigner {
 
         PrivateKeyStore privateKeyStore = loadServicePrivateKey();
 
-        // retrieve our default timeout and retry timer
-
-        int connectionTimeoutSec = Integer.parseInt(System.getProperty(ZTSConsts.ZTS_PROP_CERTSIGN_CONNECT_TIMEOUT, "10"));
-        int readTimeoutSec = Integer.parseInt(System.getProperty(ZTSConsts.ZTS_PROP_CERTSIGN_REQUEST_TIMEOUT, "25"));
+        // retrieve our default retry timer
 
         certsignRequestRetryCount = new DynamicConfigInteger(CONFIG_MANAGER, ZTSConsts.ZTS_PROP_CERTSIGN_RETRY_COUNT, 2);
         retryConnFailuresOnly = new DynamicConfigBoolean(CONFIG_MANAGER, ZTSConsts.ZTS_PROP_CERTSIGN_RETRY_CONN_ONLY, true);
@@ -121,8 +124,7 @@ public class HttpCertSigner implements CertSigner {
         }
 
         this.connManager = createConnectionPooling(sslContextFactory.getSslContext());
-        this.httpClient = createHttpClient(connectionTimeoutSec, readTimeoutSec,
-                sslContextFactory.getSslContext(), this.connManager);
+        this.httpClient = createHttpClient(this.connManager);
 
         // load our provider signer key details
 
@@ -131,8 +133,7 @@ public class HttpCertSigner implements CertSigner {
                     "Unable to initialize provider signer key configuration");
         }
 
-        LOGGER.info("HttpCertSigner initialized with url: {} connectionTimeoutSec: {}, readTimeoutSec: {}",
-                serverBaseUri, connectionTimeoutSec, readTimeoutSec);
+        LOGGER.info("HttpCertSigner initialized with url: {}", serverBaseUri);
         LOGGER.info("HttpCertSigner connection pool stats {} ", this.connManager.getTotalStats().toString());
     }
 
@@ -192,40 +193,47 @@ public class HttpCertSigner implements CertSigner {
      */
     PoolingHttpClientConnectionManager createConnectionPooling(SSLContext sslContext) {
 
-        SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(sslContext);
-        Registry<ConnectionSocketFactory> registry = RegistryBuilder.<ConnectionSocketFactory>create().register("https", sslsf).build();
-        PoolingHttpClientConnectionManager poolingHttpClientConnectionManager = new PoolingHttpClientConnectionManager(registry);
-
-        // route is host + port
-
         int defaultMaxPerRoute = Integer.parseInt(System.getProperty(ZTSConsts.ZTS_PROP_CERTSIGN_CONN_MAX_PER_ROUTE, "20"));
         int maxTotal = Integer.parseInt(System.getProperty(ZTSConsts.ZTS_PROP_CERTSIGN_CONN_MAX_TOTAL, "30"));
+        int timeToLive = Integer.parseInt(System.getProperty(ZTSConsts.ZTS_PROP_CERTSIGN_CONN_TIME_TO_LIVE, "10"));
+        int connectionTimeoutSec = Integer.parseInt(System.getProperty(ZTSConsts.ZTS_PROP_CERTSIGN_CONNECT_TIMEOUT, "10"));
+        int readTimeoutSec = Integer.parseInt(System.getProperty(ZTSConsts.ZTS_PROP_CERTSIGN_REQUEST_TIMEOUT, "25"));
+        int handshakeTimeout = Integer.parseInt(System.getProperty(ZTSConsts.ZTS_PROP_CERTSIGN_HANDSHAKE_TIMEOUT, "30000"));
 
-        poolingHttpClientConnectionManager.setDefaultMaxPerRoute(defaultMaxPerRoute);
-        poolingHttpClientConnectionManager.setMaxTotal(maxTotal);
-        return poolingHttpClientConnectionManager;
+        final TlsSocketStrategy tlsStrategy = new DefaultClientTlsStrategy(sslContext);
+
+        return PoolingHttpClientConnectionManagerBuilder.create()
+                .setTlsSocketStrategy(tlsStrategy)
+                .setDefaultTlsConfig(TlsConfig.custom()
+                        .setHandshakeTimeout(Timeout.ofMilliseconds(handshakeTimeout))
+                        .setSupportedProtocols(TLS.V_1_2, TLS.V_1_3)
+                        .build())
+                .setPoolConcurrencyPolicy(PoolConcurrencyPolicy.STRICT)
+                .setConnPoolPolicy(PoolReusePolicy.LIFO)
+                .setDefaultConnectionConfig(ConnectionConfig.custom()
+                        .setSocketTimeout(Timeout.ofSeconds(readTimeoutSec))
+                        .setConnectTimeout(Timeout.ofSeconds(connectionTimeoutSec))
+                        .setTimeToLive(TimeValue.ofMinutes(timeToLive))
+                        .build())
+                .setMaxConnPerRoute(defaultMaxPerRoute)
+                .setMaxConnTotal(maxTotal)
+                .build();
     }
 
     /**
-     * Create an http client based on given configuration settings
-     * @param connectionTimeoutSec connection timeout in seconds
-     * @param readTimeoutSec read timeout in seconds
-     * @param sslContext ssl context object
+     * Create a http client based on given configuration settings
      * @param poolingHttpClientConnectionManager http connection manager object
      * @return http client
      */
-    CloseableHttpClient createHttpClient(int connectionTimeoutSec, int readTimeoutSec, SSLContext sslContext, PoolingHttpClientConnectionManager poolingHttpClientConnectionManager) {
+    CloseableHttpClient createHttpClient(PoolingHttpClientConnectionManager poolingHttpClientConnectionManager) {
 
         //apache http client expects in milliseconds
         RequestConfig config = RequestConfig.custom()
-                .setConnectTimeout((int) TimeUnit.MILLISECONDS.convert(connectionTimeoutSec, TimeUnit.SECONDS))
-                .setSocketTimeout((int) TimeUnit.MILLISECONDS.convert(readTimeoutSec, TimeUnit.SECONDS))
                 .setRedirectsEnabled(false)
                 .build();
         return HttpClients.custom()
                 .setConnectionManager(poolingHttpClientConnectionManager)
                 .setDefaultRequestConfig(config)
-                .setSSLContext(sslContext)
                 .build();
     }
 
@@ -256,33 +264,30 @@ public class HttpCertSigner implements CertSigner {
                 ZTSConsts.ZTS_PKEY_STORE_FACTORY_CLASS);
         PrivateKeyStoreFactory pkeyFactory;
         try {
-            pkeyFactory = (PrivateKeyStoreFactory) Class.forName(pkeyFactoryClass).newInstance();
-        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
-            LOGGER.error("Invalid PrivateKeyStoreFactory class: {} error: {}",
-                    pkeyFactoryClass, e.getMessage());
+            pkeyFactory = (PrivateKeyStoreFactory) Class.forName(pkeyFactoryClass).getDeclaredConstructor().newInstance();
+        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException |
+                 NoSuchMethodException | InvocationTargetException ex) {
+            LOGGER.error("Invalid PrivateKeyStoreFactory class: {}", pkeyFactoryClass, ex);
             throw new IllegalArgumentException("Invalid private key store");
         }
         return pkeyFactory.create();
     }
 
     @Override
-    public String generateX509Certificate(String provider, String certIssuer, String csr, String keyUsage, int expireMins) {
-        return generateX509Certificate(provider, certIssuer, csr, keyUsage, expireMins, Priority.Unspecified_priority);
-    }
-
-    @Override
-    public String generateX509Certificate(String provider, String certIssuer, String csr, String keyUsage, int expireMins, Priority priority) {
+    public String generateX509Certificate(String provider, String certIssuer, String csr, String keyUsage,
+            int expireMins, Priority priority, String signerKeyId) {
 
         StringEntity entity;
         try {
-            final String requestContent = JACKSON_MAPPER.writeValueAsString(getX509CertSigningRequest(provider, csr, keyUsage, expireMins, priority));
+            final String requestContent = JACKSON_MAPPER.writeValueAsString(getX509CertSigningRequest(provider,
+                    csr, keyUsage, expireMins, priority, signerKeyId));
             entity = new StringEntity(requestContent);
         } catch (Exception ex) {
             LOGGER.error("unable to generate csr", ex);
             return null;
         }
 
-        final String x509CertUri = getX509CertUri(serverBaseUri, provider);
+        final String x509CertUri = getX509CertUri(serverBaseUri, provider, signerKeyId);
         HttpPost httpPost = new HttpPost(x509CertUri);
         httpPost.setHeader("Accept", CONTENT_JSON);
         httpPost.setHeader("Content-Type", CONTENT_JSON);
@@ -294,7 +299,7 @@ public class HttpCertSigner implements CertSigner {
             try {
                 return processHttpResponse(httpPost, 201);
             } catch (ConnectException ex) {
-                LOGGER.error("Unable to process x509 certificate request to url {}, retrying {}/{}, {}",
+                LOGGER.error("Unable to process x509 certificate request to url {}, retrying {}/{}",
                         x509CertUri, i + 1, certsignRequestRetryCount.get(), ex);
             } catch (IOException ex) {
                 LOGGER.error("Unable to process x509 certificate request to url {}, try: {}",
@@ -313,10 +318,9 @@ public class HttpCertSigner implements CertSigner {
      * @param request http request object
      * @param expectedStatusCode expected http status code
      * @return x509 Certificate or Null if expectedStatusCode doesn't match or empty response from the server.
-     * @throws ClientProtocolException in case of any client protocol errors
      * @throws IOException in case of general io errors
      */
-    String processHttpResponse(HttpUriRequest request, int expectedStatusCode) throws ClientProtocolException, IOException {
+    String processHttpResponse(HttpUriRequest request, int expectedStatusCode) throws IOException {
 
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("connManager stats before: {}" , this.connManager.getTotalStats().toString());
@@ -326,9 +330,9 @@ public class HttpCertSigner implements CertSigner {
             LOGGER.debug("connManager stats after: {}" , this.connManager.getTotalStats().toString());
         }
         // check for status code first
-        int statusCode = response.getStatusLine().getStatusCode();
+        int statusCode = response.getCode();
         if (statusCode != expectedStatusCode) {
-            LOGGER.error("unable to fetch requested uri '{}' status: {}", request.getURI(), statusCode);
+            LOGGER.error("unable to fetch requested uri '{}' status: {}", request.getRequestUri(), statusCode);
             // Close an inputstream so that connections can go back to the pool.
             if (response.getEntity().getContent() != null) {
                 response.getEntity().getContent().close();
@@ -338,7 +342,7 @@ public class HttpCertSigner implements CertSigner {
         // check for content
         try (InputStream data = response.getEntity().getContent()) {
             if (data == null) {
-                LOGGER.error("received empty response from uri '{}', status: {}", request.getURI(), statusCode);
+                LOGGER.error("received empty response from uri '{}', status: {}", request.getRequestUri(), statusCode);
                 return null;
             }
             return parseResponse(data);
@@ -346,8 +350,8 @@ public class HttpCertSigner implements CertSigner {
     }
 
     @Override
-    public String getCACertificate(String provider) {
-        HttpGet httpGet = new HttpGet(getX509CertUri(serverBaseUri, provider));
+    public String getCACertificate(String provider, String signerKeyId) {
+        HttpGet httpGet = new HttpGet(getX509CertUri(serverBaseUri, provider, signerKeyId));
         String data = null;
         try {
             data = processHttpResponse(httpGet, 200);
@@ -360,19 +364,30 @@ public class HttpCertSigner implements CertSigner {
         return data;
     }
 
-    String getProviderKeyId(String provider) {
+    String getProviderKeyId(String provider, String signerKeyId) {
+
+        // if we're given a signer key then we're going to use that
+
+        if (!StringUtil.isEmpty(signerKeyId)) {
+            return signerKeyId;
+        }
+
+        // otherwise, we'll look at the provider
+
         if (StringUtil.isEmpty(provider)) {
             return defaultProviderSignerKeyId;
         }
+
         final String keyId = providerSignerKeys.get(provider);
         return keyId == null ? defaultProviderSignerKeyId : keyId;
     }
 
-    public String getX509CertUri(String serverBaseUri, String provider) {
-        return serverBaseUri + X509_CERTIFICATE_PATH + getProviderKeyId(provider);
+    public String getX509CertUri(String serverBaseUri, String provider, String signerKeyId) {
+        return serverBaseUri + X509_CERTIFICATE_PATH + getProviderKeyId(provider, signerKeyId);
     }
 
-    public Object getX509CertSigningRequest(String provider, String csr, String keyUsage, int expireMins, Priority priority) {
+    public Object getX509CertSigningRequest(String provider, String csr, String keyUsage, int expireMins,
+            Priority priority, String signerKeyId) {
 
         // Key Usage value used in Go - https://golang.org/src/crypto/x509/x509.go?s=18153:18173#L558
 
@@ -393,7 +408,7 @@ public class HttpCertSigner implements CertSigner {
         }
 
         X509CertificateSigningRequest csrCert = new X509CertificateSigningRequest();
-        csrCert.setKeyMeta(new KeyMeta(getProviderKeyId(provider)));
+        csrCert.setKeyMeta(new KeyMeta(getProviderKeyId(provider, signerKeyId)));
         csrCert.setCsr(csr);
         csrCert.setExtKeyUsage(extKeyUsage);
         csrCert.setValidity(DEFAULT_CERT_EXPIRE_SECS);

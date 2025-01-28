@@ -18,28 +18,20 @@
 
 package com.yahoo.athenz.db.dynamodb;
 
-import com.yahoo.athenz.auth.PrivateKeyStore;
 import com.yahoo.athenz.zts.ZTSClientNotificationSender;
 
 public interface DynamoDBClientFetcher {
-    /**
-     * Returns a DynamoDBClient and the AWS credential provider used for authentication.
-     * The credentialProvider should be closed after DynamoDBClient is no longer needed.
-     * (GC might not run for a long period of time)
-     * @param ztsClientNotificationSender notification sender object
-     * @param keyStore private key store object for fetching any secrets
-     * @return DynamoDBClientAndCredentials which contains both a DynamoDB client and the credentialProvider used
-     */
-    @Deprecated
-    DynamoDBClientAndCredentials getDynamoDBClient(ZTSClientNotificationSender ztsClientNotificationSender, PrivateKeyStore keyStore);
 
     /**
-     * Returns a DynamoDBClient and the AWS credential provider used for authentication.
-     * The credentialProvider should be closed after DynamoDBClient is no longer needed.
+     * Returns a DynamoDBClient wrapper object that includes both regular
+     * and async clients along with the AWS credentials provider.
+     * The clients should be closed after DynamoDBClient is no
+     * longer needed which would close the associated AWS credential provider.
      * (GC might not run for a long period of time)
      * @param ztsClientNotificationSender notification sender object
      * @param dynamoDBClientSettings contains private key store and client settings
-     * @return DynamoDBClientAndCredentials which contains both a DynamoDB client and the credentialProvider used
+     * @return DynamoDBClientAndCredentials which contains both DynamoDB clients and the credentialProvider used
      */
-    DynamoDBClientAndCredentials getDynamoDBClient(ZTSClientNotificationSender ztsClientNotificationSender, DynamoDBClientSettings dynamoDBClientSettings);
+    DynamoDBClientAndCredentials getDynamoDBClient(ZTSClientNotificationSender ztsClientNotificationSender,
+        DynamoDBClientSettings dynamoDBClientSettings);
 }

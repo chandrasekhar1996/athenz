@@ -32,9 +32,9 @@ import (
 	"testing"
 
 	"github.com/AthenZ/athenz/libs/go/sia/access/config"
+	sc "github.com/AthenZ/athenz/libs/go/sia/config"
 	"github.com/AthenZ/athenz/libs/go/sia/ssh/hostkey"
 	"github.com/AthenZ/athenz/libs/go/sia/util"
-
 	"github.com/dimfeld/httptreemux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -88,7 +88,7 @@ func (t *testServer) httpUrl() string {
 	return fmt.Sprintf("http://%s", t.addr)
 }
 
-func getConfig(fileName, roleSuffix, metaEndPoint string, useRegionalSTS bool, region string) (*Config, *ConfigAccount, error) {
+func getConfig(fileName, roleSuffix, metaEndPoint string, useRegionalSTS bool, region string) (*sc.Config, *sc.ConfigAccount, error) {
 	// Parse config bytes first, and if that fails, load values from Instance Profile and IAM info
 	cfg, cfgAccount, err := InitFileConfig(fileName, metaEndPoint, useRegionalSTS, region, "")
 	if err != nil {
@@ -105,10 +105,10 @@ func getConfig(fileName, roleSuffix, metaEndPoint string, useRegionalSTS bool, r
 	return cfg, cfgAccount, nil
 }
 
-func getAccessProfileConfig(fileName, metaEndPoint string) (*ConfigAccount, *AccessProfileConfig, error) {
+func getAccessProfileConfig(fileName, metaEndPoint string) (*sc.ConfigAccount, *sc.AccessProfileConfig, error) {
 	// Parse config bytes first, and if that fails, load values from Instance Profile and IAM info
 	profileConfig, err := InitAccessProfileFileConfig(fileName)
-	var configAccount *ConfigAccount = nil
+	var configAccount *sc.ConfigAccount = nil
 	if err != nil {
 		log.Printf("unable to parse configuration file, error: %v\n", err)
 		log.Println("trying to determine profile name from instance profile arn...")
@@ -121,7 +121,7 @@ func getAccessProfileConfig(fileName, metaEndPoint string) (*ConfigAccount, *Acc
 	return configAccount, profileConfig, nil
 }
 
-func assertService(expected Service, actual Service) bool {
+func assertService(expected sc.Service, actual sc.Service) bool {
 	log.Printf("expected: %+v\n", expected)
 	log.Printf("actual: %+v\n", actual)
 	return expected.Name == actual.Name &&
@@ -134,7 +134,7 @@ func assertService(expected Service, actual Service) bool {
 		expected.Threshold == actual.Threshold
 }
 
-func assertInServices(svcs []Service, actual Service) bool {
+func assertInServices(svcs []sc.Service, actual sc.Service) bool {
 	log.Printf("svcs passed: %+v\n", svcs)
 	log.Printf("actual: %+v\n", actual)
 	for _, s := range svcs {
@@ -197,9 +197,9 @@ func TestOptionsNoConfig(t *testing.T) {
 	assert.Equal(t, 1, len(opts.Services))
 	assert.Equal(t, "athenz", opts.Domain)
 	assert.Equal(t, "athenz.hockey", opts.Name)
-	assert.True(t, assertService(opts.Services[0], Service{Name: "hockey", Uid: idCommandId("-u"), Gid: idCommandId("-g"), FileMode: 288, Threshold: DefaultThreshold}))
-	assert.Equal(t, DefaultThreshold, opts.Threshold)
-	assert.Equal(t, DefaultThreshold, opts.SshThreshold)
+	assert.True(t, assertService(opts.Services[0], sc.Service{Name: "hockey", Uid: idCommandId("-u"), Gid: idCommandId("-g"), FileMode: 288, Threshold: sc.DefaultThreshold}))
+	assert.Equal(t, sc.DefaultThreshold, opts.Threshold)
+	assert.Equal(t, sc.DefaultThreshold, opts.SshThreshold)
 	assert.False(t, opts.FileDirectUpdate)
 	assert.Equal(t, "/var/lib/sia/keys", opts.KeyDir)
 	assert.Equal(t, "/var/lib/sia/certs", opts.CertDir)
@@ -234,8 +234,8 @@ func TestOptionsNoProfileConfig(t *testing.T) {
 	assert.True(t, opts.Name == "athenz.hockey")
 	assert.Equal(t, opts.Profile, "test-profile")
 
-	assert.Equal(t, opts.Threshold, DefaultThreshold)
-	assert.Equal(t, opts.SshThreshold, DefaultThreshold)
+	assert.Equal(t, opts.Threshold, sc.DefaultThreshold)
+	assert.Equal(t, opts.SshThreshold, sc.DefaultThreshold)
 }
 
 // TestOptionsWithProfileConfig test the scenario when profile config file is present
@@ -258,12 +258,12 @@ func TestOptionsWithProfileConfig(t *testing.T) {
 	assert.Equal(t, "athenz.api", opts.Name)
 
 	// Zeroth service should be the one from "service" key, the remaining are from "services" in no particular order
-	assert.True(t, assertService(opts.Services[0], Service{Name: "api", User: "nobody", Uid: getUid("nobody"), Gid: getUserGid("nobody"), FileMode: 288, Threshold: DefaultThreshold}))
-	assert.True(t, assertInServices(opts.Services[1:], Service{Name: "ui", User: "root", Uid: 0, Gid: 0, FileMode: 288, Threshold: DefaultThreshold}))
-	assert.True(t, assertInServices(opts.Services[1:], Service{Name: "yamas", User: "nobody", Uid: getUid("nobody"), Group: "sys", Gid: getGid(t, "sys"), Threshold: DefaultThreshold}))
+	assert.True(t, assertService(opts.Services[0], sc.Service{Name: "api", User: "nobody", Uid: getUid("nobody"), Gid: getUserGid("nobody"), FileMode: 288, Threshold: sc.DefaultThreshold}))
+	assert.True(t, assertInServices(opts.Services[1:], sc.Service{Name: "ui", User: "root", Uid: 0, Gid: 0, FileMode: 288, Threshold: sc.DefaultThreshold}))
+	assert.True(t, assertInServices(opts.Services[1:], sc.Service{Name: "yamas", User: "nobody", Uid: getUid("nobody"), Group: "sys", Gid: getGid(t, "sys"), Threshold: sc.DefaultThreshold}))
 
-	assert.Equal(t, DefaultThreshold, opts.SshThreshold)
-	assert.Equal(t, DefaultThreshold, opts.Threshold)
+	assert.Equal(t, sc.DefaultThreshold, opts.SshThreshold)
+	assert.Equal(t, sc.DefaultThreshold, opts.Threshold)
 	assert.Equal(t, "host1.athenz.io,host2.athenz.io", opts.SshPrincipals)
 	assert.False(t, opts.OmitDomain)
 
@@ -292,12 +292,12 @@ func TestOptionsWithProfileConfigAndProfileRestrictTo(t *testing.T) {
 	assert.True(t, opts.Name == "athenz.api")
 
 	// Zeroth service should be the one from "service" key, the remaining are from "services" in no particular order
-	assert.True(t, assertService(opts.Services[0], Service{Name: "api", User: "nobody", Uid: getUid("nobody"), Gid: getUserGid("nobody"), FileMode: 288, Threshold: DefaultThreshold}))
-	assert.True(t, assertInServices(opts.Services[1:], Service{Name: "ui", User: "root", Uid: 0, Gid: 0, FileMode: 288, Threshold: DefaultThreshold}))
-	assert.True(t, assertInServices(opts.Services[1:], Service{Name: "yamas", User: "nobody", Uid: getUid("nobody"), Group: "sys", Gid: getGid(t, "sys"), Threshold: DefaultThreshold}))
+	assert.True(t, assertService(opts.Services[0], sc.Service{Name: "api", User: "nobody", Uid: getUid("nobody"), Gid: getUserGid("nobody"), FileMode: 288, Threshold: sc.DefaultThreshold}))
+	assert.True(t, assertInServices(opts.Services[1:], sc.Service{Name: "ui", User: "root", Uid: 0, Gid: 0, FileMode: 288, Threshold: sc.DefaultThreshold}))
+	assert.True(t, assertInServices(opts.Services[1:], sc.Service{Name: "yamas", User: "nobody", Uid: getUid("nobody"), Group: "sys", Gid: getGid(t, "sys"), Threshold: sc.DefaultThreshold}))
 
-	assert.Equal(t, DefaultThreshold, opts.SshThreshold)
-	assert.Equal(t, DefaultThreshold, opts.Threshold)
+	assert.Equal(t, sc.DefaultThreshold, opts.SshThreshold)
+	assert.Equal(t, sc.DefaultThreshold, opts.Threshold)
 }
 
 func TestOptionsWithRoleThreshold(t *testing.T) {
@@ -320,12 +320,12 @@ func TestOptionsWithRoleThreshold(t *testing.T) {
 	assert.Equal(t, "athenz.api", opts.Name)
 
 	// Zeroth service should be the one from "service" key, the remaining are from "services" in no particular order
-	assert.True(t, assertService(opts.Services[0], Service{Name: "api", User: "nobody", Uid: getUid("nobody"), Gid: getUserGid("nobody"), FileMode: 288, Threshold: 20}))
-	assert.True(t, assertInServices(opts.Services[1:], Service{Name: "ui", User: "root", Uid: 0, Gid: 0, FileMode: 288, Threshold: 20}))
-	assert.True(t, assertInServices(opts.Services[1:], Service{Name: "yamas", User: "nobody", Uid: getUid("nobody"), Group: "sys", Gid: getGid(t, "sys"), Threshold: 20}))
+	assert.True(t, assertService(opts.Services[0], sc.Service{Name: "api", User: "nobody", Uid: getUid("nobody"), Gid: getUserGid("nobody"), FileMode: 288, Threshold: 20}))
+	assert.True(t, assertInServices(opts.Services[1:], sc.Service{Name: "ui", User: "root", Uid: 0, Gid: 0, FileMode: 288, Threshold: 20}))
+	assert.True(t, assertInServices(opts.Services[1:], sc.Service{Name: "yamas", User: "nobody", Uid: getUid("nobody"), Group: "sys", Gid: getGid(t, "sys"), Threshold: 20}))
 	assert.Equal(t, float64(25), opts.Roles[0].Threshold)
 
-	assert.Equal(t, DefaultThreshold, opts.SshThreshold)
+	assert.Equal(t, sc.DefaultThreshold, opts.SshThreshold)
 	assert.Equal(t, float64(20), opts.Threshold)
 }
 
@@ -347,9 +347,9 @@ func TestOptionsWithServiceAccountThreshold(t *testing.T) {
 	assert.True(t, opts.Name == "athenz.api")
 
 	// Zeroth service should be the one from "service" key, the remaining are from "services" in no particular order
-	assert.True(t, assertService(opts.Services[0], Service{Name: "api", User: "nobody", Uid: getUid("nobody"), Gid: getUserGid("nobody"), FileMode: 288, Threshold: 35}))
-	assert.True(t, assertInServices(opts.Services[1:], Service{Name: "ui", User: "root", Uid: 0, Gid: 0, FileMode: 288, Threshold: 35}))
-	assert.True(t, assertInServices(opts.Services[1:], Service{Name: "yamas", User: "nobody", Uid: getUid("nobody"), Group: "sys", Gid: getGid(t, "sys"), Threshold: 25}))
+	assert.True(t, assertService(opts.Services[0], sc.Service{Name: "api", User: "nobody", Uid: getUid("nobody"), Gid: getUserGid("nobody"), FileMode: 288, Threshold: 35}))
+	assert.True(t, assertInServices(opts.Services[1:], sc.Service{Name: "ui", User: "root", Uid: 0, Gid: 0, FileMode: 288, Threshold: 35}))
+	assert.True(t, assertInServices(opts.Services[1:], sc.Service{Name: "yamas", User: "nobody", Uid: getUid("nobody"), Group: "sys", Gid: getGid(t, "sys"), Threshold: 25}))
 
 	assert.Equal(t, float64(60), opts.SshThreshold)
 	assert.Equal(t, float64(35), opts.Threshold)
@@ -380,12 +380,12 @@ func TestOptionsWithConfig(t *testing.T) {
 	assert.Equal(t, "athenz.api", opts.Name)
 
 	// Zeroth service should be the one from "service" key, the remaining are from "services" in no particular order
-	assert.True(t, assertService(opts.Services[0], Service{Name: "api", User: "nobody", Uid: getUid("nobody"), Gid: getUserGid("nobody"), FileMode: 288, Threshold: DefaultThreshold}))
-	assert.True(t, assertInServices(opts.Services[1:], Service{Name: "ui", User: "root", Uid: 0, Gid: 0, FileMode: 288, Threshold: DefaultThreshold}))
-	assert.True(t, assertInServices(opts.Services[1:], Service{Name: "yamas", User: "nobody", Uid: getUid("nobody"), Group: "sys", Gid: getGid(t, "sys"), Threshold: DefaultThreshold}))
+	assert.True(t, assertService(opts.Services[0], sc.Service{Name: "api", User: "nobody", Uid: getUid("nobody"), Gid: getUserGid("nobody"), FileMode: 288, Threshold: sc.DefaultThreshold}))
+	assert.True(t, assertInServices(opts.Services[1:], sc.Service{Name: "ui", User: "root", Uid: 0, Gid: 0, FileMode: 288, Threshold: sc.DefaultThreshold}))
+	assert.True(t, assertInServices(opts.Services[1:], sc.Service{Name: "yamas", User: "nobody", Uid: getUid("nobody"), Group: "sys", Gid: getGid(t, "sys"), Threshold: sc.DefaultThreshold}))
 
-	assert.Equal(t, DefaultThreshold, opts.Threshold)
-	assert.Equal(t, DefaultThreshold, opts.SshThreshold)
+	assert.Equal(t, sc.DefaultThreshold, opts.Threshold)
+	assert.Equal(t, sc.DefaultThreshold, opts.SshThreshold)
 }
 
 // TestOptionsNoService test the scenario when /etc/sia/sia_config is present, but service is not repeated in services
@@ -411,7 +411,7 @@ func TestOptionsNoServices(t *testing.T) {
 	assert.Equal(t, 1, len(opts.Services))
 	assert.Equal(t, "athenz", opts.Domain)
 	assert.Equal(t, "athenz.api", opts.Name)
-	assert.True(t, assertService(opts.Services[0], Service{Name: "api", User: "nobody", Uid: getUid("nobody"), Gid: getUserGid("nobody"), FileMode: 288, Threshold: DefaultThreshold}))
+	assert.True(t, assertService(opts.Services[0], sc.Service{Name: "api", User: "nobody", Uid: getUid("nobody"), Gid: getUserGid("nobody"), FileMode: 288, Threshold: sc.DefaultThreshold}))
 	assert.True(t, opts.FileDirectUpdate)
 }
 
@@ -426,9 +426,67 @@ func TestOptionsWithGenerateRoleKeyConfig(t *testing.T) {
 		switch role.Name {
 		case "sports:role.readers":
 			assert.Equal(t, 0440, role.FileMode)
+			assert.Equal(t, "/tmp/keys/sports:role.readers.key.pem", role.RoleKeyFilename)
 			count += 1
 		case "sports:role.writers":
 			assert.Equal(t, 0440, role.FileMode)
+			assert.Equal(t, "/tmp/keys/sports:role.writers.key.pem", role.RoleKeyFilename)
+			count += 1
+		}
+	}
+	assert.Equal(t, 2, count)
+}
+
+func TestOptionsWithRolesConfig(t *testing.T) {
+	cfg, cfgAccount, _ := getConfig("data/sia_generate_role_key", "-service", "http://localhost:80", false, "us-west-2")
+	opts, e := setOptions(cfg, cfgAccount, nil, "/tmp", "1.0.0")
+	require.Nilf(t, e, "error should not be thrown, error: %v", e)
+	assert.True(t, opts.GenerateRoleKey)
+	assert.Equal(t, 2, len(opts.Roles))
+	count := 0
+	for _, role := range opts.Roles {
+		switch role.Name {
+		case "sports:role.readers":
+			assert.Equal(t, 0440, role.FileMode)
+			assert.Equal(t, "/tmp/keys/sports:role.readers.key.pem", role.RoleKeyFilename)
+			assert.Equal(t, "/tmp/certs/sports:role.readers.cert.pem", role.RoleCertFilename)
+			assert.Equal(t, "/tmp/keys/athenz.api.key.pem", role.SvcKeyFilename)
+			assert.Equal(t, "/tmp/certs/athenz.api.cert.pem", role.SvcCertFilename)
+			count += 1
+		case "sports:role.writers":
+			assert.Equal(t, 0440, role.FileMode)
+			assert.Equal(t, "/tmp/keys/sports:role.writers.key.pem", role.RoleKeyFilename)
+			assert.Equal(t, "/tmp/certs/sports:role.writers.cert.pem", role.RoleCertFilename)
+			assert.Equal(t, "/tmp/keys/athenz.api.key.pem", role.SvcKeyFilename)
+			assert.Equal(t, "/tmp/certs/athenz.api.cert.pem", role.SvcCertFilename)
+			count += 1
+		}
+	}
+	assert.Equal(t, 2, count)
+}
+
+func TestOptionsWithRoles(t *testing.T) {
+	cfg, cfgAccount, _ := getConfig("data/sia_with_roles", "-service", "http://localhost:80", false, "us-west-2")
+	opts, e := setOptions(cfg, cfgAccount, nil, "/tmp", "1.0.0")
+	require.Nilf(t, e, "error should not be thrown, error: %v", e)
+	assert.False(t, opts.GenerateRoleKey)
+	assert.Equal(t, 2, len(opts.Roles))
+	count := 0
+	for _, role := range opts.Roles {
+		switch role.Name {
+		case "sports:role.readers":
+			assert.Equal(t, 0440, role.FileMode)
+			assert.Equal(t, "", role.RoleKeyFilename)
+			assert.Equal(t, "/tmp/certs/sports:role.readers.cert.pem", role.RoleCertFilename)
+			assert.Equal(t, "/tmp/keys/athenz.api.key.pem", role.SvcKeyFilename)
+			assert.Equal(t, "/tmp/certs/athenz.api.cert.pem", role.SvcCertFilename)
+			count += 1
+		case "sports:role.writers":
+			assert.Equal(t, 0440, role.FileMode)
+			assert.Equal(t, "", role.RoleKeyFilename)
+			assert.Equal(t, "/tmp/certs/sports:role.writers.cert.pem", role.RoleCertFilename)
+			assert.Equal(t, "/tmp/keys/athenz.api.key.pem", role.SvcKeyFilename)
+			assert.Equal(t, "/tmp/certs/athenz.api.cert.pem", role.SvcCertFilename)
 			count += 1
 		}
 	}
@@ -506,7 +564,7 @@ func TestGetRunsAsUidGid(t *testing.T) {
 	}
 }
 
-func toServiceNames(services []Service) []string {
+func toServiceNames(services []sc.Service) []string {
 	var serviceNames []string
 
 	for _, srv := range services {
@@ -537,7 +595,7 @@ func TestOptionsWithAccessToken(t *testing.T) {
 		Service:                  "api",
 		Domain:                   "athenz.demo",
 		Roles:                    []string{"reader"},
-		Expiry:                   DefaultTokenExpiry,
+		Expiry:                   sc.DefaultTokenExpiry,
 		User:                     "nobody",
 		ProxyPrincipalSpiffeUris: "",
 	}))
@@ -557,7 +615,7 @@ func TestOptionsWithAccessToken(t *testing.T) {
 		Service:                  "api",
 		Domain:                   "athenz.demo",
 		Roles:                    []string{"reader", "reader-admin"},
-		Expiry:                   DefaultTokenExpiry,
+		Expiry:                   sc.DefaultTokenExpiry,
 		User:                     "nobody",
 		ProxyPrincipalSpiffeUris: "",
 	}))
@@ -577,7 +635,7 @@ func TestOptionsWithAccessToken(t *testing.T) {
 		Service:                  "logger",
 		Domain:                   "athenz.demo",
 		Roles:                    []string{"splunk"},
-		Expiry:                   DefaultTokenExpiry,
+		Expiry:                   sc.DefaultTokenExpiry,
 		User:                     "nobody",
 		ProxyPrincipalSpiffeUris: "",
 	}))
@@ -587,7 +645,7 @@ func TestOptionsWithAccessToken(t *testing.T) {
 		Service:                  "api",
 		Domain:                   "athenz.demo",
 		Roles:                    []string{"*"},
-		Expiry:                   DefaultTokenExpiry,
+		Expiry:                   sc.DefaultTokenExpiry,
 		User:                     "nobody",
 		ProxyPrincipalSpiffeUris: "",
 	}))
@@ -622,7 +680,7 @@ func TestInvalidAccessTokenDomain(t *testing.T) {
 }
 
 func TestGetRoleServiceOwner(t *testing.T) {
-	services := []Service{
+	services := []sc.Service{
 		{
 			Name: "svc1",
 		},
@@ -701,6 +759,10 @@ func TestInitEnvConfig(t *testing.T) {
 	os.Setenv("ATHENZ_SIA_STORE_TOKEN_OPTION", "2")
 	os.Setenv("ATHENZ_SIA_OMIT_DOMAIN", "true")
 	os.Setenv("ATHENZ_SIA_SANDNS_X509_CNAMES", "svc1.athenz.io,svc2.athenz.io")
+	os.Setenv("ATHENZ_SIA_RUN_AFTER", "/run-after.sh")
+	os.Setenv("ATHENZ_SIA_RUN_AFTER_CERTS_ERROR", "/run-after-error.sh")
+	os.Setenv("ATHENZ_SIA_RUN_AFTER_TOKENS", "/run-after-tokens.sh")
+	os.Setenv("ATHENZ_SIA_RUN_AFTER_TOKENS_ERROR", "/run-after-tokens-error.sh")
 
 	cfg, cfgAccount, err := InitEnvConfig(nil)
 	require.Nilf(t, err, "error should be empty, error: %v", err)
@@ -740,6 +802,10 @@ func TestInitEnvConfig(t *testing.T) {
 	assert.Equal(t, 10, cfg.FailCountForExit)
 	assert.Equal(t, 2, *cfg.StoreTokenOption)
 	assert.True(t, cfgAccount.OmitDomain)
+	assert.Equal(t, "/run-after.sh", cfg.RunAfterCerts)
+	assert.Equal(t, "/run-after-error.sh", cfg.RunAfterCertsErr)
+	assert.Equal(t, "/run-after-tokens.sh", cfg.RunAfterTokens)
+	assert.Equal(t, "/run-after-tokens-error.sh", cfg.RunAfterTokensErr)
 
 	os.Clearenv()
 }
@@ -831,6 +897,6 @@ func TestOptionsWithServiceOnlySetup(t *testing.T) {
 	assert.Equal(t, opts.Name, "athenz.hockey")
 	assert.Equal(t, opts.Profile, "test-profile")
 
-	assert.Equal(t, opts.Threshold, DefaultThreshold)
-	assert.Equal(t, opts.SshThreshold, DefaultThreshold)
+	assert.Equal(t, opts.Threshold, sc.DefaultThreshold)
+	assert.Equal(t, opts.SshThreshold, sc.DefaultThreshold)
 }

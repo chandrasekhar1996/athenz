@@ -17,6 +17,7 @@
 package com.yahoo.athenz.common.server.notification;
 
 import com.yahoo.athenz.auth.Authority;
+import org.eclipse.jetty.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +25,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -223,7 +226,8 @@ public class NotificationToEmailConverterCommon {
         }
         String[] entries = entryNames.split("\\|");
         for (String entry : entries) {
-            String[] comps = entry.split(";");
+            String[] comps = entry.split(";", -1);
+            decodeTableComponents(comps);
             if (comps.length != entryLength) {
                 continue;
             }
@@ -237,6 +241,14 @@ public class NotificationToEmailConverterCommon {
         }
     }
 
+    void decodeTableComponents(String[] comps) {
+        for (int i = 0; i < comps.length; i++) {
+            if (comps[i].contains("%") || comps[i].contains("+")) {
+                comps[i] = URLDecoder.decode(comps[i], StandardCharsets.UTF_8);
+            }
+        }
+    }
+
     public String getSubject(String propertyName) {
         return RB.getString(propertyName);
     }
@@ -246,7 +258,7 @@ public class NotificationToEmailConverterCommon {
                 .map(userName -> {
                     if (notificationUserAuthority != null) {
                         String email = notificationUserAuthority.getUserEmail(userName);
-                        if (email != null) {
+                        if (!StringUtil.isEmpty(email)) {
                             return email;
                         }
                     }

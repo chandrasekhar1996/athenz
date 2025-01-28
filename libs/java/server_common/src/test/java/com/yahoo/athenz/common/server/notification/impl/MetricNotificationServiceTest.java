@@ -26,8 +26,8 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 public class MetricNotificationServiceTest {
 
@@ -55,7 +55,7 @@ public class MetricNotificationServiceTest {
         NotificationToMetricConverter notificationToMetricConverter = Mockito.mock(NotificationToMetricConverter.class);
         Mockito.when(notificationToMetricConverter.getNotificationAsMetrics(Mockito.any(), Mockito.any())).thenReturn(new NotificationMetric(attributes));
 
-        Notification notification = new Notification();
+        Notification notification = new Notification(Notification.Type.ROLE_MEMBER_EXPIRY);
         notification.setNotificationToMetricConverter(notificationToMetricConverter);
 
         boolean notify = metricNotificationService.notify(notification);
@@ -67,28 +67,28 @@ public class MetricNotificationServiceTest {
         Mockito.verify(metric, Mockito.times(2))
                 .increment(captorMetric.capture(), captorAttributes.capture());
 
-        assertEquals(2, captorMetric.getAllValues().size());
-        assertEquals("athenz_notification", captorMetric.getAllValues().get(0));
-        assertEquals("athenz_notification", captorMetric.getAllValues().get(1));
+        assertEquals(captorMetric.getAllValues().size(), 2);
+        assertEquals(captorMetric.getAllValues().get(0), "athenz_notification");
+        assertEquals(captorMetric.getAllValues().get(1), "athenz_notification");
 
         // Mockito captures all varargs arguments in a single array
 
-        assertEquals(2, captorAttributes.getAllValues().size());
+        assertEquals(captorAttributes.getAllValues().size(), 2);
 
         String[] collectedAttributes1 = captorAttributes.getAllValues().get(0);
-        assertEquals(6, collectedAttributes1.length);
+        assertEquals(collectedAttributes1.length, 6);
         List<String> expectedAttributes1 = Arrays.asList(
                 "key1", "attribute11",
                 "key2", "attribute12",
                 "key3", "attribute13");
-        assertEquals(expectedAttributes1, List.of(collectedAttributes1));
+        assertEquals(List.of(collectedAttributes1), expectedAttributes1);
 
         String[] collectedAttributes2 = captorAttributes.getAllValues().get(1);
-        assertEquals(6, collectedAttributes2.length);
+        assertEquals(collectedAttributes2.length, 6);
         List<String> expectedAttributes2 = Arrays.asList(
                 "key1", "attribute21",
                 "key2", "attribute22",
                 "key3", "attribute23");
-        assertEquals(expectedAttributes2, List.of(collectedAttributes2));
+        assertEquals(List.of(collectedAttributes2), expectedAttributes2);
     }
 }

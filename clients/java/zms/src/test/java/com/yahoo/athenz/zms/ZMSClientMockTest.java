@@ -539,10 +539,10 @@ public class ZMSClientMockTest {
         }
 
         assertNotNull(retRoles);
-        assertEquals(tenantDomain, retRoles.getTenant());
-        assertEquals(providerDomain, retRoles.getDomain());
-        assertEquals(providerService, retRoles.getService());
-        assertEquals(resourceGroup, retRoles.getResourceGroup());
+        assertEquals(retRoles.getTenant(), tenantDomain);
+        assertEquals(retRoles.getDomain(), providerDomain);
+        assertEquals(retRoles.getService(), providerService);
+        assertEquals(retRoles.getResourceGroup(), resourceGroup);
 
         // try to get unknown resource group that would return null
 
@@ -636,10 +636,10 @@ public class ZMSClientMockTest {
         }
 
         assertNotNull(retRoles);
-        assertEquals(tenantDomain, retRoles.getTenant());
-        assertEquals(providerDomain, retRoles.getDomain());
-        assertEquals(providerService, retRoles.getService());
-        assertEquals(resourceGroup, retRoles.getResourceGroup());
+        assertEquals(retRoles.getTenant(), tenantDomain);
+        assertEquals(retRoles.getDomain(), providerDomain);
+        assertEquals(retRoles.getService(), providerService);
+        assertEquals(retRoles.getResourceGroup(), resourceGroup);
 
         // try to get unknown resource group that would return null
 
@@ -671,14 +671,14 @@ public class ZMSClientMockTest {
         assertNotNull(solTemplate);
         List<Role> solRoles = solTemplate.getRoles();
         assertNotNull(solRoles);
-        assertEquals(1, solRoles.size());
-        assertEquals("role1", solRoles.get(0).getName());
-        assertEquals("trust-domain", solRoles.get(0).getTrust());
+        assertEquals(solRoles.size(), 1);
+        assertEquals(solRoles.get(0).getName(), "role1");
+        assertEquals(solRoles.get(0).getTrust(), "trust-domain");
 
         List<Policy> solPolicies = solTemplate.getPolicies();
         assertNotNull(solPolicies);
-        assertEquals(1, solPolicies.size());
-        assertEquals("policy1", solPolicies.get(0).getName());
+        assertEquals(solPolicies.size(), 1);
+        assertEquals(solPolicies.get(0).getName(), "policy1");
     }
 
     @Test
@@ -693,7 +693,7 @@ public class ZMSClientMockTest {
 
         ServerTemplateList solTemplateList = zclt.getServerTemplateList();
         assertNotNull(solTemplateList);
-        assertEquals(2, solTemplateList.getTemplateNames().size());
+        assertEquals(solTemplateList.getTemplateNames().size(), 2);
         assertTrue(solTemplateList.getTemplateNames().contains("mh2"));
         assertTrue(solTemplateList.getTemplateNames().contains("vipng"));
     }
@@ -710,7 +710,7 @@ public class ZMSClientMockTest {
 
         DomainTemplateList domTemplateList = zclt.getDomainTemplateList("iaas.athenz");
         assertNotNull(domTemplateList);
-        assertEquals(2, domTemplateList.getTemplateNames().size());
+        assertEquals(domTemplateList.getTemplateNames().size(), 2);
         assertTrue(domTemplateList.getTemplateNames().contains("mh2"));
         assertTrue(domTemplateList.getTemplateNames().contains("vipng"));
     }
@@ -723,8 +723,8 @@ public class ZMSClientMockTest {
 
         Principal principal = zclt.getPrincipal("v=U1;d=coretech;n=storage;s=signature");
         assertNotNull(principal);
-        assertEquals("storage", principal.getName());
-        assertEquals("coretech", principal.getDomain());
+        assertEquals(principal.getName(), "storage");
+        assertEquals(principal.getDomain(), "coretech");
     }
 
     @Test
@@ -1154,7 +1154,7 @@ public class ZMSClientMockTest {
                 .setRole("admin");
 
         Mockito.doReturn(assertion).when(mockZMS).getAssertion(domName, "policy1", 101L);
-        Mockito.doThrow(new ResourceException(404)).when(mockZMS).getAssertion(domName, "policy1", 202L);
+        Mockito.doThrow(new ClientResourceException(404)).when(mockZMS).getAssertion(domName, "policy1", 202L);
 
         // first invalid test cases
 
@@ -1194,11 +1194,14 @@ public class ZMSClientMockTest {
 
         final String domName = "delete-assertion";
 
-        Mockito.doReturn(null).when(mockZMS).deleteAssertion(domName, "policy1", 101L, auditRef);
-        Mockito.doThrow(new ResourceException(403)).when(mockZMS).deleteAssertion(domName, "policy1", 202L, auditRef);
+        Mockito.doReturn(null).when(mockZMS).deleteAssertion(domName, "policy1", 101L, auditRef, null);
+        Mockito.doThrow(new ClientResourceException(403)).when(mockZMS).deleteAssertion(domName, "policy1", 202L,
+                auditRef, null);
 
-        Mockito.doReturn(null).when(mockZMS).deleteAssertionPolicyVersion(domName, "policy1", "new-version",101L, auditRef);
-        Mockito.doThrow(new ResourceException(403)).when(mockZMS).deleteAssertionPolicyVersion(domName, "policy1", "new-version",202L, auditRef);
+        Mockito.doReturn(null).when(mockZMS).deleteAssertionPolicyVersion(domName, "policy1", "new-version",
+                101L, auditRef, null);
+        Mockito.doThrow(new ClientResourceException(403)).when(mockZMS).deleteAssertionPolicyVersion(domName, "policy1",
+                "new-version",202L, auditRef, null);
 
         // first valid case should complete successfully
 
@@ -1239,16 +1242,21 @@ public class ZMSClientMockTest {
                 .setResource(domName + ":*")
                 .setRole("admin");
 
-        Mockito.doReturn(retAssertion).when(mockZMS).putAssertion(domName, "policy1", auditRef, assertion);
-        Mockito.doThrow(new ResourceException(403)).when(mockZMS).putAssertion(domName, "policy2", auditRef, assertion);
-        Mockito.doReturn(retAssertion).when(mockZMS).putAssertionPolicyVersion(domName, "policy1", "new-version", auditRef, assertion);
-        Mockito.doThrow(new ResourceException(403)).when(mockZMS).putAssertionPolicyVersion(domName, "policy2", "new-version", auditRef, assertion);
+        Mockito.doReturn(retAssertion).when(mockZMS).putAssertion(domName, "policy1",
+                auditRef, null, assertion);
+        Mockito.doThrow(new ClientResourceException(403)).when(mockZMS).putAssertion(domName, "policy2",
+                auditRef, null, assertion);
+        Mockito.doReturn(retAssertion).when(mockZMS).putAssertionPolicyVersion(domName, "policy1",
+                "new-version", auditRef, null, assertion);
+        Mockito.doThrow(new ClientResourceException(403)).when(mockZMS).putAssertionPolicyVersion(domName,
+                "policy2", "new-version", auditRef, null, assertion);
         // first valid case should complete successfully
 
         Assertion checkAssertion = zclt.putAssertion(domName, "policy1", auditRef, assertion);
         assertEquals(checkAssertion.getId(), Long.valueOf(101));
 
-        checkAssertion = zclt.client.putAssertionPolicyVersion(domName, "policy1", "new-version", auditRef, assertion);
+        checkAssertion = zclt.client.putAssertionPolicyVersion(domName, "policy1", "new-version",
+                auditRef, null, assertion);
         assertEquals(checkAssertion.getId(), Long.valueOf(101));
 
         // now this should throw an exception
@@ -1261,7 +1269,7 @@ public class ZMSClientMockTest {
         }
 
         try {
-            zclt.putAssertion(domName, "policy2", "new-version", auditRef, assertion);
+            zclt.putAssertionPolicyVersion(domName, "policy2", "new-version", auditRef, null, assertion);
             fail();
         } catch (ZMSClientException ex) {
             assertEquals(ex.getCode(), 403);

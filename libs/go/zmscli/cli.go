@@ -5,6 +5,7 @@ package zmscli
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"gopkg.in/yaml.v2"
@@ -48,6 +49,7 @@ type Zms struct {
 	Debug            bool
 	AddSelf          bool
 	SkipErrors       bool
+	ResourceOwner    string
 }
 
 type SuccessMessage struct {
@@ -365,6 +367,14 @@ func (cli Zms) EvalCommand(params []string) (*string, error) {
 			if argc == 1 {
 				return cli.DeleteUser(args[0])
 			}
+		case "disable-principal":
+			if argc == 1 {
+				return cli.DisablePrincipal(args[0])
+			}
+		case "enable-principal":
+			if argc == 1 {
+				return cli.EnablePrincipal(args[0])
+			}
 		case "list-pending-members", "list-pending-role-members":
 			principal := ""
 			if argc == 1 {
@@ -466,6 +476,10 @@ func (cli Zms) EvalCommand(params []string) (*string, error) {
 			if argc == 3 {
 				return cli.AddPolicyVersion(dn, args[0], args[1], args[2])
 			}
+		case "set-policy-resource-ownership":
+			if argc == 2 {
+				return cli.SetPolicyResourceOwnership(dn, args[0], args[1])
+			}
 		case "add-assertion":
 			if argc >= 1 {
 				return cli.AddAssertion(dn, args[0], args[1:])
@@ -554,8 +568,15 @@ func (cli Zms) EvalCommand(params []string) (*string, error) {
 			}
 		case "add-group-role", "add-regular-role":
 			if argc >= 1 {
-				roleMembers := cli.convertRoleMembers(args[1:])
-				return cli.AddRegularRole(dn, args[0], roleMembers)
+				auditEnabled := false
+				var roleMembers []*zms.RoleMember
+				if argc >= 2 && args[1] == "-audit-enabled" {
+					auditEnabled = true
+					roleMembers = cli.convertRoleMembers(args[2:])
+				} else {
+					roleMembers = cli.convertRoleMembers(args[1:])
+				}
+				return cli.AddRegularRole(dn, args[0], auditEnabled, roleMembers)
 			}
 		case "add-provider-role-member", "add-provider-role-members":
 			if argc >= 4 {
@@ -623,6 +644,10 @@ func (cli Zms) EvalCommand(params []string) (*string, error) {
 			if argc == 0 {
 				return cli.ListDomainRoleMembers(dn)
 			}
+		case "list-domain-group-members":
+			if argc == 0 {
+				return cli.ListDomainGroupMembers(dn)
+			}
 		case "list-group", "list-groups":
 			return cli.ListGroups(dn)
 		case "show-group":
@@ -638,8 +663,15 @@ func (cli Zms) EvalCommand(params []string) (*string, error) {
 			return output, err
 		case "add-group":
 			if argc >= 1 {
-				groupMembers := cli.convertGroupMembers(args[1:])
-				return cli.AddGroup(dn, args[0], groupMembers)
+				auditEnabled := false
+				var groupMembers []*zms.GroupMember
+				if argc >= 2 && args[1] == "-audit-enabled" {
+					auditEnabled = true
+					groupMembers = cli.convertGroupMembers(args[2:])
+				} else {
+					groupMembers = cli.convertGroupMembers(args[1:])
+				}
+				return cli.AddGroup(dn, args[0], auditEnabled, groupMembers)
 			}
 		case "add-group-member", "add-group-members":
 			if argc >= 2 {
@@ -686,6 +718,10 @@ func (cli Zms) EvalCommand(params []string) (*string, error) {
 					return cli.AddProviderService(dn, args[0], args[1], pubkey)
 				}
 				return nil, err
+			}
+		case "set-service-resource-ownership":
+			if argc == 2 {
+				return cli.SetServiceResourceOwnership(dn, args[0], args[1])
 			}
 		case "set-service-endpoint":
 			if argc == 2 {
@@ -740,6 +776,18 @@ func (cli Zms) EvalCommand(params []string) (*string, error) {
 				return cli.ShowServices(dn, args[0], "")
 			} else if argc == 2 {
 				return cli.ShowServices(dn, args[0], args[1])
+			}
+		case "search-services":
+			if argc == 2 || argc == 3 {
+				substringMatch, err := strconv.ParseBool(args[1])
+				if err != nil {
+					return nil, err
+				}
+				domainMatch := ""
+				if argc == 3 {
+					domainMatch = args[2]
+				}
+				return cli.SearchServiceIdentities(args[0], substringMatch, domainMatch)
 			}
 		case "list-entity", "list-entities":
 			if argc == 0 {
@@ -811,13 +859,21 @@ func (cli Zms) EvalCommand(params []string) (*string, error) {
 			if argc == 1 {
 				return cli.SetDomainMeta(dn, args[0])
 			}
+		case "set-domain-resource-ownership":
+			if argc == 1 {
+				return cli.SetDomainResourceOwnership(dn, args[0])
+			}
+		case "reset-domain-resource-ownership":
+			if argc == 1 {
+				return cli.ResetDomainResourceOwnership(dn, args[0])
+			}
 		case "set-aws-account", "set-domain-account":
 			if argc == 1 {
 				return cli.SetDomainAccount(dn, args[0])
 			}
 		case "set-azure-subscription", "set-domain-subscription":
-			if argc == 1 {
-				return cli.SetDomainSubscription(dn, args[0])
+			if argc == 3 {
+				return cli.SetDomainSubscription(dn, args[0], args[1], args[2])
 			}
 		case "set-gcp-project", "set-domain-project":
 			if argc == 2 {
@@ -891,6 +947,10 @@ func (cli Zms) EvalCommand(params []string) (*string, error) {
 				}
 				return cli.SetDomainFeatureFlags(dn, flags)
 			}
+		case "set-domain-contact":
+			if argc == 2 {
+				return cli.SetDomainContact(dn, args[0], args[1])
+			}
 		case "set-audit-enabled":
 			if argc == 1 {
 				auditEnabled, err := strconv.ParseBool(args[0])
@@ -902,6 +962,22 @@ func (cli Zms) EvalCommand(params []string) (*string, error) {
 		case "set-domain-user-authority-filter":
 			if argc == 1 {
 				return cli.SetDomainUserAuthorityFilter(dn, args[0])
+			}
+		case "set-domain-x509-cert-signer-keyid":
+			if argc == 1 {
+				return cli.SetDomainX509CertSignerKeyId(dn, args[0])
+			}
+		case "set-domain-ssh-cert-signer-keyid":
+			if argc == 1 {
+				return cli.SetDomainSshCertSignerKeyId(dn, args[0])
+			}
+		case "set-domain-slack-channel":
+			if argc == 1 {
+				return cli.SetDomainSlackChannel(dn, args[0])
+			}
+		case "set-domain-environment":
+			if argc == 1 {
+				return cli.SetDomainEnvironment(dn, args[0])
 			}
 		case "set-product-id", "set-domain-product-id":
 			if argc == 1 {
@@ -951,6 +1027,30 @@ func (cli Zms) EvalCommand(params []string) (*string, error) {
 			if argc == 0 {
 				return cli.DeleteQuota(dn)
 			}
+		case "set-role-resource-ownership":
+			if argc == 2 {
+				return cli.SetRoleResourceOwnership(dn, args[0], args[1])
+			}
+		case "set-role-principal-domain-filter":
+			if argc == 2 {
+				return cli.SetRolePrincipalDomainFilter(dn, args[0], args[1])
+			}
+		case "set-role-self-renew":
+			if argc == 2 {
+				selfRenew, err := strconv.ParseBool(args[1])
+				if err != nil {
+					return nil, err
+				}
+				return cli.SetRoleSelfRenew(dn, args[0], selfRenew)
+			}
+		case "set-role-self-renew-mins":
+			if argc == 2 {
+				mins, err := cli.getInt32(args[1])
+				if err != nil {
+					return nil, err
+				}
+				return cli.SetRoleSelfRenewMins(dn, args[0], mins)
+			}
 		case "set-role-audit-enabled":
 			if argc == 2 {
 				auditEnabled, err := strconv.ParseBool(args[1])
@@ -982,6 +1082,14 @@ func (cli Zms) EvalCommand(params []string) (*string, error) {
 					return nil, err
 				}
 				return cli.SetRoleSelfServe(dn, args[0], selfServe)
+			}
+		case "set-role-max-members":
+			if argc == 2 {
+				days, err := cli.getInt32(args[1])
+				if err != nil {
+					return nil, err
+				}
+				return cli.SetRoleMaxMembers(dn, args[0], days)
 			}
 		case "set-role-member-expiry-days":
 			if argc == 2 {
@@ -1059,6 +1167,10 @@ func (cli Zms) EvalCommand(params []string) (*string, error) {
 			if argc == 2 {
 				return cli.SetRoleNotifyRoles(dn, args[0], args[1])
 			}
+		case "set-role-notify-details":
+			if argc == 2 {
+				return cli.SetRoleNotifyDetails(dn, args[0], args[1])
+			}
 		case "set-role-user-authority-filter":
 			if argc == 2 {
 				return cli.SetRoleUserAuthorityFilter(dn, args[0], args[1])
@@ -1084,6 +1196,30 @@ func (cli Zms) EvalCommand(params []string) (*string, error) {
 					return nil, err
 				}
 				return cli.PutMembershipDecision(dn, args[0], args[1], approval)
+			}
+		case "set-group-resource-ownership":
+			if argc == 2 {
+				return cli.SetGroupResourceOwnership(dn, args[0], args[1])
+			}
+		case "set-group-principal-domain-filter":
+			if argc == 2 {
+				return cli.SetGroupPrincipalDomainFilter(dn, args[0], args[1])
+			}
+		case "set-group-self-renew":
+			if argc == 2 {
+				selfRenew, err := strconv.ParseBool(args[1])
+				if err != nil {
+					return nil, err
+				}
+				return cli.SetGroupSelfRenew(dn, args[0], selfRenew)
+			}
+		case "set-group-self-renew-mins":
+			if argc == 2 {
+				mins, err := cli.getInt32(args[1])
+				if err != nil {
+					return nil, err
+				}
+				return cli.SetGroupSelfRenewMins(dn, args[0], mins)
 			}
 		case "set-group-audit-enabled":
 			if argc == 2 {
@@ -1117,6 +1253,14 @@ func (cli Zms) EvalCommand(params []string) (*string, error) {
 				}
 				return cli.SetGroupSelfServe(dn, args[0], selfServe)
 			}
+		case "set-group-max-members":
+			if argc == 2 {
+				days, err := cli.getInt32(args[1])
+				if err != nil {
+					return nil, err
+				}
+				return cli.SetGroupMaxMembers(dn, args[0], days)
+			}
 		case "set-group-member-expiry-days":
 			if argc == 2 {
 				days, err := cli.getInt32(args[1])
@@ -1136,6 +1280,10 @@ func (cli Zms) EvalCommand(params []string) (*string, error) {
 		case "set-group-notify-roles":
 			if argc == 2 {
 				return cli.SetGroupNotifyRoles(dn, args[0], args[1])
+			}
+		case "set-group-notify-details":
+			if argc == 2 {
+				return cli.SetGroupNotifyDetails(dn, args[0], args[1])
 			}
 		case "set-group-user-authority-filter":
 			if argc == 2 {
@@ -1386,6 +1534,26 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("     add a top level domain called coretech with " + cli.UserDomain + ".john, " + cli.UserDomain + ".jane and the caller as administrators\n")
 		buf.WriteString("   add-domain coretech.hosted john jane\n")
 		buf.WriteString("     add a subdomain hosted in domain coretech with " + cli.UserDomain + ".john, " + cli.UserDomain + ".jane and the caller as administrators\n")
+	case "set-domain-resource-ownership":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " set-domain-resource-ownership resource-owner\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain  : name of the domain being updated\n")
+		}
+		buf.WriteString("   resource-owner : resource owner in objectowner:{owner},metaowner:{owner} format\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-domain-resource-ownership objectowner:TF\n")
+	case "reset-domain-resource-ownership":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " reset-domain-resource-ownership resource-types\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain  : name of the domain being updated\n")
+		}
+		buf.WriteString("   resource-types : comma separated resource types: role,group,service,policy,domain\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " reset-domain-resource-ownership role,group\n")
 	case "set-domain-meta":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   [-o json] " + domainParam + " set-domain-meta description\n")
@@ -1408,14 +1576,16 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   " + domainExample + " set-aws-account \"134901934383\"\n")
 	case "set-azure-subscription", "set-domain-subscription":
 		buf.WriteString(" syntax:\n")
-		buf.WriteString("   [-o json] " + domainParam + " set-azure-subscription subscription-id\n")
+		buf.WriteString("   [-o json] " + domainParam + " set-azure-subscription subscription-id tenant-id client-id\n")
 		buf.WriteString(" parameters:\n")
 		if !interactive {
 			buf.WriteString("   domain        : name of the domain being updated\n")
 		}
 		buf.WriteString("   subscription-id    : set the azure subscription id for the domain\n")
+		buf.WriteString("   tenant-id          : set the azure tenant id for the domain\n")
+		buf.WriteString("   client-id          : set the azure client id for the domain\n")
 		buf.WriteString(" examples:\n")
-		buf.WriteString("   " + domainExample + " set-azure-subscription \"12345678-1234-1234-1234-1234567890\"\n")
+		buf.WriteString("   " + domainExample + " set-azure-subscription \"12345678-1234-1234-1234-1234567890\" \"87654321-4321-5678-4321-5678434321\" \"87654321-1234-5678-1234-5678432109\"\n")
 	case "set-gcp-project", "set-domain-project":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   [-o json] " + domainParam + " set-gcp-project project-id project-number\n")
@@ -1447,6 +1617,46 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   filter : comma separated list of user authority filters\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " set-domain-user-authority-filter OnShore-US\n")
+	case "set-domain-x509-cert-signer-keyid":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   [-o json] " + domainParam + " set-domain-x509-cert-signer-keyid key-id\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain        : name of the domain being updated\n")
+		}
+		buf.WriteString("   key-id : certificate signer key id\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-domain-x509-cert-signer-keyid keyid1\n")
+	case "set-domain-ssh-cert-signer-keyid":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   [-o json] " + domainParam + " set-domain-ssh-cert-signer-keyid key-id\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain        : name of the domain being updated\n")
+		}
+		buf.WriteString("   key-id : certificate signer key id\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-domain-ssh-cert-signer-keyid keyid1\n")
+	case "set-domain-slack-channel":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   [-o json] " + domainParam + " set-domain-slack-channel channel-name\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain        : name of the domain being updated\n")
+		}
+		buf.WriteString("   channel-name: slack channel name to post notifications\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-domain-slack-channel athenz\n")
+	case "set-domain-environment":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   [-o json] " + domainParam + " set-domain-environment environment\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain        : name of the domain being updated\n")
+		}
+		buf.WriteString("   environment : valid enviornment value for the domain\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-domain-environment production\n")
 	case "set-product-id", "set-domain-product-id":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   [-o json] " + domainParam + " set-product-id product-id\n")
@@ -1577,6 +1787,17 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   flags         : Optional features enabled for this domain\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " set-domain-feature-flags 3\n")
+	case "set-domain-contact":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   [-o json] " + domainParam + " set-domain-contact type user\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain        : name of the domain being updated\n")
+		}
+		buf.WriteString("   type         : contact type\n")
+		buf.WriteString("   user         : user name\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-domain-contact security-owner user.joe\n")
 	case "set-org-name":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   [-o json] " + domainParam + " set-org-name org-name\n")
@@ -1739,6 +1960,17 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   version   	   : name of the new version\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " add-policy-version writers_policy screen_writers book_writers\n")
+	case "set-policy-resource-ownership":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " set-policy-resource-ownership policy resource-owner\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain  : name of the domain being updated\n")
+		}
+		buf.WriteString("   policy         : name of the policy to be modified\n")
+		buf.WriteString("   resource-owner : resource owner in objectowner:{owner},assertionsowner:{owner} format\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-role-resource-ownership writers objectowner:TF,assertionsowner:MSD\n")
 	case "add-assertion":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   " + domainParam + " add-assertion policy assertion [is_case_sensitive]\n")
@@ -1938,15 +2170,17 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   " + domainExample + " add-delegated-role tenant.sports.readers sports\n")
 	case "add-group-role", "add-regular-role":
 		buf.WriteString(" syntax:\n")
-		buf.WriteString("   " + domainParam + " add-regular-role role member [member ... ]\n")
+		buf.WriteString("   " + domainParam + " add-regular-role role [-audit-enabled] [member ... ]\n")
 		buf.WriteString(" parameters:\n")
 		if !interactive {
 			buf.WriteString("   domain  : name of the domain that role belongs to\n")
 		}
 		buf.WriteString("   role    : name of the standard role\n")
+		buf.WriteString("   -audit-enabled : mark the role as audit-enabled - can't have any members specified \n")
 		buf.WriteString("   member  : list of members that could be either users or services\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " add-regular-role readers " + cli.UserDomain + ".john " + cli.UserDomain + ".joe media.sports.storage\n")
+		buf.WriteString("   " + domainExample + " add-regular-role readers -audit-enabled\n")
 	case "add-member":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   " + domainParam + " add-member regular_role user_or_service [user_or_service ...]\n")
@@ -2085,6 +2319,15 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   role   : name of the role to be deleted\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " delete-role readers\n")
+	case "list-domain-group-members":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " list-domain-group-members\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain            : name of the domain\n")
+		}
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " list-domain-group-members\n")
 	case "list-group":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   " + domainParam + " list-group\n")
@@ -2124,15 +2367,17 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   show-groups-principal\n")
 	case "add-group":
 		buf.WriteString(" syntax:\n")
-		buf.WriteString("   " + domainParam + " add-group group member [member ... ]\n")
+		buf.WriteString("   " + domainParam + " add-group group [-audit-enabled] [member ... ]\n")
 		buf.WriteString(" parameters:\n")
 		if !interactive {
 			buf.WriteString("   domain  : name of the domain that group belongs to\n")
 		}
 		buf.WriteString("   group    : name of the group\n")
+		buf.WriteString("   -audit-enabled : mark the group as audit-enabled - can't have any members specified \n")
 		buf.WriteString("   member  : list of group members that could be either users or services\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " add-group readers " + cli.UserDomain + ".john " + cli.UserDomain + ".joe media.sports.storage\n")
+		buf.WriteString("   " + domainExample + " add-group readers -audit-enabled\n")
 	case "add-group-member":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   " + domainParam + " add-member group user_or_service [user_or_service ...]\n")
@@ -2308,6 +2553,17 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " add-provider-service storage v0 /tmp/storage_pub.pem\n")
 		buf.WriteString("   " + domainExample + " add-provider-service storage v0 \"MIIBOgIBAAJBAOf62yl04giXbiirU8Ck\"\n")
+	case "set-service-resource-ownership":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " set-service-resource-ownership service resource-owner\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain  : name of the domain being updated\n")
+		}
+		buf.WriteString("   service        : name of the service to be modified\n")
+		buf.WriteString("   resource-owner : resource owner in objectowner:{owner},publickeysowner:{owner},hostsowner:{owner} format\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-service-resource-ownership api objectowner:TF,publickeysowner:MSD\n")
 	case "set-service-endpoint":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   " + domainParam + " set-service-endpoint service endpoint\n")
@@ -2677,6 +2933,22 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   user   : id of the user to be deleted\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   delete-user jdoe\n")
+	case "disable-principal":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   disable-principal principal\n")
+		buf.WriteString(" parameters:\n")
+		buf.WriteString("   principal   : principal (user or service) to be disabled\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   disable-principal user.jdoe\n")
+		buf.WriteString("   disable-principal athenz.api\n")
+	case "enable-principal":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   enable-principal principal\n")
+		buf.WriteString(" parameters:\n")
+		buf.WriteString("   principal   : principal (user or service) to be enabled\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   enable-principal user.jdoe\n")
+		buf.WriteString("   enable-principal athenz.api\n")
 	case "get-quota":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   [-o json] " + domainParam + " get-quota\n")
@@ -2749,6 +3021,17 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   delete-protection : enable/disable protection flag for the role\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " set-role-delete-protection readers true\n")
+	case "set-role-max-members":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " set-role-max-members role max-members\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain      : name of the domain being updated\n")
+		}
+		buf.WriteString("   role        : name of the role to be modified\n")
+		buf.WriteString("   max-members : number of max members in the role\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-role-max-members writers 5\n")
 	case "set-role-member-expiry-days":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   " + domainParam + " set-role-member-expiry-days role days\n")
@@ -2848,6 +3131,28 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   alg     : either rsa or ec: token algorithm to be used for signing\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " set-role-token-sign-algorithm writers rsa\n")
+	case "set-role-resource-ownership":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " set-role-resource-ownership role resource-owner\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain  : name of the domain being updated\n")
+		}
+		buf.WriteString("   role           : name of the role to be modified\n")
+		buf.WriteString("   resource-owner : resource owner in objectowner:{owner},metaowner:{owner},membersowner:{owner} format\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-role-resource-ownership writers metaowner:TF,membersowner:MSD\n")
+	case "set-role-principal-domain-filter":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " set-role-principal-domain-filter role principal-domain-filter\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain  : name of the domain being updated\n")
+		}
+		buf.WriteString("   role           : name of the role to be modified\n")
+		buf.WriteString("   principal-domain-filter : domain filter [+|-]{domainName}[,[+|-]{domainName}]...\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-role-principal-domain-filter writers user,+sports,-sports.dev\n")
 	case "set-role-description":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   " + domainParam + " set-role-description role \"description\"\n")
@@ -2870,6 +3175,17 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   rolename : comma separated listed of rolenames to notify for review\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " set-role-notify-roles writers coretech:role.writers-admin,coretech.prod:role.admin\n")
+	case "set-role-notify-details":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " set-role-notify-details role notify-details\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain  : name of the domain being updated\n")
+		}
+		buf.WriteString("   role    : name of the role to be modified\n")
+		buf.WriteString("   notify-details : what details to include in the notifications for this role\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-role-notify-details writers \"check out https://athenz.io for details\"\n")
 	case "set-role-self-serve":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   " + domainParam + " set-role-self-serve role self-serve\n")
@@ -2881,6 +3197,28 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   self-serve : enable/disable self-serve flag for the role\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " set-role-self-serve readers true\n")
+	case "set-role-self-renew":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " set-role-self-renew role self-renew\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain        : name of the domain that role belongs to\n")
+		}
+		buf.WriteString("   role    : name of the role to be modified\n")
+		buf.WriteString("   self-renew : enable/disable self-renew flag for the role\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-role-self-renew readers true\n")
+	case "set-role-self-renew-mins":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " set-role-self-renew-mins role mins\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain  : name of the domain being updated\n")
+		}
+		buf.WriteString("   role    : name of the role to be modified\n")
+		buf.WriteString("   mins    : allow self-renew for these many minutes\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-role-self-renew-mins writers 60\n")
 	case "set-role-user-authority-filter":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   " + domainParam + " set-role-user-authority-filter role attribute[,attribute...]\n")
@@ -2934,6 +3272,28 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " put-membership-decision readers " + cli.UserDomain + ".john true\n")
 		buf.WriteString("   " + domainExample + " put-membership-decision readers " + cli.UserDomain + ".john 2020-03-02T15:04:05.999Z true\n")
+	case "set-group-resource-ownership":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " set-group-resource-ownership group resource-owner\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain  : name of the domain being updated\n")
+		}
+		buf.WriteString("   group    : name of the group to be modified\n")
+		buf.WriteString("   resource-owner : resource owner in objectowner:{owner},metaowner:{owner},membersowner:{owner} format\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-group-resource-ownership writers metaowner:TF,membersowner:MSD\n")
+	case "set-group-principal-domain-filter":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " set-group-principal-domain-filter group principal-domain-filter\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain  : name of the domain being updated\n")
+		}
+		buf.WriteString("   group           : name of the group to be modified\n")
+		buf.WriteString("   principal-domain-filter : domain filter [+|-]{domainName}[,[+|-]{domainName}]...\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-group-principal-domain-filter writers user,+sports,-sports.dev\n")
 	case "set-group-audit-enabled":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   " + domainParam + " set-group-audit-enabled group audit-enabled\n")
@@ -2967,6 +3327,39 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   delete-protection : enable/disable protection flag for the group\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " set-group-delete-protection readers true\n")
+	case "set-group-self-renew":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " set-group-self-renew group self-renew\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain        : name of the domain that group belongs to\n")
+		}
+		buf.WriteString("   group    : name of the group to be modified\n")
+		buf.WriteString("   self-renew : enable/disable self-renew flag for the group\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-group-self-renew readers true\n")
+	case "set-group-self-renew-mins":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " set-group-self-renew-mins group mins\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain  : name of the domain being updated\n")
+		}
+		buf.WriteString("   group    : name of the group to be modified\n")
+		buf.WriteString("   mins     : allow self-renew for these many minutes\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-group-self-renew-mins writers 60\n")
+	case "set-group-max-members":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " set-group-max-members role max-members\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain      : name of the domain being updated\n")
+		}
+		buf.WriteString("   group       : name of the group to be modified\n")
+		buf.WriteString("   max-members : number of max members in the group\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-group-max-members writers 5\n")
 	case "set-group-member-expiry-days":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   " + domainParam + " set-group-member-expiry-days group days\n")
@@ -3000,6 +3393,17 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   rolename : comma separated listed of rolenames to notify for review\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " set-group-notify-roles writers coretech:role.writers-admin,coretech.prod:role.admin\n")
+	case "set-group-notify-details":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   " + domainParam + " set-group-notify-details group notify-details\n")
+		buf.WriteString(" parameters:\n")
+		if !interactive {
+			buf.WriteString("   domain  : name of the domain being updated\n")
+		}
+		buf.WriteString("   group    : name of the group to be modified\n")
+		buf.WriteString("   notify-details : what details to include in the notifications for this group\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   " + domainExample + " set-group-notify-details writers \"check out https://athenz.io for details\"\n")
 	case "set-group-self-serve":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   " + domainParam + " set-group-self-serve group self-serve\n")
@@ -3183,6 +3587,16 @@ func (cli Zms) HelpSpecificCommand(interactive bool, cmd string) string {
 		buf.WriteString("   tag_value       : optional, query all services with given tag key and value\n")
 		buf.WriteString(" examples:\n")
 		buf.WriteString("   " + domainExample + " show-services readers readers-tag-key reader-tag-value\n")
+	case "search-services":
+		buf.WriteString(" syntax:\n")
+		buf.WriteString("   search-services service substring_match [domain_filter]\n")
+		buf.WriteString(" parameters:\n")
+		buf.WriteString("   service               : name of the service to search in all domains\n")
+		buf.WriteString("   substring_match       : boolean true/false indicating that the service name could be a substring\n")
+		buf.WriteString("   domain_filter         : optional, filter results for given domain (substring match)\n")
+		buf.WriteString(" examples:\n")
+		buf.WriteString("   search-services api true\n")
+		buf.WriteString("   search-services api false sports\n")
 	case "list-roles-for-review":
 		buf.WriteString(" syntax:\n")
 		buf.WriteString("   list-roles-for-review [principal]\n")
@@ -3251,7 +3665,14 @@ func (cli Zms) HelpListCommand() string {
 	buf.WriteString("   set-domain-role-cert-expiry-mins cert-expiry-mins\n")
 	buf.WriteString("   set-domain-token-sign-algorithm algorithm\n")
 	buf.WriteString("   set-domain-user-authority-filter filter\n")
+	buf.WriteString("   set-domain-x509-cert-signer-keyid key-id\n")
+	buf.WriteString("   set-domain-ssh-cert-signer-keyid key-id\n")
+	buf.WriteString("   set-domain-slack-channel channel-name\n")
+	buf.WriteString("   set-domain-environment environment\n")
 	buf.WriteString("   set-domain-feature-flags flags\n")
+	buf.WriteString("   set-domain-contact type user\n")
+	buf.WriteString("   set-domain-resource-ownership resource-owner\n")
+	buf.WriteString("   reset-domain-resource-ownership resource-types\n")
 	buf.WriteString("   import-domain domain [file.yaml [admin ...]] - no file means stdin\n")
 	buf.WriteString("   export-domain domain [file.yaml] - no file means stdout\n")
 	buf.WriteString("   delete-domain domain\n")
@@ -3292,6 +3713,7 @@ func (cli Zms) HelpListCommand() string {
 	buf.WriteString("   show-resource principal action\n")
 	buf.WriteString("   add-policy-tag policy tag_key tag_value [tag_value ...]\n")
 	buf.WriteString("   delete-policy-tag policy tag_key [tag_value]\n")
+	buf.WriteString("   set-policy-resource-ownership policy resource-owner\n")
 	buf.WriteString("\n")
 	buf.WriteString(" Role commands:\n")
 	buf.WriteString("   list-role\n")
@@ -3300,7 +3722,7 @@ func (cli Zms) HelpListCommand() string {
 	buf.WriteString("   show-roles-principal [principal] [expand]\n")
 	buf.WriteString("   list-roles-for-review [principal]\n")
 	buf.WriteString("   add-delegated-role role trusted_domain\n")
-	buf.WriteString("   add-regular-role role member [member ... ]\n")
+	buf.WriteString("   add-regular-role role [-audit-enabled] [member ... ]\n")
 	buf.WriteString("   add-member regular_role user_or_service [user_or_service ...]\n")
 	buf.WriteString("   add-temporary-member regular_role user_or_service expiration\n")
 	buf.WriteString("   add-reviewed-member regular_role user_or_service review\n")
@@ -3316,7 +3738,10 @@ func (cli Zms) HelpListCommand() string {
 	buf.WriteString("   set-role-audit-enabled regular_role audit-enabled\n")
 	buf.WriteString("   set-role-review-enabled regular_role review-enabled\n")
 	buf.WriteString("   set-role-delete-protection regular_role delete-protection\n")
+	buf.WriteString("   set-role-self-renew regular_role self-renew\n")
+	buf.WriteString("   set-role-self-renew-mins regular_role self-renew-mins\n")
 	buf.WriteString("   set-role-self-serve regular_role self-serve\n")
+	buf.WriteString("   set-role-max-members regular_role max-members\n")
 	buf.WriteString("   set-role-member-expiry-days regular_role user-member-expiry-days\n")
 	buf.WriteString("   set-role-service-expiry-days regular_role service-member-expiry-days\n")
 	buf.WriteString("   set-role-group-expiry-days regular_role group-member-expiry-days\n")
@@ -3327,9 +3752,12 @@ func (cli Zms) HelpListCommand() string {
 	buf.WriteString("   set-role-cert-expiry-mins regular_role cert-expiry-mins\n")
 	buf.WriteString("   set-role-token-sign-algorithm regular_role algorithm\n")
 	buf.WriteString("   set-role-notify-roles regular_role rolename[,rolename...]\n")
+	buf.WriteString("   set-role-notify-details regular_role \"notification details\"\n")
 	buf.WriteString("   set-role-user-authority-filter regular_role attribute[,attribute...]\n")
 	buf.WriteString("   set-role-user-authority-expiration regular_role attribute\n")
 	buf.WriteString("   set-role-description regular_role description\n")
+	buf.WriteString("   set-role-resource-ownership regular_role resource-owner\n")
+	buf.WriteString("   set-role-principal-domain-filter regular_role domain-filter\n")
 	buf.WriteString("   add-role-tag regular_role tag_key tag_value [tag_value ...]\n")
 	buf.WriteString("   delete-role-tag regular_role tag_key [tag_value]\n")
 	buf.WriteString("   put-membership-decision regular_role user_or_service [expiration] decision\n")
@@ -3340,7 +3768,7 @@ func (cli Zms) HelpListCommand() string {
 	buf.WriteString("   show-groups [tag_key] [tag_value]\n")
 	buf.WriteString("   show-groups-principal [principal]\n")
 	buf.WriteString("   list-groups-for-review [principal]\n")
-	buf.WriteString("   add-group group member [member ... ]\n")
+	buf.WriteString("   add-group group [-audit-enabled] [member ... ]\n")
 	buf.WriteString("   add-group-member group user_or_service [user_or_service ...]\n")
 	buf.WriteString("   check-group-member group user_or_service [user_or_service ...]\n")
 	buf.WriteString("   check-active-group-member group user_or_service\n")
@@ -3350,12 +3778,18 @@ func (cli Zms) HelpListCommand() string {
 	buf.WriteString("   set-group-audit-enabled group audit-enabled\n")
 	buf.WriteString("   set-group-review-enabled group review-enabled\n")
 	buf.WriteString("   set-group-delete-protection group delete-protection\n")
+	buf.WriteString("   set-group-self-renew group self-renew\n")
+	buf.WriteString("   set-group-self-renew-mins group self-renew-mins\n")
 	buf.WriteString("   set-group-self-serve group self-serve\n")
+	buf.WriteString("   set-group-max-members group max-members\n")
 	buf.WriteString("   set-group-member-expiry-days group user-member-expiry-days\n")
 	buf.WriteString("   set-group-service-expiry-days group service-member-expiry-days\n")
 	buf.WriteString("   set-group-notify-roles group rolename[,rolename...]\n")
+	buf.WriteString("   set-group-notify-details group \"notification details\"\n")
 	buf.WriteString("   set-group-user-authority-filter group attribute[,attribute...]\n")
 	buf.WriteString("   set-group-user-authority-expiration group attribute\n")
+	buf.WriteString("   set-group-resource-ownership group resource-owner\n")
+	buf.WriteString("   set-group-principal-domain-filter group domain-filter\n")
 	buf.WriteString("   add-group-tag group tag_key tag_value [tag_value ...]\n")
 	buf.WriteString("   delete-group-tag group tag_key [tag_value]\n")
 	buf.WriteString("   put-group-membership-decision group user_or_service [expiration] decision\n")
@@ -3366,6 +3800,7 @@ func (cli Zms) HelpListCommand() string {
 	buf.WriteString("   show-services [tag_key] [tag_value]\n")
 	buf.WriteString("   add-service service key_id identity_pubkey.pem|identity_key_ybase64\n")
 	buf.WriteString("   add-provider-service service key_id identity_pubkey.pem|identity_key_ybase64\n")
+	buf.WriteString("   set-service-resource-ownership service resource-owner\n")
 	buf.WriteString("   set-service-endpoint service endpoint\n")
 	buf.WriteString("   set-service-exe service executable user group\n")
 	buf.WriteString("   add-service-host service host [host ...]\n")
@@ -3376,6 +3811,7 @@ func (cli Zms) HelpListCommand() string {
 	buf.WriteString("   delete-service service\n")
 	buf.WriteString("   add-service-tag service tag_key tag_value [tag_value ...]\n")
 	buf.WriteString("   delete-service-tag service tag_key [tag_value]\n")
+	buf.WriteString("   search-services service substring_match [domain_filter]\n")
 	buf.WriteString("\n")
 	buf.WriteString(" Entity commands:\n")
 	buf.WriteString("   list-entity\n")
@@ -3408,6 +3844,8 @@ func (cli Zms) HelpListCommand() string {
 	buf.WriteString("   delete-user user\n")
 	buf.WriteString("   disable-domain [domain]\n")
 	buf.WriteString("   enable-domain [domain]\n")
+	buf.WriteString("   disable-principal principal\n")
+	buf.WriteString("   enable-principal principal\n")
 	buf.WriteString("\n")
 	buf.WriteString(" Other commands:\n")
 	buf.WriteString("   get-user-token [authorized_service]\n")
@@ -3450,15 +3888,15 @@ func SetX509CertClient(cli *Zms, keyFile, certFile, caCertFile, socksProxy strin
 			return err
 		}
 	}
-	config, err := config.ClientTLSConfigFromPEM(keypem, certpem, cacertpem)
+	tlsConfig, err := config.ClientTLSConfigFromPEM(keypem, certpem, cacertpem)
 	if err != nil {
 		return err
 	}
 	if skipVerify {
-		config.InsecureSkipVerify = skipVerify
+		tlsConfig.InsecureSkipVerify = skipVerify
 	}
 	tr := &http.Transport{
-		TLSClientConfig: config,
+		TLSClientConfig: tlsConfig,
 	}
 	if httpProxy {
 		tr.Proxy = http.ProxyFromEnvironment
@@ -3467,7 +3905,10 @@ func SetX509CertClient(cli *Zms, keyFile, certFile, caCertFile, socksProxy strin
 		dialer := &net.Dialer{}
 		dialSocksProxy, err := proxy.SOCKS5("tcp", socksProxy, nil, dialer)
 		if err == nil {
-			tr.Dial = dialSocksProxy.Dial
+			dialContext := func(ctx context.Context, network, address string) (net.Conn, error) {
+				return dialSocksProxy.Dial(network, address)
+			}
+			tr.DialContext = dialContext
 		}
 	}
 	cli.Zms = zms.NewClient(cli.ZmsUrl, tr)

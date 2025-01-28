@@ -29,12 +29,11 @@ let sdv4FunctionalJob = SD_JOB_NAME && SD_JOB_NAME === appConfig.devSdJobName;
 
 if (process.env.INSTANCE) {
     // executing functional test pointing at dev environment
-    athenzDomain = 'athenz.k8s';
-    athenzService = 'athenz-ui-development';
+    athenzDomain = appConfig.devDomain;
+    athenzService = appConfig.devService;
 } else {
-    // executing functional test pointing at local environment
-    athenzDomain = 'athenz.dev';
-    athenzService = 'devui';
+    athenzDomain = appConfig.athenzDomain;
+    athenzService = appConfig.athenzService;
 }
 
 let sdAthenzKeyFilePath = WORK_DIR + '/func.key.pem';
@@ -75,11 +74,19 @@ if (!sauceLabsUser) {
     // commands. Instead, they hook themselves up into the test process.
     localOrRemote.saucelabs = {
         runner: 'local',
-        services: ['chromedriver'],
     };
     localOrRemote.capabilities = [
         {
             browserName: 'chrome',
+            'goog:chromeOptions': {
+                args: [
+                    '--disable-infobars', // Disables "Chrome is being controlled by automated software" infobar
+                    '--disable-default-apps', // Disables default apps (including search engine prompts)
+                    '--no-first-run', // Bypass first-time setup including "Choose your search engine"
+                    '--disable-popup-blocking', // Disables popup blocking
+                    '--disable-search-engine-choice-screen', // Disables choose your search engine popup
+                ],
+            },
             browserVersion: 'latest',
             acceptInsecureCerts: true,
         },
@@ -207,6 +214,7 @@ let config = {
     logLevels: {
         webdriver: 'error',
         '@wdio/local-runner': 'info',
+        webdriverio: 'error',
     },
     //
     // If you only want to run your tests until a specific amount of tests have failed use
@@ -481,7 +489,5 @@ let config = {
     // onReload: function(oldSessionId, newSessionId) {
     // }
 };
-
-console.log('final config object: %O', config);
 
 exports.config = config;

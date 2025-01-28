@@ -6,11 +6,13 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"fmt"
-	"github.com/AthenZ/athenz/libs/go/sia/aws/attestation"
-	"github.com/AthenZ/athenz/libs/go/sia/host/ip"
-	"github.com/AthenZ/athenz/libs/go/sia/host/signature"
 	"net"
 	"net/url"
+
+	"github.com/AthenZ/athenz/libs/go/sia/aws/attestation"
+	"github.com/AthenZ/athenz/libs/go/sia/host/ip"
+	"github.com/AthenZ/athenz/libs/go/sia/host/provider"
+	"github.com/AthenZ/athenz/libs/go/sia/host/signature"
 )
 
 type MockAWSProvider struct {
@@ -60,11 +62,11 @@ func (tp MockAWSProvider) GetSanIp(map[string]bool, []net.IP, ip.Opts) []net.IP 
 	return nil
 }
 
-func (tp MockAWSProvider) GetSuffix() string {
-	return ""
+func (tp MockAWSProvider) GetSuffixes() []string {
+	return []string{}
 }
 
-func (tp MockAWSProvider) CloudAttestationData(string, string, string) (string, error) {
+func (tp MockAWSProvider) CloudAttestationData(*provider.AttestationRequest) (string, error) {
 	a, _ := json.Marshal(&attestation.AttestationData{
 		Role: "athenz.hockey",
 	})

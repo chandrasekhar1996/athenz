@@ -30,6 +30,7 @@ import { CacheProvider } from '@emotion/react';
 import createCache from '@emotion/cache';
 import { selectIsLoading } from '../../redux/selectors/loading';
 import { ReduxPageLoader } from '../../components/denali/ReduxPageLoader';
+import { WORKFLOW_TITLE } from '../../components/constants/constants.js';
 
 const HomeContainerDiv = styled.div`
     flex: 1 1;
@@ -137,7 +138,7 @@ class WorkflowAdmin extends React.Component {
                                     <div>
                                         <PageHeaderDiv>
                                             <TitleDiv>
-                                                Pending Items for Approval
+                                                {WORKFLOW_TITLE}
                                             </TitleDiv>
                                             <PendingApprovalTabs
                                                 selectedName={'admin'}

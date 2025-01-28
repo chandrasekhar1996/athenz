@@ -1,17 +1,19 @@
-FROM golang:1.21-bullseye AS builder
+FROM golang:1.22-bullseye AS builder
 
-ENV APP_NAME rdl-gen-athenz-java-client
+ENV APP_NAME=rdl-gen-athenz-java-client
 
 RUN set -eux && apt-get update \
     && apt-get -y install curl git upx-ucl unzip build-essential
 
 WORKDIR ${GOPATH}/src/github.com/AthenZ/athenz/rdl/rdl-gen-athenz-java-client
 
-RUN GO111MODULE=off go get -u github.com/ardielle/ardielle-go/... \
-    && GO111MODULE=off go get -u github.com/ardielle/ardielle-tools/... \
+RUN go install github.com/ardielle/ardielle-tools/...@latest \
     && mv ${GOPATH}/bin/rdl /usr/bin/rdl
 
 COPY . .
+
+RUN go mod init github.com/AthenZ/athenz/rdl/rdl-gen-athenz-java-client \
+    && go get -u github.com/ardielle/ardielle-go/...
 
 RUN if [ $(go env GOARCH) = "amd64" ]; then \
         CGO_ENABLED=1 \
@@ -20,7 +22,6 @@ RUN if [ $(go env GOARCH) = "amd64" ]; then \
         CGO_LDFLAGS="-g -Ofast -march=native" \
         GOOS=$(go env GOOS) \
         GOARCH=$(go env GOARCH) \
-        GO111MODULE=off \
         go build --ldflags '-s -w -linkmode "external" -extldflags "-static -fPIC -m64 -pthread -std=c++11 -lstdc++"' -a -tags "cgo netgo" -installsuffix "cgo netgo" -o "${APP_NAME}" \
         && upx -9 -o "/usr/bin/${APP_NAME}" "${APP_NAME}"; \
     elif [ $(go env GOARCH) = "arm64" ]; then \
@@ -30,7 +31,6 @@ RUN if [ $(go env GOARCH) = "amd64" ]; then \
         CGO_LDFLAGS="-g -Ofast -march=native" \
         GOOS=$(go env GOOS) \
         GOARCH=$(go env GOARCH) \
-        GO111MODULE=off \
         go build --ldflags '-s -w -linkmode "external" -extldflags "-static -fPIC -march=armv8-a -pthread -std=c++11 -lstdc++"' -a -tags "cgo netgo" -installsuffix "cgo netgo" -o "${APP_NAME}" \
         && upx -9 -o "/usr/bin/${APP_NAME}" "${APP_NAME}"; \
     fi
@@ -52,6 +52,6 @@ LABEL org.label-schema.url="https://www.athenz.io/"
 LABEL org.label-schema.vcs-url="https://github.com/AthenZ/athenz"
 LABEL org.label-schema.vcs-ref=$VCS_REF
 
-ENV APP_NAME rdl-gen-athenz-java-client
+ENV APP_NAME=rdl-gen-athenz-java-client
 
 COPY --from=builder /usr/bin/${APP_NAME} /usr/bin/${APP_NAME}

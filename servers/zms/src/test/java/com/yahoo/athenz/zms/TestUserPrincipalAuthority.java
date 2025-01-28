@@ -1,5 +1,6 @@
 package com.yahoo.athenz.zms;
 
+import com.yahoo.athenz.auth.Authority;
 import com.yahoo.athenz.auth.impl.PrincipalAuthority;
 
 class TestUserPrincipalAuthority extends PrincipalAuthority {
@@ -13,8 +14,15 @@ class TestUserPrincipalAuthority extends PrincipalAuthority {
     }
 
     @Override
-    public boolean isValidUser(String user) {
-        return user.equals("user.joe") || user.equals("user.jane") || user.equals("user.jack");
+    public Authority.UserType getUserType(String user) {
+        switch (user) {
+            case "user.joe":
+            case "user.jane":
+            case "user.jack":
+                return UserType.USER_ACTIVE;
+            default:
+                return UserType.USER_INVALID;
+        }
     }
 
     @Override
@@ -31,6 +39,17 @@ class TestUserPrincipalAuthority extends PrincipalAuthority {
             return user.equals("user.joe") || user.equals("user.jane") || user.equals("user.jack");
         } else {
             return false;
+        }
+    }
+
+    @Override
+    public String getUserManager(String userName) {
+        if (userName.equals("user.joe")) {
+            return "user.jane";
+        } else if (userName.equals("user.jane")) {
+            return "user.jack";
+        } else {
+            return null;
         }
     }
 }

@@ -18,6 +18,7 @@ package com.yahoo.athenz.zts.cert;
 import com.yahoo.athenz.auth.AuthorityConsts;
 import com.yahoo.athenz.auth.util.Crypto;
 import com.yahoo.athenz.auth.util.CryptoException;
+import com.yahoo.athenz.common.server.spiffe.SpiffeUriManager;
 import com.yahoo.athenz.common.utils.X509CertUtils;
 import com.yahoo.athenz.zts.ZTSConsts;
 import com.yahoo.athenz.zts.utils.ZTSUtils;
@@ -32,17 +33,15 @@ public class X509RoleCertRequest extends X509CertRequest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(X509RoleCertRequest.class);
 
-    private static final String SPIFFE_ROLE_AGENT    = "ra";
-
     protected String reqRoleName;
     protected String reqRoleDomain;
     protected String rolePrincipal;
 
-    public X509RoleCertRequest(String csr) throws CryptoException {
+    public X509RoleCertRequest(String csr, SpiffeUriManager spiffeUriManager) throws CryptoException {
 
         // parse the csr request
 
-        super(csr);
+        super(csr, spiffeUriManager);
 
         // make sure the CN is a valid role name
 
@@ -230,19 +229,14 @@ public class X509RoleCertRequest extends X509CertRequest {
 
     public boolean validateSpiffeURI(final String domainName, final String roleName) {
 
-        // the expected format are: spiffe://<domain>/ra/<role-name>
-        //  e.g. spiffe://sports/ra/hockey-writers
+        // validate the spiffe uri according to our configured validators
 
         if (spiffeUri == null) {
             return true;
         }
 
-        final String reqUri = "spiffe://" + domainName + "/" + SPIFFE_ROLE_AGENT + "/" + roleName;
-        if (!reqUri.equalsIgnoreCase(spiffeUri)) {
-            LOGGER.error("spiffe uri mismatch: {}/{}", spiffeUri, reqUri);
-            return false;
-        }
-
-        return true;
+        return spiffeUriManager.validateRoleCertUri(spiffeUri, domainName, roleName);
     }
 }
+
+

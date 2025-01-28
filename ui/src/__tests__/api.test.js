@@ -27,7 +27,7 @@ describe('Fetchr Client API Test', () => {
     describe('listUserDomains test', () => {
         it('listUserDomains test success', async () => {
             myDataService = {
-                name: 'domain-list',
+                name: 'domain-role-member',
                 read: function (req, resource, params, config, callback) {
                     callback(null, DATA);
                 },
@@ -39,7 +39,7 @@ describe('Fetchr Client API Test', () => {
         });
         it('listUserDomains test error', async () => {
             myDataServiceErr = {
-                name: 'domain-list',
+                name: 'domain-role-member',
                 read: function (req, resource, params, config, callback) {
                     callback({}, null);
                 },
@@ -1189,26 +1189,26 @@ describe('Fetchr Client API Test', () => {
     describe('getProvider test', () => {
         it('getProvider test success', async () => {
             myDataService = {
-                name: 'provider',
+                name: 'access',
                 read: function (req, resource, params, config, callback) {
                     callback(null, DATA);
                 },
             };
             fetchrStub = sinon.stub(Fetchr, 'isRegistered');
             fetchrStub.returns(myDataService);
-            result = await api.getProvider('dummyDom', 'dummySvc');
+            result = await api.getProviderAccess('dummyDom', 'dummySvc');
             expect(result).toEqual(DATA);
         });
         it('getProvider test error', async () => {
             myDataServiceErr = {
-                name: 'provider',
+                name: 'access',
                 read: function (req, resource, params, config, callback) {
                     return callback({}, null);
                 },
             };
             fetchrStub = sinon.stub(Fetchr, 'isRegistered');
             fetchrStub.returns(myDataServiceErr);
-            await api.getProvider('dummyDom', 'dummySvc').catch((err) => {
+            await api.getProviderAccess('dummyDom', 'dummySvc').catch((err) => {
                 expect(err).not.toBeNull();
             });
         });
