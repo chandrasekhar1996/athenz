@@ -601,7 +601,6 @@ public class RoleMemberNotificationCommonTest {
     }
 
 
-    // CHANDU optimize/remove
     @Test
     public void testConsolidateSlackRoleMembers() {
 
@@ -613,7 +612,7 @@ public class RoleMemberNotificationCommonTest {
         Role role = new Role().setName("athenz:role.admin").setRoleMembers(roleMembers);
         athenzRoles.add(role);
 
-        Domain domain = new Domain().setName("athenz").setSlackChannel("#slack-dev-channel");
+        Domain domain = new Domain().setName("athenz").setSlackChannel("slack-dev-channel");
         Mockito.when(dbsvc.getDomain("athenz", false)).thenReturn(domain);
 
         Mockito.when(dbsvc.getRolesByDomain("athenz")).thenReturn(athenzRoles);
@@ -627,7 +626,7 @@ public class RoleMemberNotificationCommonTest {
         role = new Role().setName("sports:role.admin").setRoleMembers(roleMembers);
         sportsRoles.add(role);
 
-        Domain sportsDomain = new Domain().setName("sports").setSlackChannel("#slack-prod-channel");
+        Domain sportsDomain = new Domain().setName("sports").setSlackChannel("slack-prod-channel");
         Mockito.when(dbsvc.getDomain("sports", false)).thenReturn(sportsDomain);
 
         Mockito.when(dbsvc.getRolesByDomain("sports")).thenReturn(sportsRoles);
@@ -672,13 +671,12 @@ public class RoleMemberNotificationCommonTest {
                 .setMemberRoles(memberRoles);
         members.put("weather.api", domainRoleMember);
 
-        Map<String, DomainRoleMember> consolidatedMembers = task.consolidateRoleMembersForSlack(members);
+        Map<String, DomainRoleMember> consolidatedMembers = task.consolidateRoleMembers(members, true);
         assertEquals(consolidatedMembers.size(), 3);
         assertNotNull(consolidatedMembers.get("user.joe"));
-        assertNotNull(consolidatedMembers.get("#slack-dev-channel"));
-        assertNotNull(consolidatedMembers.get("#slack-prod-channel"));
+        assertNotNull(consolidatedMembers.get("channel:slack-dev-channel"));
+        assertNotNull(consolidatedMembers.get("channel:slack-prod-channel"));
     }
-
 
     // TODO CHANDU
     @Test

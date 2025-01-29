@@ -39,6 +39,9 @@ public class RoleMemberExpiryNotificationTask implements NotificationTask {
     private final RoleExpiryPrincipalNotificationToEmailConverter roleExpiryPrincipalNotificationToEmailConverter;
     private final RoleExpiryDomainNotificationToMetricConverter roleExpiryDomainNotificationToMetricConverter;
     private final RoleExpiryPrincipalNotificationToMetricConverter roleExpiryPrincipalNotificationToMetricConverter;
+    private final RoleExpiryPrincipalNotificationToSlackMessageConverter roleExpiryPrincipalNotificationToSlackMessageConverter;
+    private final RoleExpiryDomainNotificationToSlackMessageConverter roleExpiryDomainNotificationToSlackMessageConverter;
+
 
     private final static String[] TEMPLATE_COLUMN_NAMES = { "DOMAIN", "ROLE", "MEMBER", "EXPIRATION", "NOTES" };
 
@@ -52,6 +55,8 @@ public class RoleMemberExpiryNotificationTask implements NotificationTask {
                 = new RoleExpiryDomainNotificationToEmailConverter(notificationToEmailConverterCommon);
         this.roleExpiryPrincipalNotificationToMetricConverter = new RoleExpiryPrincipalNotificationToMetricConverter();
         this.roleExpiryDomainNotificationToMetricConverter = new RoleExpiryDomainNotificationToMetricConverter();
+        this.roleExpiryDomainNotificationToSlackMessageConverter = new RoleExpiryDomainNotificationToSlackMessageConverter(notificationToEmailConverterCommon);
+        this.roleExpiryPrincipalNotificationToSlackMessageConverter = new RoleExpiryPrincipalNotificationToSlackMessageConverter(notificationToEmailConverterCommon);
     }
 
     @Override
@@ -62,7 +67,7 @@ public class RoleMemberExpiryNotificationTask implements NotificationTask {
             return Collections.emptyList();
         }
 
-        List<Notification> slackNotification = roleMemberNotificationCommon.getNotificationDetails(
+        return roleMemberNotificationCommon.getAllNotificationDetails(
                 Notification.Type.ROLE_MEMBER_EXPIRY,
                 expiryMembers,
                 roleExpiryPrincipalNotificationToEmailConverter,
@@ -70,16 +75,8 @@ public class RoleMemberExpiryNotificationTask implements NotificationTask {
                 new ExpiryRoleMemberDetailStringer(),
                 roleExpiryPrincipalNotificationToMetricConverter,
                 roleExpiryDomainNotificationToMetricConverter,
-                new ReviewDisableRoleMemberNotificationFilter());
-
-        return roleMemberNotificationCommon.getNotificationDetails(
-                Notification.Type.ROLE_MEMBER_EXPIRY,
-                expiryMembers,
-                roleExpiryPrincipalNotificationToEmailConverter,
-                roleExpiryDomainNotificationToEmailConverter,
-                new ExpiryRoleMemberDetailStringer(),
-                roleExpiryPrincipalNotificationToMetricConverter,
-                roleExpiryDomainNotificationToMetricConverter,
+                roleExpiryPrincipalNotificationToSlackMessageConverter,
+                roleExpiryDomainNotificationToSlackMessageConverter,
                 new ReviewDisableRoleMemberNotificationFilter());
     }
 
@@ -232,6 +229,13 @@ public class RoleMemberExpiryNotificationTask implements NotificationTask {
 
     public static class RoleExpiryPrincipalNotificationToSlackMessageConverter implements NotificationToSlackMessageConverter {
 
+        private static final String SLACK_TEMPLATE_PRINCIPAL_MEMBER_EXPIRY = "messages/slack-role-member-expiry.ftl";
+        private final NotificationToEmailConverterCommon notificationConverterCommon;
+
+        public RoleExpiryPrincipalNotificationToSlackMessageConverter(NotificationToEmailConverterCommon notificationConverterCommon) {
+            this.notificationConverterCommon = notificationConverterCommon;
+        }
+
         @Override
         public NotificationSlackMessage getNotificationAsSlackMessage(Notification notification) {
             return null;
@@ -239,6 +243,13 @@ public class RoleMemberExpiryNotificationTask implements NotificationTask {
     }
 
     public static class RoleExpiryDomainNotificationToSlackMessageConverter implements NotificationToSlackMessageConverter {
+
+        private static final String SLACK_TEMPLATE_DOMAIN_MEMBER_EXPIRY = "messages/slack-domain-role-member-expiry.ftl";
+        private final NotificationToEmailConverterCommon notificationConverterCommon;
+
+        public RoleExpiryDomainNotificationToSlackMessageConverter(NotificationToEmailConverterCommon notificationConverterCommon) {
+            this.notificationConverterCommon = notificationConverterCommon;
+        }
 
         @Override
         public NotificationSlackMessage getNotificationAsSlackMessage(Notification notification) {

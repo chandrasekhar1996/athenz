@@ -12,7 +12,7 @@
 "elements": [
 {
 "type": "mrkdwn",
-"text": "*${notificationDate}*"
+"text": "*${notificationDate?string("MMMM d, yyyy")}*"
 }
 ]
 },
@@ -27,13 +27,13 @@
 {
 "type": "divider"
 }
-<#-- Now loop through each member to create the repeated blocks -->
-<#list members as member>
-    ,{
+<#list roles as role>
+    ,
+    {
     "type": "section",
     "text": {
     "type": "mrkdwn",
-    "text": "*<${member.domain}:${member.role}>*"
+    "text": "*<${role.roleLink}|${role.roleName}>*"
     }
     },
     {
@@ -41,24 +41,25 @@
     "fields": [
     {
     "type": "mrkdwn",
-    "text": "*Domain:*\n<${member.domain}>"
+    "text": "*Domain:*\n<${role.domainLink}|${role.domain}>"
     },
     {
     "type": "mrkdwn",
-    "text": "*Expiration:*\n${member.expiration}"
+    "text": "*Expiration:*\n${role.expiration}"
     },
     {
     "type": "mrkdwn",
-    "text": "*Role:*\n<${member.role}>"
+    "text": "*Role:*\n<${role.roleLink}|${role.roleShortName}>"
     },
     {
     "type": "mrkdwn",
-    "text": "*Member:*\n${member.member}"
-    },
-    <#if member.notes?? && (member.notes?length > 0)>
-        ,{
+    "text": "*Member:*\n${role.member}"
+    }
+    <#if role.notes?has_content>
+        ,
+        {
         "type": "mrkdwn",
-        "text": "*Notes:*\n${member.notes}"
+        "text": "*Notes:*\n${role.notes}"
         }
     </#if>
     ]

@@ -136,11 +136,12 @@ public class RoleMemberExpiryNotificationTaskTest {
                 new NotificationToEmailConverterCommon(null)).getNotifications();
 
         // we should get 2 notifications - one for user and one for domain
-        assertEquals(notifications.size(), 2);
+        assertEquals(notifications.size(), 3);
 
         // Verify contents of notifications is as expected
         Notification expectedFirstNotification = new Notification(Notification.Type.ROLE_MEMBER_EXPIRY);
         expectedFirstNotification.addRecipient("user.joe");
+        expectedFirstNotification.setChannelType(Notification.ChannelType.EMAIL);
         expectedFirstNotification.addDetails(NOTIFICATION_DETAILS_ROLES_LIST, "athenz1;role1;user.joe;1970-01-01T00:00:00.100Z;");
         expectedFirstNotification.addDetails("member", "user.joe");
         expectedFirstNotification.setNotificationToEmailConverter(
@@ -151,6 +152,7 @@ public class RoleMemberExpiryNotificationTaskTest {
 
         Notification expectedSecondNotification = new Notification(Notification.Type.ROLE_MEMBER_EXPIRY);
         expectedSecondNotification.addRecipient("user.jane");
+        expectedSecondNotification.setChannelType(Notification.ChannelType.EMAIL);
         expectedSecondNotification.addDetails(NOTIFICATION_DETAILS_MEMBERS_LIST, "athenz1;role1;user.joe;1970-01-01T00:00:00.100Z;");
         expectedSecondNotification.setNotificationToEmailConverter(
                 new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(
@@ -158,8 +160,20 @@ public class RoleMemberExpiryNotificationTaskTest {
         expectedSecondNotification.setNotificationToMetricConverter(
                 new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToMetricConverter());
 
+        Notification expectedThirdNotification = new Notification(Notification.Type.ROLE_MEMBER_EXPIRY);
+        expectedThirdNotification.addRecipient("user.joe");
+        expectedThirdNotification.setChannelType(Notification.ChannelType.SLACK);
+        expectedThirdNotification.addDetails(NOTIFICATION_DETAILS_ROLES_LIST, "athenz1;role1;user.joe;1970-01-01T00:00:00.100Z;");
+        expectedThirdNotification.addDetails("member", "user.joe");
+        expectedThirdNotification.setNotificationToEmailConverter(
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(
+                        new NotificationToEmailConverterCommon(null)));
+        expectedThirdNotification.setNotificationToMetricConverter(
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToMetricConverter());
+
         assertEquals(notifications.get(0), expectedFirstNotification);
         assertEquals(notifications.get(1), expectedSecondNotification);
+        assertEquals(notifications.get(2), expectedThirdNotification);
 
         notificationManager.shutdown();
     }
@@ -227,10 +241,11 @@ public class RoleMemberExpiryNotificationTaskTest {
         // we should get 2 notifications - one for user and one for domain
         // role1 should be excluded and role2 should be included
 
-        assertEquals(notifications.size(), 2);
+        assertEquals(notifications.size(), 3);
 
         // Verify contents of notifications is as expected
         Notification expectedFirstNotification = new Notification(Notification.Type.ROLE_MEMBER_EXPIRY);
+        expectedFirstNotification.setChannelType(Notification.ChannelType.EMAIL);
         expectedFirstNotification.addRecipient("user.joe");
         expectedFirstNotification.addDetails(NOTIFICATION_DETAILS_ROLES_LIST, "athenz1;role2;user.joe;" + oneDayExpiry + ";");
         expectedFirstNotification.addDetails("member", "user.joe");
@@ -241,6 +256,7 @@ public class RoleMemberExpiryNotificationTaskTest {
                 new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToMetricConverter());
 
         Notification expectedSecondNotification = new Notification(Notification.Type.ROLE_MEMBER_EXPIRY);
+        expectedSecondNotification.setChannelType(Notification.ChannelType.EMAIL);
         expectedSecondNotification.addRecipient("user.jane");
         expectedSecondNotification.addDetails(NOTIFICATION_DETAILS_MEMBERS_LIST, "athenz1;role2;user.joe;" + oneDayExpiry + ";");
         expectedSecondNotification.setNotificationToEmailConverter(
@@ -249,8 +265,21 @@ public class RoleMemberExpiryNotificationTaskTest {
         expectedSecondNotification.setNotificationToMetricConverter(
                 new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToMetricConverter());
 
+        Notification expectedThirdNotification = new Notification(Notification.Type.ROLE_MEMBER_EXPIRY);
+        expectedThirdNotification.addRecipient("user.joe");
+
+        expectedThirdNotification.addDetails(NOTIFICATION_DETAILS_ROLES_LIST, "athenz1;role2;user.joe;" + oneDayExpiry + ";");
+        expectedThirdNotification.setChannelType(Notification.ChannelType.SLACK);
+        expectedThirdNotification.addDetails("member", "user.joe");
+        expectedThirdNotification.setNotificationToEmailConverter(
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(
+                        new NotificationToEmailConverterCommon(null)));
+        expectedThirdNotification.setNotificationToMetricConverter(
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToMetricConverter());
+
         assertEquals(notifications.get(0), expectedFirstNotification);
         assertEquals(notifications.get(1), expectedSecondNotification);
+        assertEquals(notifications.get(2), expectedThirdNotification);
 
         notificationManager.shutdown();
     }

@@ -35,7 +35,7 @@ import static com.yahoo.athenz.common.server.notification.NotificationServiceCon
 public class RoleMemberNotificationCommon {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RoleMemberNotificationCommon.class);
-
+    public static final String SLACK_CHANNEL_PREFIX = "channel:";
     private final DBService dbService;
     private final String userDomainPrefix;
     private final NotificationCommon notificationCommon;
@@ -49,97 +49,36 @@ public class RoleMemberNotificationCommon {
     }
 
     public List<Notification> getNotificationDetails(Notification.Type type, Map<String, DomainRoleMember> members,
-            NotificationToEmailConverter principalNotificationToEmailConverter,
-            NotificationToEmailConverter domainAdminNotificationToEmailConverter,
-            RoleMemberDetailStringer roleMemberDetailStringer,
-            NotificationToMetricConverter principalNotificationToMetricConverter,
-            NotificationToMetricConverter domainAdminNotificationToMetricConverter,
-            DisableRoleMemberNotificationFilter disableRoleMemberNotificationFilter) {
+                                                     NotificationToEmailConverter principalNotificationToEmailConverter,
+                                                     NotificationToEmailConverter domainAdminNotificationToEmailConverter,
+                                                     RoleMemberDetailStringer roleMemberDetailStringer,
+                                                     NotificationToMetricConverter principalNotificationToMetricConverter,
+                                                     NotificationToMetricConverter domainAdminNotificationToMetricConverter,
+                                                     DisableRoleMemberNotificationFilter disableRoleMemberNotificationFilter) {
 
-        // our members map contains three types of entries:
-        //  1. human user: user.john-doe -> { expiring-roles }
-        //  2. service-identity: athenz.api -> { expiring-roles }
-        //  3. group: athenz:group.dev-team -> { expiring-roles }
-        // currently we're notifying human users and all service identity
-        // admins. for groups, we check if notify roles is configured and
-        // if so we notify those roles members otherwise we notify the domain admins.
-        // So for service-identity accounts - we need to extract the list
-        // of human domain admins and combine them with human users so the
-        // human users gets only a single notification.
+        return getNotificationDetails(type, Notification.ChannelType.EMAIL, members, principalNotificationToEmailConverter,
+                domainAdminNotificationToEmailConverter, roleMemberDetailStringer, principalNotificationToMetricConverter,
+                domainAdminNotificationToMetricConverter, null, null, disableRoleMemberNotificationFilter);
+    }
 
-        Map<String, DomainRoleMember> consolidatedMembers = consolidateRoleMembers(members);
-        Map<String, DomainRoleMember> consolidatedMembersForSlack = consolidateRoleMembersForSlack(members);
+    public List<Notification> getAllNotificationDetails(Notification.Type type, Map<String, DomainRoleMember> members,
+                                                     NotificationToEmailConverter principalNotificationToEmailConverter,
+                                                     NotificationToEmailConverter domainAdminNotificationToEmailConverter,
+                                                     RoleMemberDetailStringer roleMemberDetailStringer,
+                                                     NotificationToMetricConverter principalNotificationToMetricConverter,
+                                                     NotificationToMetricConverter domainAdminNotificationToMetricConverter,
+                                                     NotificationToSlackMessageConverter principalNotificationToSlackMessageConerter,
+                                                     NotificationToSlackMessageConverter domainAdminNotificationToSlackMessageConerter,
+                                                     DisableRoleMemberNotificationFilter disableRoleMemberNotificationFilter) {
 
-        // CHANDU what I want here is a list of user email to roles they should get a notification for
-        // CHANDU and also the map of slack channels to roles for which they should get a notification
-        // CHANDU can a slack channel name match with a user name? No and remaining users will have email and not user id
+         List<Notification> notifications = getNotificationDetails(type, Notification.ChannelType.EMAIL, members, principalNotificationToEmailConverter,
+                domainAdminNotificationToEmailConverter, roleMemberDetailStringer, principalNotificationToMetricConverter,
+                domainAdminNotificationToMetricConverter, principalNotificationToSlackMessageConerter, domainAdminNotificationToSlackMessageConerter, disableRoleMemberNotificationFilter);
 
-
-        // first we're going to send reminders to all the members indicating to
-        // them that they're going to expiry (or nearing review date) and they should follow up with
-        // domain admins to extend their membership.
-
-        List<Notification> notificationList = new ArrayList<>();
-        Map<String, List<MemberRole>> domainAdminMap = new HashMap<>();
-
-        for (String principal : consolidatedMembers.keySet()) {
-
-            // we're going to process the role member, update
-            // our domain admin map accordingly and return
-            // the details object that we need to send to the
-            // notification agent for processing
-
-            Map<String, String> details = processRoleReminder(domainAdminMap, consolidatedMembers.get(principal),
-                    roleMemberDetailStringer, disableRoleMemberNotificationFilter);
-            if (!details.isEmpty()) {
-                Notification notification = notificationCommon.createNotification(
-                        type, principal, details, principalNotificationToEmailConverter,
-                        principalNotificationToMetricConverter);
-                if (notification != null) {
-                    notificationList.add(notification);
-                }
-            }
-        }
-
-//        // CHANDU TODO this is not generating notification for slack
-//        for (String principal : consolidatedMembersForSlack.keySet()) {
-//
-//            // we're going to process the role member, update
-//            // our domain admin map accordingly and return
-//            // the details object that we need to send to the
-//            // notification agent for processing
-//
-//            Map<String, String> details = processRoleReminder(domainAdminMap, consolidatedMembersForSlack.get(principal),
-//                    roleMemberDetailStringer, disableRoleMemberNotificationFilter);
-//            if (!details.isEmpty()) {
-//                Notification notification = notificationCommon.createNotification(
-//                        type, principal, details, principalNotificationToEmailConverter,
-//                        principalNotificationToMetricConverter);
-//                if (notification != null) {
-//                    notificationList.add(notification);
-//                }
-//            }
-//        }
-
-        // now we're going to send reminders to all the domain/role administrators
-
-        Map<String, DomainRoleMember> consolidatedDomainAdmins = consolidateDomainAdmins(domainAdminMap);
-
-        for (String principal : consolidatedDomainAdmins.keySet()) {
-
-            Map<String, String> details = processMemberReminder(consolidatedDomainAdmins.get(principal).getMemberRoles(),
-                    roleMemberDetailStringer);
-            if (!details.isEmpty()) {
-                Notification notification = notificationCommon.createNotification(
-                        type, principal, details, domainAdminNotificationToEmailConverter,
-                        domainAdminNotificationToMetricConverter);
-                if (notification != null) {
-                    notificationList.add(notification);
-                }
-            }
-        }
-
-        return notificationList;
+         notifications.addAll(getNotificationDetails(type, Notification.ChannelType.SLACK, members, principalNotificationToEmailConverter,
+                domainAdminNotificationToEmailConverter, roleMemberDetailStringer, principalNotificationToMetricConverter,
+                domainAdminNotificationToMetricConverter, principalNotificationToSlackMessageConerter, domainAdminNotificationToSlackMessageConerter, disableRoleMemberNotificationFilter));
+         return  notifications;
     }
 
     public List<Notification> getNotificationDetails(Notification.Type type, Notification.ChannelType channelType, Map<String, DomainRoleMember> members,
@@ -148,7 +87,16 @@ public class RoleMemberNotificationCommon {
                                                      RoleMemberDetailStringer roleMemberDetailStringer,
                                                      NotificationToMetricConverter principalNotificationToMetricConverter,
                                                      NotificationToMetricConverter domainAdminNotificationToMetricConverter,
+                                                     NotificationToSlackMessageConverter principalNotificationToSlackMessageConerter,
+                                                     NotificationToSlackMessageConverter domainAdminNotificationToSlackMessageConerter,
                                                      DisableRoleMemberNotificationFilter disableRoleMemberNotificationFilter) {
+
+        boolean useSlackChannels;
+        if (channelType.equals(Notification.ChannelType.EMAIL)) {
+            useSlackChannels = false;
+        } else {
+            useSlackChannels = true;
+        }
 
         // our members map contains three types of entries:
         //  1. human user: user.john-doe -> { expiring-roles }
@@ -160,8 +108,7 @@ public class RoleMemberNotificationCommon {
         // So for service-identity accounts - we need to extract the slack channel
         // of service domain.
 
-        Map<String, DomainRoleMember> consolidatedMembers = consolidateRoleMembers(members);
-
+        Map<String, DomainRoleMember> consolidatedMembers = consolidateRoleMembers(members, useSlackChannels);
         // first we're going to send reminders to all the members indicating to
         // them that they're going to expiry (or nearing review date) and they should follow up with
         // domain admins to extend their membership.
@@ -180,8 +127,8 @@ public class RoleMemberNotificationCommon {
                     roleMemberDetailStringer, disableRoleMemberNotificationFilter);
             if (!details.isEmpty()) {
                 Notification notification = notificationCommon.createNotification(
-                        type, principal, details, principalNotificationToEmailConverter,
-                        principalNotificationToMetricConverter);
+                        type, channelType, principal, details, principalNotificationToEmailConverter,
+                        principalNotificationToMetricConverter, null);
                 if (notification != null) {
                     notificationList.add(notification);
                 }
@@ -189,8 +136,7 @@ public class RoleMemberNotificationCommon {
         }
 
         // now we're going to send reminders to all the domain/role administrators
-
-        Map<String, DomainRoleMember> consolidatedDomainAdmins = consolidateDomainAdmins(domainAdminMap);
+        Map<String, DomainRoleMember> consolidatedDomainAdmins = consolidateDomainAdmins(domainAdminMap, useSlackChannels);
 
         for (String principal : consolidatedDomainAdmins.keySet()) {
 
@@ -198,8 +144,8 @@ public class RoleMemberNotificationCommon {
                     roleMemberDetailStringer);
             if (!details.isEmpty()) {
                 Notification notification = notificationCommon.createNotification(
-                        type, principal, details, domainAdminNotificationToEmailConverter,
-                        domainAdminNotificationToMetricConverter);
+                        type, channelType, principal, details, domainAdminNotificationToEmailConverter,
+                        domainAdminNotificationToMetricConverter, null);
                 if (notification != null) {
                     notificationList.add(notification);
                 }
@@ -209,85 +155,11 @@ public class RoleMemberNotificationCommon {
         return notificationList;
     }
 
-    // CHANDU optimize this
-    Map<String, DomainRoleMember> consolidateRoleMembersForSlack(Map<String, DomainRoleMember> members) {
-
-        Map<String, DomainRoleMember> consolidatedMembers = new HashMap<>();
-        // string is to whom to notify
-
-
-        // iterate through each principal. if the principal is:
-        // user -> add the roles to the list
-        // service -> lookup domain slack channel for the service and add te roles to the channel list
-        // group -> lookup the configured notify roles users or domain slack channel (if no notify roles)
-        //          and add to the individual human users (in case of notify roles) or slack channel (in case of no notify roles)
-
-        for (String principal : members.keySet()) {
-
-            int idx = principal.indexOf(AuthorityConsts.GROUP_SEP);
-            if (idx != -1) {
-                final String domainName = principal.substring(0, idx);
-                final String groupName = principal.substring(idx + AuthorityConsts.GROUP_SEP.length());
-                Group group = dbService.getGroup(domainName, groupName, Boolean.FALSE, Boolean.FALSE);
-                if (group == null) {
-                    LOGGER.error("unable to retrieve group: {} in domain: {}", groupName, domainName);
-                    continue;
-                }
-                Set<String> notifiers;
-                if (!StringUtil.isEmpty(group.getNotifyRoles())) {
-                    notifiers = NotificationUtils.extractNotifyRoleMembers(domainRoleMembersFetcher,
-                            domainName, group.getNotifyRoles());
-                } else {
-                    Domain groupDomain = dbService.getDomain(domainName, false);
-                    if (groupDomain == null) {
-                        LOGGER.error("unable to retrieve group domain: {}", domainName);
-                        continue;
-                    }
-
-                    String slackChannel = groupDomain.getSlackChannel();
-                    if (StringUtils.isEmpty(slackChannel)) {
-                        continue;
-                    }
-
-                    notifiers = new HashSet<>();
-                    notifiers.add(slackChannel);
-                }
-                if (ZMSUtils.isCollectionEmpty(notifiers)) {
-                    continue;
-                }
-
-                // TODO CHANDU what to do for slack channel as the notify member?
-                for (String notifyMember : notifiers) {
-                    addRoleMembers(notifyMember, consolidatedMembers, members.get(principal).getMemberRoles());
-                }
-            } else {
-                final String domainName = AthenzUtils.extractPrincipalDomainName(principal);
-                if (userDomainPrefix.equals(domainName + ".")) {
-                    addRoleMembers(principal, consolidatedMembers, members.get(principal).getMemberRoles());
-                } else {
-
-                    // domain role fetcher only returns the human users
-                    Domain groupDomain = dbService.getDomain(domainName, false);
-                    if (groupDomain == null) {
-                        LOGGER.error("unable to retrieve domain: {}", domainName);
-                        continue;
-                    }
-
-                    String slackChannel = groupDomain.getSlackChannel();
-                    if (StringUtils.isEmpty(slackChannel)) {
-                        continue;
-                    }
-
-                    addRoleMembers(slackChannel, consolidatedMembers, members.get(principal).getMemberRoles());
-                }
-            }
-        }
-
-        return consolidatedMembers;
+    Map<String, DomainRoleMember> consolidateRoleMembers(Map<String, DomainRoleMember> members) {
+        return consolidateRoleMembers(members, false);
     }
 
-
-    Map<String, DomainRoleMember> consolidateRoleMembers(Map<String, DomainRoleMember> members) {
+    Map<String, DomainRoleMember> consolidateRoleMembers(Map<String, DomainRoleMember> members, boolean useSlackChannel) {
 
         Map<String, DomainRoleMember> consolidatedMembers = new HashMap<>();
 
@@ -308,19 +180,34 @@ public class RoleMemberNotificationCommon {
                     LOGGER.error("unable to retrieve group: {} in domain: {}", groupName, domainName);
                     continue;
                 }
-                Set<String> groupAdminMembers;
+                Set<String> notifiers;
                 if (!StringUtil.isEmpty(group.getNotifyRoles())) {
-                    groupAdminMembers = NotificationUtils.extractNotifyRoleMembers(domainRoleMembersFetcher,
+                    notifiers = NotificationUtils.extractNotifyRoleMembers(domainRoleMembersFetcher,
                             domainName, group.getNotifyRoles());
                 } else {
+                    if (useSlackChannel) {
+                        Domain groupDomain = dbService.getDomain(domainName, false);
+                        if (groupDomain == null) {
+                            LOGGER.error("unable to retrieve group domain: {}", domainName);
+                            continue;
+                        }
 
-                        groupAdminMembers = domainRoleMembersFetcher.getDomainRoleMembers(domainName, ADMIN_ROLE_NAME);
+                        String slackChannel = groupDomain.getSlackChannel();
+                        if (StringUtils.isEmpty(slackChannel)) {
+                            continue;
+                        }
+
+                        notifiers = new HashSet<>();
+                        notifiers.add(SLACK_CHANNEL_PREFIX + slackChannel);
+                    } else {
+                        notifiers = domainRoleMembersFetcher.getDomainRoleMembers(domainName, ADMIN_ROLE_NAME);
+                    }
                 }
-                if (ZMSUtils.isCollectionEmpty(groupAdminMembers)) {
+                if (ZMSUtils.isCollectionEmpty(notifiers)) {
                     continue;
                 }
-                for (String groupAdminMember : groupAdminMembers) {
-                    addRoleMembers(groupAdminMember, consolidatedMembers, members.get(principal).getMemberRoles());
+                for (String notifyMember : notifiers) {
+                    addRoleMembers(notifyMember, consolidatedMembers, members.get(principal).getMemberRoles());
                 }
             } else {
                 final String domainName = AthenzUtils.extractPrincipalDomainName(principal);
@@ -329,13 +216,28 @@ public class RoleMemberNotificationCommon {
                 } else {
 
                     // domain role fetcher only returns the human users
+                    if (useSlackChannel) {
+                        Domain groupDomain = dbService.getDomain(domainName, false);
+                        if (groupDomain == null) {
+                            LOGGER.error("unable to retrieve domain: {}", domainName);
+                            continue;
+                        }
 
-                    Set<String> domainAdminMembers = domainRoleMembersFetcher.getDomainRoleMembers(domainName, ADMIN_ROLE_NAME);
-                    if (ZMSUtils.isCollectionEmpty(domainAdminMembers)) {
-                        continue;
-                    }
-                    for (String domainAdminMember : domainAdminMembers) {
-                        addRoleMembers(domainAdminMember, consolidatedMembers, members.get(principal).getMemberRoles());
+                        String slackChannel = groupDomain.getSlackChannel();
+                        if (StringUtils.isEmpty(slackChannel)) {
+                            continue;
+                        }
+                        // add prefix to channel name
+                        slackChannel = SLACK_CHANNEL_PREFIX + slackChannel;
+                        addRoleMembers(slackChannel, consolidatedMembers, members.get(principal).getMemberRoles());
+                    } else {
+                        Set<String> domainAdminMembers = domainRoleMembersFetcher.getDomainRoleMembers(domainName, ADMIN_ROLE_NAME);
+                        if (ZMSUtils.isCollectionEmpty(domainAdminMembers)) {
+                            continue;
+                        }
+                        for (String domainAdminMember : domainAdminMembers) {
+                            addRoleMembers(domainAdminMember, consolidatedMembers, members.get(principal).getMemberRoles());
+                        }
                     }
                 }
             }
@@ -345,6 +247,10 @@ public class RoleMemberNotificationCommon {
     }
 
     Map<String, DomainRoleMember> consolidateDomainAdmins(Map<String, List<MemberRole>> domainRoleMembers) {
+        return consolidateDomainAdmins(domainRoleMembers, false);
+    }
+
+    Map<String, DomainRoleMember> consolidateDomainAdmins(Map<String, List<MemberRole>> domainRoleMembers, boolean useSlackChannel) {
 
         Map<String, DomainRoleMember> consolidatedDomainAdmins = new HashMap<>();
 
@@ -362,7 +268,15 @@ public class RoleMemberNotificationCommon {
 
             // domain role fetcher only returns the human users
 
-            Set<String> domainAdminMembers = domainRoleMembersFetcher.getDomainRoleMembers(domainName, ADMIN_ROLE_NAME);
+            Set<String> domainAdminMembers = new HashSet<>();
+            if (useSlackChannel) {
+                Domain domain = dbService.getDomain(domainName, false);
+                if (domain != null && !StringUtils.isEmpty(domain.getSlackChannel())) {
+                    domainAdminMembers.add(SLACK_CHANNEL_PREFIX + domain.getSlackChannel());
+                }
+            } else {
+                domainAdminMembers = domainRoleMembersFetcher.getDomainRoleMembers(domainName, ADMIN_ROLE_NAME);
+            }
 
             for (MemberRole memberRole : roleMemberList) {
 
@@ -392,8 +306,6 @@ public class RoleMemberNotificationCommon {
 
     void addRoleMembers(final String consolidatedPrincipal, Map<String, DomainRoleMember> consolidatedMembers,
                         List<MemberRole> roleMemberList) {
-
-        // TODO chandu question here is should domainRoleMember have memberName as slack channel name?
 
         DomainRoleMember roleMembers = consolidatedMembers.computeIfAbsent(consolidatedPrincipal,
                 k -> new DomainRoleMember().setMemberName(consolidatedPrincipal).setMemberRoles(new ArrayList<>()));
