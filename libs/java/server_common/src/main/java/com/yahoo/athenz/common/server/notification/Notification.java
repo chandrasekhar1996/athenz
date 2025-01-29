@@ -66,13 +66,17 @@ public class Notification {
         this.type = type;
     }
 
-    public Notification(Type type, ChannelType channelType) {
-        this.type = type;
-        this.channelType = channelType;
-    }
-
     public Type getType() {
         return type;
+    }
+
+    public ChannelType getChannelType() {
+        return channelType;
+    }
+
+    public Notification setChannelType(ChannelType channelType) {
+        this.channelType = channelType;
+        return this;
     }
 
     public Set<String> getRecipients() {
@@ -162,6 +166,7 @@ public class Notification {
         Notification that = (Notification) o;
         Timestamp currentTime = Timestamp.fromMillis(System.currentTimeMillis());
         return  getType() == that.getType() &&
+                getChannelType() == that.getChannelType() &&
                 Objects.equals(getRecipients(), that.getRecipients()) &&
                 Objects.equals(getDetails(), that.getDetails()) &&
                 Objects.equals(getNotificationAsMetrics(currentTime), that.getNotificationAsMetrics(currentTime)) &&
@@ -191,6 +196,7 @@ public class Notification {
         }
         return "Notification{" +
                 "type=" + type +
+                "channelType=" + channelType +
                 ", recipients=" + recipients +
                 ", details=" + details +
                 ", emailConverterClass=" + emailConverterClassName +

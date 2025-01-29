@@ -39,6 +39,8 @@ public final class NotificationServiceConstants {
     public static final String HTML_LOGO_CID_PLACEHOLDER = "<logo>";
     public static final String CHARSET_UTF_8 = "UTF-8";
 
+    public static final String SLACK_CHANNEL_PREFIX = "channel:";
+
     private NotificationServiceConstants() {
     }
 }

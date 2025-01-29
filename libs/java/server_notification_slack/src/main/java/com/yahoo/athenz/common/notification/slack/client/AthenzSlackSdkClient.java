@@ -1,7 +1,6 @@
 package com.yahoo.athenz.common.notification.slack.client;
 
 import com.slack.api.methods.MethodsClient;
-import com.slack.api.methods.SlackApiException;
 import com.slack.api.methods.response.users.UsersLookupByEmailResponse;
 import com.yahoo.athenz.auth.PrivateKeyStore;
 import com.yahoo.athenz.common.notification.slack.SlackClient;
@@ -11,7 +10,6 @@ import com.slack.api.methods.response.chat.ChatPostMessageResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -95,16 +93,8 @@ public class AthenzSlackSdkClient implements SlackClient {
         }
     }
 
-    /**
-     * Fetches the Slack user ID associated with a given email.
-     *
-     * @param email The email address of the user
-     * @return The Slack user ID or null if the user is not found
-     * @throws IOException        If there is an error during the HTTP request
-     * @throws SlackApiException  If there is an error from the Slack API
-     */
+
     public String fetchUserIdFromEmail(String email)  {
-        // Use the `users.lookupByEmail` method
         UsersLookupByEmailResponse response = null;
         try {
             response = slackClient
@@ -117,7 +107,7 @@ public class AthenzSlackSdkClient implements SlackClient {
         if (response.isOk()) {
             return response.getUser().getId();
         } else {
-            LOGGER.error("Unable to lookup user by email: {}", response.getError());
+            LOGGER.error("Unable to lookup slack user ID by email: {}", response.getError());
             return null;
         }
     }

@@ -59,15 +59,15 @@ public class SlackNotificationService implements NotificationService {
         // but we want to log it for debugging purposes
 
         if (recipients.isEmpty()) {
-            LOGGER.error("No recipients specified in the notification. Subject={}", message);
+            LOGGER.error("No recipients specified in the notification. notification type={}", notification.getType());
             return false;
         }
 
         if (sendSlackMessage(recipients, message)) {
-            LOGGER.info("Successfully sent email notification. Subject={}, Recipients={}", message, recipients);
+            LOGGER.info("Successfully sent email notification. Type={}, Recipients={}", notification.getType(), recipients);
             return true;
         } else {
-            LOGGER.error("Failed sending email notification. Subject={}, Recipients={}", message, recipients);
+            LOGGER.error("Failed sending email notification. Type={}, Recipients={}", notification.getType(), recipients);
             return false;
         }
     }

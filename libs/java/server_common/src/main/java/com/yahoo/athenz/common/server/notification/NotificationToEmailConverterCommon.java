@@ -32,8 +32,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class NotificationConverterCommon {
-    private static final Logger LOGGER = LoggerFactory.getLogger(NotificationConverterCommon.class);
+public class NotificationToEmailConverterCommon {
+    private static final Logger LOGGER = LoggerFactory.getLogger(NotificationToEmailConverterCommon.class);
 
     private static final String AT = "@";
     private static final String USER_DOMAIN_DEFAULT = "user";
@@ -67,7 +67,7 @@ public class NotificationConverterCommon {
     private final String emailBaseCSS;
     private final Authority notificationUserAuthority;
 
-    public NotificationConverterCommon(Authority notificationUserAuthority) {
+    public NotificationToEmailConverterCommon(Authority notificationUserAuthority) {
 
         String userDomain = System.getProperty(PROP_USER_DOMAIN, USER_DOMAIN_DEFAULT);
         userDomainPrefix = userDomain + "\\.";

@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.yahoo.athenz.common.server.notification.NotificationServiceConstants.SLACK_CHANNEL_PREFIX;
+
 /**
  * Common functionality for Notification Tasks.
  */
@@ -95,36 +97,6 @@ public class NotificationCommon {
         return notification;
     }
 
-    public Notification createNotification(Notification.Type type, final String recipient,
-                                           Map<String, String> details,
-                                           NotificationToEmailConverter notificationToEmailConverter,
-                                           NotificationToMetricConverter notificationToMetricConverter,
-                                           NotificationToSlackMessageConverter notificationToSlackMessageConverter) {
-
-        if (recipient == null || recipient.isEmpty()) {
-            LOGGER.error("Notification requires a valid recipient");
-            return null;
-        }
-
-        Notification notification = new Notification(type);
-        notification.setDetails(details);
-        notification.setNotificationToEmailConverter(notificationToEmailConverter);
-        notification.setNotificationToMetricConverter(notificationToMetricConverter);
-        notification.setNotificationToSlackMessageConverter(notificationToSlackMessageConverter);
-
-        // if the recipient is a service then we're going to send a notification
-        // to the service's domain admin users
-
-        addNotificationRecipient(notification, recipient, false);
-
-        if (notification.getRecipients() == null || notification.getRecipients().isEmpty()) {
-            LOGGER.error("Notification requires at least 1 recipient");
-            return null;
-        }
-
-        return notification;
-    }
-
     public Notification createNotification(Notification.Type type, Notification.ChannelType channelType, final String recipient,
                                            Map<String, String> details,
                                            NotificationToEmailConverter notificationToEmailConverter,
@@ -136,7 +108,8 @@ public class NotificationCommon {
             return null;
         }
 
-        Notification notification = new Notification(type, channelType);
+        Notification notification = new Notification(type);
+        notification.setChannelType(channelType);
         notification.setDetails(details);
         notification.setNotificationToEmailConverter(notificationToEmailConverter);
         notification.setNotificationToMetricConverter(notificationToMetricConverter);
@@ -165,9 +138,11 @@ public class NotificationCommon {
         notification.getRecipients().addAll(domainRoleMembers);
     }
 
-    // TODO CHANDU add slack support
     void addNotificationRecipient(Notification notification, final String recipient, boolean ignoreService) {
-
+        if (recipient.startsWith(SLACK_CHANNEL_PREFIX)) {
+            notification.addRecipient(recipient);
+            return;
+        }
         int roleDomainIndex = recipient.indexOf(AuthorityConsts.ROLE_SEP);
         if (roleDomainIndex != -1) {
             addDomainRoleRecipients(notification, recipient.substring(0, roleDomainIndex),
