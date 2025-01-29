@@ -23,9 +23,6 @@ public final class SlackNotificationConsts {
     public static final String PROP_SLACK_FETCH_TOKEN_PERIOD_BETWEEN_EXECUTIONS = "athens.notification_slack.period_between_fetch_token_executions_seconds";
     public static final String DEFAULT_SLACK_FETCH_TOKEN_PERIOD_BETWEEN_EXECUTIONS = "3600";
 
-    public static final String NOTIFICATION_SLACK_CLIENT_CLASS = "athenz.server_slack_notification.slack_client";
-    public static final String SLACK_CHANNEL_PREFIX = "channel:";
-
     // prevent object creation
     private SlackNotificationConsts() {
     }

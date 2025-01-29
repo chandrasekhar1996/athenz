@@ -17,6 +17,7 @@
 package com.yahoo.athenz.common.notification.slack;
 
 import com.yahoo.athenz.auth.PrivateKeyStore;
+import com.yahoo.athenz.common.notification.slack.client.AthenzSlackSdkClient;
 import com.yahoo.athenz.common.server.notification.Notification;
 import com.yahoo.athenz.common.server.notification.NotificationService;
 import com.yahoo.athenz.common.server.notification.NotificationSlackMessage;
@@ -31,13 +32,13 @@ import java.util.Set;
 public class SlackNotificationService implements NotificationService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SlackNotificationService.class);
-    private final SlackClient slackClient;
+    private final AthenzSlackSdkClient slackClient;
 
     public SlackNotificationService(PrivateKeyStore privateKeyStore) {
-        this.slackClient = new SlackClientFactory().createSlackClient(privateKeyStore);
+        this.slackClient = new AthenzSlackSdkClient(privateKeyStore);
     }
 
-    public SlackNotificationService(SlackClient slackClient) {
+    public SlackNotificationService(AthenzSlackSdkClient slackClient) {
         this.slackClient = slackClient;
     }
 

@@ -30,6 +30,7 @@ import static com.yahoo.athenz.common.server.notification.NotificationServiceCon
 import static com.yahoo.athenz.common.server.notification.NotificationServiceConstants.NOTIFICATION_DETAILS_MEMBERS_LIST;
 import static com.yahoo.athenz.common.server.notification.impl.MetricNotificationService.*;
 
+
 public class RoleMemberExpiryNotificationTask implements NotificationTask {
     private final DBService dbService;
     private final RoleMemberNotificationCommon roleMemberNotificationCommon;
@@ -354,5 +355,6 @@ public class RoleMemberExpiryNotificationTask implements NotificationTask {
             return new NotificationSlackMessage(
                     slackMessageContent,
                     slackRecipients);
+        }
         }
 }

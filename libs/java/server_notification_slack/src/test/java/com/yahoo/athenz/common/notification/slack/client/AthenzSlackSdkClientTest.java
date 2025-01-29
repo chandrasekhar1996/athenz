@@ -17,10 +17,10 @@
 package com.yahoo.athenz.common.notification.slack.client;
 
 import com.slack.api.RequestConfigurator;
+import com.slack.api.Slack;
 import com.slack.api.methods.MethodsClient;
 import com.slack.api.methods.SlackApiException;
 import com.slack.api.methods.request.chat.ChatPostMessageRequest;
-import com.slack.api.methods.request.users.UsersLookupByEmailRequest;
 import com.slack.api.methods.response.chat.ChatPostMessageResponse;
 import com.slack.api.methods.response.users.UsersLookupByEmailResponse;
 import com.slack.api.model.User;
@@ -38,168 +38,6 @@ import static org.testng.Assert.*;
 import static org.testng.AssertJUnit.assertNotNull;
 
 public class AthenzSlackSdkClientTest {
-//    @Test
-//    public void testSendEmail() {
-//        Set<String> recipients = new HashSet<>(Arrays.asList("user.user1", "user.user2", "user.user3"));
-//        String subject = "test email subject";
-//        String body = "test email body";
-//        System.setProperty("athenz.notification_email_domain_from", "from.example.com");
-//        System.setProperty("athenz.notification_email_domain_to", "example.com");
-//        System.setProperty("athenz.notification_email_from", "no-reply-athenz");
-//
-//        SesV2Client ses = mock(SesV2Client.class);
-//        SendEmailResponse result = mock(SendEmailResponse.class);
-//        Mockito.when(ses.sendEmail(any(SendEmailRequest.class))).thenReturn(result);
-//        SESEmailProvider awsEmailProvider = new SESEmailProvider(ses);
-//
-//        ArgumentCaptor<SendEmailRequest> captor = ArgumentCaptor.forClass(SendEmailRequest.class);
-//
-//        EmailNotificationService svc = new EmailNotificationService(awsEmailProvider);
-//
-//        svc.sendEmail(recipients, subject, body);
-//
-//        Mockito.verify(ses, atLeastOnce()).sendEmail(captor.capture());
-//
-//        System.clearProperty("athenz.notification_email_domain_from");
-//        System.clearProperty("athenz.notification_email_domain_to");
-//        System.clearProperty("athenz.notification_email_from");
-//    }
-//
-//    @Test
-//    public void testSendEmailBatch() {
-//        Set<String> recipients = new HashSet<>();
-//        for (int i =0; i<60; i++) {
-//            recipients.add("user.user" + i);
-//        }
-//        String subject = "test email subject";
-//        String body = "test email body";
-//        System.setProperty("athenz.notification_email_domain_from", "example.com");
-//        System.setProperty("athenz.notification_email_domain_to", "example.com");
-//        System.setProperty("athenz.notification_email_from", "no-reply-athenz");
-//
-//        SesV2Client ses = mock(SesV2Client.class);
-//
-//        SendEmailResponse result = mock(SendEmailResponse.class);
-//        Mockito.when(ses.sendEmail(any(SendEmailRequest.class))).thenReturn(result);
-//
-//        ArgumentCaptor<SendEmailRequest> captor = ArgumentCaptor.forClass(SendEmailRequest.class);
-//
-//        SESEmailProvider emailProvider = new SESEmailProvider(ses);
-//        EmailNotificationService svc = new EmailNotificationService(emailProvider);
-//
-//        boolean emailResult = svc.sendEmail(recipients, subject, body);
-//
-//        assertTrue(emailResult);
-//        Mockito.verify(ses, times(2)).sendEmail(captor.capture());
-//
-//        System.clearProperty("athenz.notification_email_domain_from");
-//        System.clearProperty("athenz.notification_email_domain_to");
-//        System.clearProperty("athenz.notification_email_from");
-//    }
-//
-//    @Test
-//    public void testSendEmailBatchError() {
-//        Set<String> recipients = new HashSet<>();
-//        for (int i =0; i<60; i++) {
-//            recipients.add("user.user" + i);
-//        }
-//        String subject = "test email subject";
-//        String body = "test email body";
-//        System.setProperty("athenz.notification_email_domain_from", "example.com");
-//        System.setProperty("athenz.notification_email_domain_to", "example.com");
-//        System.setProperty("athenz.notification_email_from", "no-reply-athenz");
-//
-//        SesV2Client ses = mock(SesV2Client.class);
-//
-//        SendEmailResponse result = mock(SendEmailResponse.class);
-//
-//        Mockito.when(ses.sendEmail(any(SendEmailRequest.class)))
-//                .thenReturn(null)
-//                .thenReturn(result);
-//
-//        ArgumentCaptor<SendEmailRequest> captor = ArgumentCaptor.forClass(SendEmailRequest.class);
-//
-//        SESEmailProvider emailProvider = new SESEmailProvider(ses);
-//        EmailNotificationService svc = new EmailNotificationService(emailProvider);
-//
-//        boolean emailResult = svc.sendEmail(recipients, subject, body);
-//
-//        // First mail will fail so emailResult should be false
-//        assertFalse(emailResult);
-//
-//        // Even though it failed, the second email was sent
-//        Mockito.verify(ses, times(2)).sendEmail(captor.capture());
-//
-//        System.clearProperty("athenz.notification_email_domain_from");
-//        System.clearProperty("athenz.notification_email_domain_to");
-//        System.clearProperty("athenz.notification_email_from");
-//    }
-//
-//    @Test
-//    public void testSendEmailError() {
-//
-//        Set<String> recipients = new HashSet<>(Arrays.asList("user.user1", "user.user2", "user.user3"));
-//        String subject = "test email subject";
-//        String body = "test email body";
-//        System.setProperty("athenz.notification_email_domain_to", "example.com");
-//        System.setProperty("athenz.notification_email_domain_from", "from.example.com");
-//        System.setProperty("athenz.notification_email_from", "no-reply-athenz");
-//
-//        SesV2Client ses = mock(SesV2Client.class);
-//        Mockito.when(ses.sendEmail(any(SendEmailRequest.class))).thenThrow(new RuntimeException());
-//        SESEmailProvider awsEmailProvider = new SESEmailProvider(ses);
-//
-//        EmailNotificationService svc = new EmailNotificationService(awsEmailProvider);
-//
-//        boolean result = svc.sendEmail(recipients, subject, body);
-//        assertFalse(result);
-//
-//        System.clearProperty("athenz.notification_email_domain_from");
-//        System.clearProperty("athenz.notification_email_domain_to");
-//        System.clearProperty("athenz.notification_email_from");
-//    }
-//
-//    @Test
-//    public void testNotify() {
-//
-//        System.setProperty("athenz.notification_email_domain_from", "example.com");
-//        System.setProperty("athenz.notification_email_domain_to", "example.com");
-//        System.setProperty("athenz.notification_email_from", "no-reply-athenz");
-//
-//        SesV2Client ses = mock(SesV2Client.class);
-//        SendEmailResponse result = mock(SendEmailResponse.class);
-//        Mockito.when(ses.sendEmail(any(SendEmailRequest.class))).thenReturn(result);
-//        SESEmailProvider awsEmailProvider = new SESEmailProvider(ses);
-//        EmailNotificationService svc = new EmailNotificationService(awsEmailProvider);
-//
-//        Notification notification = new Notification(Notification.Type.ROLE_MEMBER_EXPIRY);
-//        notification.addRecipient("user.user1").addRecipient("user.user2");
-//        Map<String, String> details = new HashMap<>();
-//        details.put("domain", "dom1");
-//        details.put("role", "role1");
-//        details.put("member", "user.member1");
-//        details.put("reason", "test reason");
-//        details.put("requester", "user.requester");
-//        notification.setDetails(details);
-//
-//        NotificationToEmailConverter notificationToEmailConverter = notificationToConvert -> {
-//            String subject = "test subject";
-//            String body = "test body";
-//            return new NotificationEmail(subject, body, Collections.singleton("athenz@athenz.io"));
-//        };
-//
-//        NotificationToMetricConverter notificationToMetricConverter =
-//                (notificationToConvert, timestamp) -> new NotificationMetric(new ArrayList<>());
-//
-//        notification.setNotificationToEmailConverter(notificationToEmailConverter);
-//        notification.setNotificationToMetricConverter(notificationToMetricConverter);
-//        boolean status = svc.notify(notification);
-//        assertTrue(status);
-//
-//        System.clearProperty("athenz.notification_email_domain_from");
-//        System.clearProperty("athenz.notification_email_domain_to");
-//        System.clearProperty("athenz.notification_email_from");
-//    }
 
     @Test
     public void testAthenzSlackSdkClientNotNull() {
@@ -210,6 +48,28 @@ public class AthenzSlackSdkClientTest {
     }
 
     @Test
+    public void testSendMessageNullToken() throws SlackApiException, IOException {
+        Set<String> recipients = new HashSet<>(Arrays.asList("user.user1", "user.user2", "user.user3"));
+        String message = "test slack message";
+
+        ChatPostMessageResponse chatPostMessageResponse = mock(ChatPostMessageResponse.class);
+        Mockito.when(chatPostMessageResponse.isOk()).thenReturn(false);
+
+        Slack slackClient = mock(Slack.class);
+        MethodsClient slackMethodClient = mock(MethodsClient.class);
+        when(slackMethodClient.chatPostMessage(any(ChatPostMessageRequest.class))).thenReturn(chatPostMessageResponse);
+        when(slackClient.methods(null)).thenReturn(slackMethodClient);
+
+        PrivateKeyStore privateKeyStore = mock(PrivateKeyStore.class);
+        when(privateKeyStore.getSecret(anyString(), anyString(), anyString())).thenReturn(null);
+        ArgumentCaptor<ChatPostMessageRequest> captor = ArgumentCaptor.forClass(ChatPostMessageRequest.class);
+
+        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(privateKeyStore, slackClient);
+        assertFalse(athenzSlackClient.sendMessage(recipients, message));
+        Mockito.verify(slackMethodClient, atLeastOnce()).chatPostMessage(captor.capture());
+    }
+
+    @Test
     public void testSendMessageSuccess() throws SlackApiException, IOException {
         Set<String> recipients = new HashSet<>(Arrays.asList("user.user1", "user.user2", "user.user3"));
         String message = "test slack message";
@@ -217,14 +77,18 @@ public class AthenzSlackSdkClientTest {
         ChatPostMessageResponse chatPostMessageResponse = mock(ChatPostMessageResponse.class);
         Mockito.when(chatPostMessageResponse.isOk()).thenReturn(true);
 
-        MethodsClient slackMethodsClient = mock(MethodsClient.class);
-        when(slackMethodsClient.chatPostMessage(any(ChatPostMessageRequest.class))).thenReturn(chatPostMessageResponse);
+        Slack slackClient = mock(Slack.class);
+        MethodsClient slackMethodClient = mock(MethodsClient.class);
+        when(slackMethodClient.chatPostMessage(any(ChatPostMessageRequest.class))).thenReturn(chatPostMessageResponse);
+        when(slackClient.methods(anyString())).thenReturn(slackMethodClient);
 
+        PrivateKeyStore privateKeyStore = mock(PrivateKeyStore.class);
+        when(privateKeyStore.getSecret(anyString(), anyString(), anyString())).thenReturn("token-1".toCharArray());
         ArgumentCaptor<ChatPostMessageRequest> captor = ArgumentCaptor.forClass(ChatPostMessageRequest.class);
 
-        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(slackMethodsClient);
+        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(privateKeyStore, slackClient);
         assertTrue(athenzSlackClient.sendMessage(recipients, message));
-        Mockito.verify(slackMethodsClient, atLeastOnce()).chatPostMessage(captor.capture());
+        Mockito.verify(slackMethodClient, atLeastOnce()).chatPostMessage(captor.capture());
     }
 
     @Test
@@ -235,14 +99,18 @@ public class AthenzSlackSdkClientTest {
         ChatPostMessageResponse chatPostMessageResponse = mock(ChatPostMessageResponse.class);
         Mockito.when(chatPostMessageResponse.isOk()).thenReturn(false);
 
-        MethodsClient slackMethodsClient = mock(MethodsClient.class);
-        when(slackMethodsClient.chatPostMessage(any(ChatPostMessageRequest.class))).thenReturn(chatPostMessageResponse);
+        Slack slackClient = mock(Slack.class);
+        MethodsClient slackMethodClient = mock(MethodsClient.class);
+        when(slackMethodClient.chatPostMessage(any(ChatPostMessageRequest.class))).thenReturn(chatPostMessageResponse);
+        when(slackClient.methods(anyString())).thenReturn(slackMethodClient);
 
+        PrivateKeyStore privateKeyStore = mock(PrivateKeyStore.class);
+        when(privateKeyStore.getSecret(anyString(), anyString(), anyString())).thenReturn("token-1".toCharArray());
         ArgumentCaptor<ChatPostMessageRequest> captor = ArgumentCaptor.forClass(ChatPostMessageRequest.class);
 
-        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(slackMethodsClient);
+        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(privateKeyStore, slackClient);
         assertFalse(athenzSlackClient.sendMessage(recipients, message));
-        Mockito.verify(slackMethodsClient, atLeastOnce()).chatPostMessage(captor.capture());
+        Mockito.verify(slackMethodClient, atLeastOnce()).chatPostMessage(captor.capture());
     }
 
     @Test
@@ -253,9 +121,14 @@ public class AthenzSlackSdkClientTest {
         MethodsClient slackMethodsClient = mock(MethodsClient.class);
         when(slackMethodsClient.chatPostMessage(any(ChatPostMessageRequest.class))).thenThrow(new IOException());
 
+        Slack slackClient = mock(Slack.class);
+        when(slackClient.methods(anyString())).thenReturn(slackMethodsClient);
+
+        PrivateKeyStore privateKeyStore = mock(PrivateKeyStore.class);
+        when(privateKeyStore.getSecret(anyString(), anyString(), anyString())).thenReturn("token-1".toCharArray());
         ArgumentCaptor<ChatPostMessageRequest> captor = ArgumentCaptor.forClass(ChatPostMessageRequest.class);
 
-        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(slackMethodsClient);
+        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(privateKeyStore, slackClient);
         assertFalse(athenzSlackClient.sendMessage(recipients, message));
         Mockito.verify(slackMethodsClient, atLeastOnce()).chatPostMessage(captor.capture());
     }
@@ -274,10 +147,14 @@ public class AthenzSlackSdkClientTest {
         MethodsClient slackMethodsClient = mock(MethodsClient.class);
 
         when(slackMethodsClient.usersLookupByEmail(any(RequestConfigurator.class))).thenReturn(usersLookupByEmailResponse);
+        Slack slackClient = mock(Slack.class);
+        when(slackClient.methods(anyString())).thenReturn(slackMethodsClient);
+        PrivateKeyStore privateKeyStore = mock(PrivateKeyStore.class);
+        when(privateKeyStore.getSecret(anyString(), anyString(), anyString())).thenReturn("token-1".toCharArray());
 
         ArgumentCaptor<RequestConfigurator> captor = ArgumentCaptor.forClass(RequestConfigurator.class);
 
-        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(slackMethodsClient);
+        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(privateKeyStore, slackClient);
         assertEquals(athenzSlackClient.fetchUserIdFromEmail(message), "slackId");
         Mockito.verify(slackMethodsClient, atLeastOnce()).usersLookupByEmail(captor.capture());
     }
@@ -292,10 +169,14 @@ public class AthenzSlackSdkClientTest {
         MethodsClient slackMethodsClient = mock(MethodsClient.class);
 
         when(slackMethodsClient.usersLookupByEmail(any(RequestConfigurator.class))).thenReturn(usersLookupByEmailResponse);
+        Slack slackClient = mock(Slack.class);
+        when(slackClient.methods(anyString())).thenReturn(slackMethodsClient);
 
         ArgumentCaptor<RequestConfigurator> captor = ArgumentCaptor.forClass(RequestConfigurator.class);
 
-        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(slackMethodsClient);
+        PrivateKeyStore privateKeyStore = mock(PrivateKeyStore.class);
+        when(privateKeyStore.getSecret(anyString(), anyString(), anyString())).thenReturn("token-1".toCharArray());
+        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(privateKeyStore, slackClient);
         assertNull(athenzSlackClient.fetchUserIdFromEmail(message));
         Mockito.verify(slackMethodsClient, atLeastOnce()).usersLookupByEmail(captor.capture());
     }
@@ -310,10 +191,14 @@ public class AthenzSlackSdkClientTest {
         MethodsClient slackMethodsClient = mock(MethodsClient.class);
 
         when(slackMethodsClient.usersLookupByEmail(any(RequestConfigurator.class))).thenThrow(new IOException());
+        Slack slackClient = mock(Slack.class);
+        when(slackClient.methods(anyString())).thenReturn(slackMethodsClient);
 
         ArgumentCaptor<RequestConfigurator> captor = ArgumentCaptor.forClass(RequestConfigurator.class);
+        PrivateKeyStore privateKeyStore = mock(PrivateKeyStore.class);
+        when(privateKeyStore.getSecret(anyString(), anyString(), anyString())).thenReturn("token-1".toCharArray());
 
-        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(slackMethodsClient);
+        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(privateKeyStore, slackClient);
         assertNull(athenzSlackClient.fetchUserIdFromEmail(message));
         Mockito.verify(slackMethodsClient, atLeastOnce()).usersLookupByEmail(captor.capture());
     }

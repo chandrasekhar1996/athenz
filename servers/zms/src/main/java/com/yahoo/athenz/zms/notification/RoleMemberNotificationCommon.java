@@ -35,7 +35,6 @@ import static com.yahoo.athenz.common.server.notification.NotificationServiceCon
 public class RoleMemberNotificationCommon {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RoleMemberNotificationCommon.class);
-    public static final String SLACK_CHANNEL_PREFIX = "channel:";
     private final DBService dbService;
     private final String userDomainPrefix;
     private final NotificationCommon notificationCommon;

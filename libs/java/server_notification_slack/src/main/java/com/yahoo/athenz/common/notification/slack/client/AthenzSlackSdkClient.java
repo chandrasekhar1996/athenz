@@ -1,9 +1,23 @@
+/*
+ * Copyright The Athenz Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.yahoo.athenz.common.notification.slack.client;
 
-import com.slack.api.methods.MethodsClient;
 import com.slack.api.methods.response.users.UsersLookupByEmailResponse;
 import com.yahoo.athenz.auth.PrivateKeyStore;
-import com.yahoo.athenz.common.notification.slack.SlackClient;
 import com.slack.api.Slack;
 import com.slack.api.methods.request.chat.ChatPostMessageRequest;
 import com.slack.api.methods.response.chat.ChatPostMessageResponse;
@@ -17,32 +31,25 @@ import java.util.concurrent.TimeUnit;
 
 import static com.yahoo.athenz.common.notification.slack.SlackNotificationConsts.*;
 
-public class AthenzSlackSdkClient implements SlackClient {
+public class AthenzSlackSdkClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AthenzSlackSdkClient.class);
-    private MethodsClient slackClient;
+    private Slack slackClient;
     private volatile String accessToken;
     private PrivateKeyStore privateKeyStore;
 
-    private void initSlackClient() {
-        // chandu TODO: initialize with access token
-        // also need to handle loading of refreshed tokens
-        // question is if lambda is updating it then the token can be revoked when lambda updates it so it is best to reload when we get auth failure?
-        // or should we do it on a schedule + auth error?
-
-        // add code to retrieve user id from email
-        // which means now the receipent should be detailed as to if it is a channel or user
-        this.slackClient = Slack.getInstance().methods(accessToken);
-    }
-
     public AthenzSlackSdkClient(PrivateKeyStore privateKeyStore) {
         this.privateKeyStore = privateKeyStore;
+        this.slackClient = Slack.getInstance();
         refreshToken();
         refreshTokenTimerTask();
     }
 
-    public AthenzSlackSdkClient(MethodsClient slackClient) {
+    public AthenzSlackSdkClient(PrivateKeyStore privateKeyStore, Slack slackClient) {
         this.slackClient = slackClient;
+        this.privateKeyStore = privateKeyStore;
+        refreshToken();
+        refreshTokenTimerTask();
     }
 
     void refreshToken() {
@@ -69,7 +76,6 @@ public class AthenzSlackSdkClient implements SlackClient {
                 periodBetweenExecutions, periodBetweenExecutions, TimeUnit.SECONDS);
     }
 
-    @Override
     public boolean sendMessage(Collection<String> recipients, String message) {
 
         ChatPostMessageRequest request = ChatPostMessageRequest.builder()
@@ -79,7 +85,7 @@ public class AthenzSlackSdkClient implements SlackClient {
 
         ChatPostMessageResponse response;
         try {
-            response = slackClient.chatPostMessage(request);
+            response = slackClient.methods(accessToken).chatPostMessage(request);
         } catch (Exception e) {
             LOGGER.error("Failed to send message to slack: {}", e.getMessage());
             return false;
@@ -97,7 +103,7 @@ public class AthenzSlackSdkClient implements SlackClient {
     public String fetchUserIdFromEmail(String email)  {
         UsersLookupByEmailResponse response = null;
         try {
-            response = slackClient
+            response = slackClient.methods(accessToken)
                     .usersLookupByEmail(req -> req.email(email));
         } catch (Exception e) {
             LOGGER.error("Unable to lookup user by email: {}", e.getMessage());

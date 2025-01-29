@@ -1,5 +1,6 @@
 package com.yahoo.athenz.common.notification.slack;
 
+import com.yahoo.athenz.common.notification.slack.client.AthenzSlackSdkClient;
 import com.yahoo.athenz.common.server.notification.Notification;
 import com.yahoo.athenz.common.server.notification.NotificationSlackMessage;
 import org.testng.annotations.AfterMethod;
@@ -28,7 +29,7 @@ public class SlackNotificationServiceTest {
 
     @Test
     public void testNotifyNull() {
-        SlackClient slackClient = mock(SlackClient.class);
+        AthenzSlackSdkClient slackClient = mock(AthenzSlackSdkClient.class);
         SlackNotificationService svc = new SlackNotificationService(slackClient);
         boolean status = svc.notify(null);
         assertFalse(status);
@@ -37,7 +38,7 @@ public class SlackNotificationServiceTest {
 
     @Test
     public void testNotifyNoRecipients() {
-        SlackClient slackClient = mock(SlackClient.class);
+        AthenzSlackSdkClient slackClient = mock(AthenzSlackSdkClient.class);
         SlackNotificationService svc = new SlackNotificationService(slackClient);
 
         Notification notification = mock(Notification.class);
@@ -50,7 +51,7 @@ public class SlackNotificationServiceTest {
 
     @Test
     public void testNotifyEmptyMessage() {
-        SlackClient slackClient = mock(SlackClient.class);
+        AthenzSlackSdkClient slackClient = mock(AthenzSlackSdkClient.class);
         SlackNotificationService svc = new SlackNotificationService(slackClient);
 
         Notification notification = mock(Notification.class);
@@ -66,7 +67,7 @@ public class SlackNotificationServiceTest {
         Set<String> recipients = Collections.singleton("recipient");
         String message = "message-1";
 
-        SlackClient slackClient = mock(SlackClient.class);
+        AthenzSlackSdkClient slackClient = mock(AthenzSlackSdkClient.class);
         when(slackClient.sendMessage(recipients, message)).thenReturn(true);
 
         SlackNotificationService svc = new SlackNotificationService(slackClient);
@@ -83,7 +84,7 @@ public class SlackNotificationServiceTest {
         Set<String> recipients = Collections.singleton("recipient");
         String message = "message-1";
 
-        SlackClient slackClient = mock(SlackClient.class);
+        AthenzSlackSdkClient slackClient = mock(AthenzSlackSdkClient.class);
         when(slackClient.sendMessage(recipients, message)).thenReturn(false);
 
         SlackNotificationService svc = new SlackNotificationService(slackClient);
