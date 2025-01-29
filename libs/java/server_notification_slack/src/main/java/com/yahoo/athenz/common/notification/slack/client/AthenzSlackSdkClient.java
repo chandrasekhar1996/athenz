@@ -37,10 +37,14 @@ public class AthenzSlackSdkClient {
     private Slack slackClient;
     private volatile String accessToken;
     private PrivateKeyStore privateKeyStore;
+    private final int maxRetries;
+    private final long rateLimitDelay;
 
     public AthenzSlackSdkClient(PrivateKeyStore privateKeyStore) {
         this.privateKeyStore = privateKeyStore;
         this.slackClient = Slack.getInstance();
+        this.maxRetries = Integer.parseInt(System.getProperty("athenz.slack.max_retries", "3"));
+        this.rateLimitDelay = Long.parseLong(System.getProperty("athenz.slack.rate_limit_delay_ms", "1000"));
         refreshToken();
         refreshTokenTimerTask();
     }
@@ -48,6 +52,8 @@ public class AthenzSlackSdkClient {
     public AthenzSlackSdkClient(PrivateKeyStore privateKeyStore, Slack slackClient) {
         this.slackClient = slackClient;
         this.privateKeyStore = privateKeyStore;
+        this.maxRetries = Integer.parseInt(System.getProperty("athenz.slack.max_retries", "3"));
+        this.rateLimitDelay = Long.parseLong(System.getProperty("athenz.slack.rate_limit_delay_ms", "1000"));
         refreshToken();
         refreshTokenTimerTask();
     }
@@ -77,46 +83,103 @@ public class AthenzSlackSdkClient {
     }
 
     public boolean sendMessage(Collection<String> recipients, String message) {
+        boolean allSuccessful = true;
+        for (String recipient : recipients) {
+            String destination = recipient;
 
+            // If recipient looks like an email address, fetch the user ID
+            if (recipient.contains("@")) {
+                destination = fetchUserIdFromEmail(recipient);
+                if (destination == null) {
+                    LOGGER.error("Failed to find user ID for email: {}", recipient);
+                    allSuccessful = false;
+                    continue;
+                }
+            }
+
+            if (!sendMessageToDestination(destination, message, maxRetries)) {
+                allSuccessful = false;
+            }
+        }
+        return allSuccessful;
+    }
+
+    private boolean sendMessageToDestination(String destination, String message, int retriesLeft) {
         ChatPostMessageRequest request = ChatPostMessageRequest.builder()
-                .channel("#random")
+                .channel(destination)
                 .blocksAsString(message)
                 .build();
 
-        ChatPostMessageResponse response;
         try {
-            response = slackClient.methods(accessToken).chatPostMessage(request);
-        } catch (Exception e) {
-            LOGGER.error("Failed to send message to slack: {}", e.getMessage());
-            return false;
-        }
+            ChatPostMessageResponse response = slackClient.methods(accessToken).chatPostMessage(request);
 
-        if (response.isOk()) {
-            return true;
-        } else {
-            LOGGER.error("Failed to send message to slack: {}", response.getError());
+            if (response.isOk()) {
+                return true;
+            }
+
+            if (handleSlackResponse(response.getError(), retriesLeft, "send message")) {
+                return sendMessageToDestination(destination, message, retriesLeft - 1);
+            }
+
+            LOGGER.error("Failed to send message to slack destination {}: {}", destination, response.getError());
+            return false;
+
+        } catch (Exception e) {
+            LOGGER.error("Failed to send message to slack destination {}: {}", destination, e.getMessage());
             return false;
         }
     }
 
-
-    public String fetchUserIdFromEmail(String email)  {
-        UsersLookupByEmailResponse response = null;
-        try {
-            response = slackClient.methods(accessToken)
-                    .usersLookupByEmail(req -> req.email(email));
-        } catch (Exception e) {
-            LOGGER.error("Unable to lookup user by email: {}", e.getMessage());
-            return null;
+    private boolean handleSlackResponse(String error, int retriesLeft, String operation) {
+        if (retriesLeft <= 0) {
+            return false;
         }
 
-        if (response.isOk()) {
-            return response.getUser().getId();
-        } else {
+        try {
+            if ("invalid_auth".equals(error)) {
+                LOGGER.warn("Token expired during {}, refreshing and retrying... ({} retries left)",
+                        operation, retriesLeft - 1);
+                refreshToken();
+                return true;
+            }
+
+            if ("ratelimited".equals(error)) {
+                LOGGER.warn("Rate limited during {}, retrying after {}ms delay... ({} retries left)",
+                        operation, rateLimitDelay, retriesLeft - 1);
+                Thread.sleep(rateLimitDelay);
+                return true;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.error("Interrupted while handling retry for {}", operation);
+        }
+        return false;
+    }
+
+    public String fetchUserIdFromEmail(String email) {
+        return fetchUserIdFromEmailWithRetry(email, maxRetries);
+    }
+
+    private String fetchUserIdFromEmailWithRetry(String email, int retriesLeft) {
+        try {
+            UsersLookupByEmailResponse response = slackClient.methods(accessToken)
+                    .usersLookupByEmail(req -> req.email(email));
+
+            if (response.isOk()) {
+                return response.getUser().getId();
+            }
+
+            if (handleSlackResponse(response.getError(), retriesLeft, "fetch user ID")) {
+                return fetchUserIdFromEmailWithRetry(email, retriesLeft - 1);
+            }
+
             LOGGER.error("Unable to lookup slack user ID by email: {}", response.getError());
+            return null;
+
+        } catch (Exception e) {
+            LOGGER.error("Unable to lookup user by email: {}", e.getMessage());
             return null;
         }
     }
 
 }
-

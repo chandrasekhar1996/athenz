@@ -31,6 +31,8 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.mock;
@@ -202,6 +204,230 @@ public class AthenzSlackSdkClientTest {
         assertNull(athenzSlackClient.fetchUserIdFromEmail(message));
         Mockito.verify(slackMethodsClient, atLeastOnce()).usersLookupByEmail(captor.capture());
     }
+
+    @Test
+    public void testSendMessageWithTokenExpiration() throws SlackApiException, IOException {
+        Set<String> recipients = new HashSet<>(Arrays.asList("user.user1", "user.user2"));
+        String message = "test slack message";
+
+        // First response with expired token
+        ChatPostMessageResponse failedResponse = mock(ChatPostMessageResponse.class);
+        when(failedResponse.isOk()).thenReturn(false);
+        when(failedResponse.getError()).thenReturn("invalid_auth");
+
+        // Second response after token refresh
+        ChatPostMessageResponse successResponse = mock(ChatPostMessageResponse.class);
+        when(successResponse.isOk()).thenReturn(true);
+
+        MethodsClient slackMethodClient = mock(MethodsClient.class);
+        when(slackMethodClient.chatPostMessage(any(ChatPostMessageRequest.class)))
+                .thenReturn(failedResponse)  // First attempt fails
+                .thenReturn(successResponse); // Second attempt succeeds
+
+        Slack slackClient = mock(Slack.class);
+        when(slackClient.methods(anyString())).thenReturn(slackMethodClient);
+
+        PrivateKeyStore privateKeyStore = mock(PrivateKeyStore.class);
+        when(privateKeyStore.getSecret(anyString(), anyString(), anyString()))
+                .thenReturn("token-1".toCharArray())
+                .thenReturn("token-2".toCharArray()); // New token after refresh
+
+        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(privateKeyStore, slackClient);
+        assertTrue(athenzSlackClient.sendMessage(recipients, message));
+
+        // Verify that chatPostMessage was called thrice
+        verify(slackMethodClient, times(3)).chatPostMessage(any(ChatPostMessageRequest.class));
+        // Verify that token was refreshed
+        verify(privateKeyStore, times(2)).getSecret(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    public void testSendMessageWithRateLimit() throws SlackApiException, IOException {
+        Set<String> recipients = new HashSet<>(Arrays.asList("user.user1", "user.user2"));
+        String message = "test slack message";
+
+        // First response with rate limit
+        ChatPostMessageResponse rateLimitResponse = mock(ChatPostMessageResponse.class);
+        when(rateLimitResponse.isOk()).thenReturn(false);
+        when(rateLimitResponse.getError()).thenReturn("ratelimited");
+
+        // Second response after delay
+        ChatPostMessageResponse successResponse = mock(ChatPostMessageResponse.class);
+        when(successResponse.isOk()).thenReturn(true);
+
+        MethodsClient slackMethodClient = mock(MethodsClient.class);
+        when(slackMethodClient.chatPostMessage(any(ChatPostMessageRequest.class)))
+                .thenReturn(rateLimitResponse)  // First attempt fails
+                .thenReturn(successResponse);   // Second attempt succeeds
+
+        Slack slackClient = mock(Slack.class);
+        when(slackClient.methods(anyString())).thenReturn(slackMethodClient);
+
+        PrivateKeyStore privateKeyStore = mock(PrivateKeyStore.class);
+        when(privateKeyStore.getSecret(anyString(), anyString(), anyString()))
+                .thenReturn("token-1".toCharArray());
+
+        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(privateKeyStore, slackClient);
+        assertTrue(athenzSlackClient.sendMessage(recipients, message));
+
+        // Verify that chatPostMessage was called twice
+        verify(slackMethodClient, times(3)).chatPostMessage(any(ChatPostMessageRequest.class));
+    }
+
+    @Test
+    public void testFetchUserIdFromEmailWithTokenExpiration() throws SlackApiException, IOException {
+        String email = "test@example.com";
+
+        // First response with expired token
+        UsersLookupByEmailResponse failedResponse = mock(UsersLookupByEmailResponse.class);
+        when(failedResponse.isOk()).thenReturn(false);
+        when(failedResponse.getError()).thenReturn("invalid_auth");
+
+        // Second response after token refresh
+        UsersLookupByEmailResponse successResponse = mock(UsersLookupByEmailResponse.class);
+        when(successResponse.isOk()).thenReturn(true);
+        User user = new User();
+        user.setId("U123456");
+        when(successResponse.getUser()).thenReturn(user);
+
+        MethodsClient slackMethodClient = mock(MethodsClient.class);
+        when(slackMethodClient.usersLookupByEmail(any(RequestConfigurator.class)))
+                .thenReturn(failedResponse)
+                .thenReturn(successResponse);
+
+        Slack slackClient = mock(Slack.class);
+        when(slackClient.methods(anyString())).thenReturn(slackMethodClient);
+
+        PrivateKeyStore privateKeyStore = mock(PrivateKeyStore.class);
+        when(privateKeyStore.getSecret(anyString(), anyString(), anyString()))
+                .thenReturn("token-1".toCharArray())
+                .thenReturn("token-2".toCharArray());
+
+        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(privateKeyStore, slackClient);
+        assertEquals(athenzSlackClient.fetchUserIdFromEmail(email), "U123456");
+
+        // Verify that usersLookupByEmail was called twice
+        verify(slackMethodClient, times(2)).usersLookupByEmail(any(RequestConfigurator.class));
+        // Verify that token was refreshed
+        verify(privateKeyStore, times(2)).getSecret(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    public void testMaxRetriesExceeded() throws SlackApiException, IOException {
+        Set<String> recipients = new HashSet<>(Arrays.asList("user.user1"));
+        String message = "test slack message";
+
+        // All responses fail with rate limit
+        ChatPostMessageResponse rateLimitResponse = mock(ChatPostMessageResponse.class);
+        when(rateLimitResponse.isOk()).thenReturn(false);
+        when(rateLimitResponse.getError()).thenReturn("ratelimited");
+
+        MethodsClient slackMethodClient = mock(MethodsClient.class);
+        when(slackMethodClient.chatPostMessage(any(ChatPostMessageRequest.class)))
+                .thenReturn(rateLimitResponse);
+
+        Slack slackClient = mock(Slack.class);
+        when(slackClient.methods(anyString())).thenReturn(slackMethodClient);
+
+        PrivateKeyStore privateKeyStore = mock(PrivateKeyStore.class);
+        when(privateKeyStore.getSecret(anyString(), anyString(), anyString()))
+                .thenReturn("token-1".toCharArray());
+
+        // Set max retries to 2 via system property
+        System.setProperty("athenz.slack.max_retries", "2");
+        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(privateKeyStore, slackClient);
+
+        assertFalse(athenzSlackClient.sendMessage(recipients, message));
+
+        // Verify that chatPostMessage was called exactly 3 times (initial + 2 retries)
+        verify(slackMethodClient, times(3)).chatPostMessage(any(ChatPostMessageRequest.class));
+    }
+
+    @Test
+    public void testSendMessageToChannelsAndEmails() throws SlackApiException, IOException {
+        Set<String> recipients = new HashSet<>(Arrays.asList("channel1", "test@example.com", "channel2"));
+        String message = "test slack message";
+
+        // Success response for channel messages
+        ChatPostMessageResponse channelResponse = mock(ChatPostMessageResponse.class);
+        when(channelResponse.isOk()).thenReturn(true);
+
+        // Email lookup response
+        UsersLookupByEmailResponse emailResponse = mock(UsersLookupByEmailResponse.class);
+        when(emailResponse.isOk()).thenReturn(true);
+        User user = new User();
+        user.setId("U123456");
+        when(emailResponse.getUser()).thenReturn(user);
+
+        MethodsClient slackMethodClient = mock(MethodsClient.class);
+        when(slackMethodClient.chatPostMessage(any(ChatPostMessageRequest.class)))
+                .thenReturn(channelResponse);
+        when(slackMethodClient.usersLookupByEmail(any(RequestConfigurator.class)))
+                .thenReturn(emailResponse);
+
+        Slack slackClient = mock(Slack.class);
+        when(slackClient.methods(anyString())).thenReturn(slackMethodClient);
+
+        PrivateKeyStore privateKeyStore = mock(PrivateKeyStore.class);
+        when(privateKeyStore.getSecret(anyString(), anyString(), anyString()))
+                .thenReturn("token-1".toCharArray());
+
+        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(privateKeyStore, slackClient);
+        assertTrue(athenzSlackClient.sendMessage(recipients, message));
+
+        // Verify email lookup was called once
+        verify(slackMethodClient, times(1)).usersLookupByEmail(any(RequestConfigurator.class));
+        // Verify message was sent three times (2 channels + 1 user)
+        verify(slackMethodClient, times(3)).chatPostMessage(any(ChatPostMessageRequest.class));
+
+        // Verify the correct destinations were used
+        ArgumentCaptor<ChatPostMessageRequest> requestCaptor = ArgumentCaptor.forClass(ChatPostMessageRequest.class);
+        verify(slackMethodClient, times(3)).chatPostMessage(requestCaptor.capture());
+        List<ChatPostMessageRequest> capturedRequests = requestCaptor.getAllValues();
+        Set<String> destinations = capturedRequests.stream()
+                .map(ChatPostMessageRequest::getChannel)
+                .collect(Collectors.toSet());
+        assertTrue(destinations.containsAll(Arrays.asList("channel1", "U123456", "channel2")));
+    }
+
+    @Test
+    public void testSendMessageWithFailedEmailLookup() throws SlackApiException, IOException {
+        Set<String> recipients = new HashSet<>(Arrays.asList("channel1", "invalid@example.com"));
+        String message = "test slack message";
+
+        // Success response for channel message
+        ChatPostMessageResponse channelResponse = mock(ChatPostMessageResponse.class);
+        when(channelResponse.isOk()).thenReturn(true);
+
+        // Failed email lookup response
+        UsersLookupByEmailResponse emailResponse = mock(UsersLookupByEmailResponse.class);
+        when(emailResponse.isOk()).thenReturn(false);
+        when(emailResponse.getError()).thenReturn("users_not_found");
+
+        MethodsClient slackMethodClient = mock(MethodsClient.class);
+        when(slackMethodClient.chatPostMessage(any(ChatPostMessageRequest.class)))
+                .thenReturn(channelResponse);
+        when(slackMethodClient.usersLookupByEmail(any(RequestConfigurator.class)))
+                .thenReturn(emailResponse);
+
+        Slack slackClient = mock(Slack.class);
+        when(slackClient.methods(anyString())).thenReturn(slackMethodClient);
+
+        PrivateKeyStore privateKeyStore = mock(PrivateKeyStore.class);
+        when(privateKeyStore.getSecret(anyString(), anyString(), anyString()))
+                .thenReturn("token-1".toCharArray());
+
+        AthenzSlackSdkClient athenzSlackClient = new AthenzSlackSdkClient(privateKeyStore, slackClient);
+        assertFalse(athenzSlackClient.sendMessage(recipients, message));
+
+        // Verify email lookup was attempted
+        verify(slackMethodClient, times(1)).usersLookupByEmail(any(RequestConfigurator.class));
+        // Verify message was sent only to the channel
+        verify(slackMethodClient, times(1)).chatPostMessage(any(ChatPostMessageRequest.class));
+
+        // Verify the correct destination was used
+        ArgumentCaptor<ChatPostMessageRequest> requestCaptor = ArgumentCaptor.forClass(ChatPostMessageRequest.class);
+        verify(slackMethodClient, times(1)).chatPostMessage(requestCaptor.capture());
+        assertEquals("channel1", requestCaptor.getValue().getChannel());
+    }
 }
-
-
