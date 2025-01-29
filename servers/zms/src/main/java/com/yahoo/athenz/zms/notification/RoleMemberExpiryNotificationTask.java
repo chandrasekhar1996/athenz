@@ -294,14 +294,53 @@ public class RoleMemberExpiryNotificationTask implements NotificationTask {
 
     public static class RoleExpiryDomainNotificationToSlackMessageConverter implements NotificationToSlackMessageConverter {
 
-        private static final String SLACK_TEMPLATE_DOMAIN_MEMBER_EXPIRY = "messages/slack-domain-role-member-expiry.ftl";
+        private static final String SLACK_TEMPLATE_DOMAIN_MEMBER_EXPIRY = "messages/domain-slack-role-member-expiry.ftl";
         private final NotificationToEmailConverterCommon notificationConverterCommon;
-        private final String slackDomainAdminExpiryTemplate;
+        private final String slackDomainMemberExpiryTemplate;
 
         public RoleExpiryDomainNotificationToSlackMessageConverter(NotificationToEmailConverterCommon notificationConverterCommon) {
             this.notificationConverterCommon = notificationConverterCommon;
-            slackDomainAdminExpiryTemplate = notificationConverterCommon.readContentFromFile(
+            slackDomainMemberExpiryTemplate = notificationConverterCommon.readContentFromFile(
                     getClass().getClassLoader(), SLACK_TEMPLATE_DOMAIN_MEMBER_EXPIRY);
+        }
+
+        private String getPrincipalExpirySlackMessage(Map<String, String> metaDetails) {
+            if (metaDetails == null) {
+                return null;
+            }
+
+            Map<String, Object> rootDataModel = new HashMap<>();
+            List<Map<String, String>> roleDataModel = new ArrayList<>();
+
+            String[] roles = metaDetails.get(NOTIFICATION_DETAILS_MEMBERS_LIST).split("\\|");
+            for (String role: roles) {
+                String[] roleDetails = role.split(";");
+
+                if (roleDetails.length != TEMPLATE_COLUMN_NAMES.length) {
+                    LOGGER.error("Invalid role details: {}", role);
+                    continue;
+                }
+
+                Map<String, String> roleMap = new HashMap<>();
+
+                String domainName = roleDetails[0];
+                String roleName = roleDetails[1];
+
+                roleMap.put("domain", domainName);
+                roleMap.put("role", roleName);
+                roleMap.put("member", roleDetails[2]);
+                roleMap.put("expiration", roleDetails[3]);
+                roleMap.put("notes", roleDetails[4]);
+
+                roleMap.put("roleLink", notificationConverterCommon.getRoleLink(domainName, roleName));
+                roleMap.put("domainLink", notificationConverterCommon.getDomainLink(domainName));
+                roleDataModel.add(roleMap);
+            }
+            rootDataModel.put("roleData", roleDataModel);
+
+            return notificationConverterCommon.generateSlackMessageFromTemplate(
+                    rootDataModel,
+                    slackDomainMemberExpiryTemplate);
         }
 
         @Override
@@ -310,13 +349,10 @@ public class RoleMemberExpiryNotificationTask implements NotificationTask {
                 return null;
             }
 
-            Map<String, String> metaDetails = notification.getDetails();
-//            notificationConverterCommon.generateSlackMessageFromTemplate(
-//                    metaDetails,
-//                    slackDomainAdminExpiryTemplate,
-//                    NOTIFICATION_DETAILS_DOMAIN,
-//                    NOTIFICATION_DETAILS_MEMBERS_LIST, TEMPLATE_COLUMN_NAMES.length);
-            return null;
+            String slackMessageContent = getPrincipalExpirySlackMessage(notification.getDetails());
+            Set<String> slackRecipients = notificationConverterCommon.processSlackRecipients(notification.getRecipients());
+            return new NotificationSlackMessage(
+                    slackMessageContent,
+                    slackRecipients);
         }
-    }
 }

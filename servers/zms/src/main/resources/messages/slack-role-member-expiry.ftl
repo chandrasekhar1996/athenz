@@ -1,4 +1,5 @@
-[
+{
+"blocks": [
 {
 "type": "header",
 "text": {
@@ -11,52 +12,51 @@
 "type": "section",
 "text": {
 "type": "mrkdwn",
-"text": "Please review this list and, if necessary, follow up with the respective domain administrators to extend those expiration dates.",
+"text": "Access for the principals you manage in the listed roles will expire soon. Failure to extend the expiry for these principals before the listed date will cause these principals to lose access to the configured resources and likely result in a production incident.\n Please review this list and, if necessary, follow up with their respective domain administrators to extend those expiration dates.\n If the domain administrator has specified any details how to extend the expiry, they will be included in the NOTES column.\n If the domain administrator has not specified any details, but the role is marked as a self-serve role, you can click on the role name and request an extension for your principals yourself using Athenz UI.",
 "verbatim": false
 }
 },
 {
 "type": "divider"
 }
-<#list . as role>
-,
-{
+<#list roleData as item>
+    ,{
     "type": "section",
     "text": {
-        "type": "mrkdwn",
-        "text": "*<${role.roleLink}|${role.roleName}>*"
+    "type": "mrkdwn",
+    "text": "*<${item["roleLink"]}|${item["domain"]}:role.${item["role"]}>*"
     }
-},
-{
+    },
+    {
     "type": "section",
     "fields": [
-        {
-            "type": "mrkdwn",
-            "text": "*Domain:*\n<${role.domainLink}|${role.domain}>"
-        },
-        {
-            "type": "mrkdwn",
-            "text": "*Expiration:*\n${role.expiration}"
-        },
-        {
-            "type": "mrkdwn",
-            "text": "*Role:*\n<${role.roleLink}|${role.roleName}>"
-        },
-        {
-            "type": "mrkdwn",
-            "text": "*Member:*\n${role.member}"
+    {
+    "type": "mrkdwn",
+    "text": "*Domain:*\n<${item["domainLink"]}|${item["domain"]}>"
+    },
+    {
+    "type": "mrkdwn",
+    "text": "*Expiration:*\n${item["expiration"]}"
+    },
+    {
+    "type": "mrkdwn",
+    "text": "*Role:*\n<${item["roleLink"]}|${item["role"]}>"
+    },
+    {
+    "type": "mrkdwn",
+    "text": "*Member:*\n${item["member"]}"
+    }
+    <#if item["notes"]?has_content>
+        ,{
+        "type": "mrkdwn",
+        "text": "*Notes:*\n${item["notes"]}"
         }
-        <#if role.notes?has_content>
-        ,
-        {
-            "type": "mrkdwn",
-            "text": "*Notes:*\n${role.notes}"
-        }
-        </#if>
+    </#if>
     ]
-},
-{
+    },
+    {
     "type": "divider"
-}
+    }
 </#list>
 ]
+}
