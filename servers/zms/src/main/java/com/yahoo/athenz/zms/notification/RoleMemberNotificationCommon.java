@@ -315,7 +315,6 @@ public class RoleMemberNotificationCommon {
         }
     }
 
-    // CHANDU role details in string
     private Map<String, String> processRoleReminder(Map<String, List<MemberRole>> domainAdminMap,
             DomainRoleMember member, RoleMemberDetailStringer roleMemberDetailStringer,
             DisableRoleMemberNotificationFilter disableRoleMemberNotificationFilter) {
@@ -358,7 +357,6 @@ public class RoleMemberNotificationCommon {
             final String domainName = memberRole.getDomainName();
 
             // first we're going to update our expiry details string
-
             if (!disabledNotificationState.contains(DisableNotificationEnum.USER)) {
                 if (memberRolesDetails.length() != 0) {
                     memberRolesDetails.append('|');

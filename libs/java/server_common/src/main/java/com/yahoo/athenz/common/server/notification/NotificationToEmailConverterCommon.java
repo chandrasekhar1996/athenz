@@ -17,6 +17,11 @@
 package com.yahoo.athenz.common.server.notification;
 
 import com.yahoo.athenz.auth.Authority;
+import com.yahoo.athenz.auth.util.StringUtils;
+import freemarker.cache.StringTemplateLoader;
+import freemarker.template.Configuration;
+import freemarker.template.Template;
+import freemarker.template.TemplateExceptionHandler;
 import org.eclipse.jetty.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.StringWriter;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -31,6 +37,8 @@ import java.text.MessageFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static com.yahoo.athenz.common.server.notification.NotificationServiceConstants.SLACK_CHANNEL_PREFIX;
 
 public class NotificationToEmailConverterCommon {
     private static final Logger LOGGER = LoggerFactory.getLogger(NotificationToEmailConverterCommon.class);
@@ -273,5 +281,74 @@ public class NotificationToEmailConverterCommon {
 
     public String getAthenzUIUrl() {
         return athenzUIUrl;
+    }
+
+    public String generateSlackMessageFromTemplate(Map<String, Object> dataModel, String templateContent) {
+
+        Configuration cfg = new Configuration(Configuration.VERSION_2_3_31);
+        try {
+            cfg.setDefaultEncoding("UTF-8");
+            cfg.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
+            cfg.setLogTemplateExceptions(false);
+            cfg.setWrapUncheckedExceptions(true);
+
+            StringTemplateLoader stringLoader = new StringTemplateLoader();
+
+            String templateName = "slackBlocksTemplate";
+            stringLoader.putTemplate(templateName, templateContent);
+            cfg.setTemplateLoader(stringLoader);
+
+            Template template = cfg.getTemplate("slackBlocksTemplate");
+            StringWriter out = new StringWriter();
+            template.process(dataModel, out);
+
+            return out.toString();
+        } catch (Exception e) {
+            LOGGER.error("Error processing FreeMarker template: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    public String getDomainLink(String domainName) {
+        if (StringUtils.isEmpty(athenzUIUrl)) {
+            return "";
+        }
+        return athenzUIUrl + "/domain/" + domainName;
+    }
+
+    public String getRoleLink(String domainName, String roleName) {
+        if (StringUtils.isEmpty(athenzUIUrl)) {
+            return "";
+        }
+        return athenzUIUrl + "/domain/" + domainName + "/role/" + roleName + "/members";
+    }
+
+    public String getGroupLink(String domainName, String groupName) {
+        if (StringUtils.isEmpty(athenzUIUrl)) {
+            return "";
+        }
+        return athenzUIUrl + "/domain/" + domainName + "/group/" + groupName + "/members";
+    }
+
+    public Set<String> processSlackRecipients(Set<String> recipients) {
+        // if recipient is user id then convert to email address which can be used to lookup user
+        // if recipient is channel then remove the hardcoded prefix channel: from the recipient
+        Set<String> slackRecipients = new HashSet<>();
+        Set<String> userIds = new HashSet<>();
+
+        // Divide recipients into slack channels and user IDs
+        for (String recipient : recipients) {
+            if (recipient.startsWith(SLACK_CHANNEL_PREFIX)) {
+                slackRecipients.add(recipient.substring(SLACK_CHANNEL_PREFIX.length()));
+            } else {
+                userIds.add(recipient);
+            }
+        }
+
+        // Convert user IDs to email addresses
+        Set<String> emailAddresses = getFullyQualifiedEmailAddresses(userIds);
+
+        slackRecipients.addAll(emailAddresses);
+        return slackRecipients;
     }
 }

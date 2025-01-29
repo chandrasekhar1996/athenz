@@ -678,7 +678,6 @@ public class RoleMemberNotificationCommonTest {
         assertNotNull(consolidatedMembers.get("channel:slack-prod-channel"));
     }
 
-    // TODO CHANDU
     @Test
     public void testExpiryPrincipalGetNotificationDetailsWithGroupsSlack() {
 
@@ -695,9 +694,8 @@ public class RoleMemberNotificationCommonTest {
         Mockito.when(dbsvc.getGroup("athenz", "dev-team", Boolean.FALSE, Boolean.FALSE))
                 .thenReturn(devGroup);
 
-        Domain domain = new Domain().setName("athenz").setSlackChannel("#slack-dev-channel");
+        Domain domain = new Domain().setName("athenz").setSlackChannel("slack-dev-channel");
         Mockito.when(dbsvc.getDomain("athenz", false)).thenReturn(domain);
-
 
         Role adminRole = new Role().setName("athenz:role.admin");
         adminRole.setRoleMembers(Collections.singletonList(new RoleMember().setMemberName("user.user1")));
@@ -740,41 +738,39 @@ public class RoleMemberNotificationCommonTest {
         members.put("sports:group.qa-team", groupMember2);
 
         List<Notification> notifications = roleMemberNotificationCommon.getNotificationDetails(
-                Notification.Type.ROLE_MEMBER_EXPIRY, members,
+                Notification.Type.ROLE_MEMBER_EXPIRY, Notification.ChannelType.SLACK, members,
                 new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
                 new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
                 new RoleMemberExpiryNotificationTask.ExpiryRoleMemberDetailStringer(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToMetricConverter(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToMetricConverter(),
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToSlackMessageConverter(notificationToEmailConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToSlackMessageConverter(notificationToEmailConverterCommon),
+
                 memberRole -> DisableNotificationEnum.getEnumSet(0));
 
-        assertEquals(notifications.size(), 4);
+        assertEquals(notifications.size(), 3);
         for (Notification notification : notifications) {
             assertEquals(notification.getRecipients().size(), 1);
             final String principal = notification.getRecipients().iterator().next();
             switch (principal) {
-                case "user.user1":
+                case "user.user3":
+                    assertEquals(notification.getDetails().size(), 2);
+                    assertEquals(notification.getDetails().get(NOTIFICATION_DETAILS_ROLES_LIST),
+                            "sports;role2;sports:group.qa-team;null;");
+                    assertEquals(notification.getDetails().get(NOTIFICATION_DETAILS_MEMBER), "user.user3");
+                    break;
+                case "channel:slack-dev-channel":
                     if (notification.getDetails().size() == 1) {
                         assertEquals(notification.getDetails().get(NOTIFICATION_DETAILS_MEMBERS_LIST),
                                 "athenz;role1;athenz:group.dev-team;null;");
                     } else if (notification.getDetails().size() == 2) {
                         assertEquals(notification.getDetails().get(NOTIFICATION_DETAILS_ROLES_LIST),
                                 "athenz;role1;athenz:group.dev-team;null;");
-                        assertEquals(notification.getDetails().get(NOTIFICATION_DETAILS_MEMBER), "user.user1");
+                        assertEquals(notification.getDetails().get(NOTIFICATION_DETAILS_MEMBER), "channel:slack-dev-channel");
                     } else {
                         fail();
                     }
-                    break;
-                case "user.user2":
-                    assertEquals(notification.getDetails().size(), 1);
-                    assertEquals(notification.getDetails().get(NOTIFICATION_DETAILS_MEMBERS_LIST),
-                            "sports;role2;sports:group.qa-team;null;");
-                    break;
-                case "user.user3":
-                    assertEquals(notification.getDetails().size(), 2);
-                    assertEquals(notification.getDetails().get(NOTIFICATION_DETAILS_ROLES_LIST),
-                            "sports;role2;sports:group.qa-team;null;");
-                    assertEquals(notification.getDetails().get(NOTIFICATION_DETAILS_MEMBER), "user.user3");
                     break;
                 default:
                     fail("unexpected principal: " + principal);

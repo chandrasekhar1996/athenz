@@ -8,15 +8,6 @@
 }
 },
 {
-"type": "context",
-"elements": [
-{
-"type": "mrkdwn",
-"text": "*${notificationDate?string("MMMM d, yyyy")}*"
-}
-]
-},
-{
 "type": "section",
 "text": {
 "type": "mrkdwn",
@@ -27,45 +18,45 @@
 {
 "type": "divider"
 }
-<#list roles as role>
-    ,
-    {
+<#list . as role>
+,
+{
     "type": "section",
     "text": {
-    "type": "mrkdwn",
-    "text": "*<${role.roleLink}|${role.roleName}>*"
+        "type": "mrkdwn",
+        "text": "*<${role.roleLink}|${role.roleName}>*"
     }
-    },
-    {
+},
+{
     "type": "section",
     "fields": [
-    {
-    "type": "mrkdwn",
-    "text": "*Domain:*\n<${role.domainLink}|${role.domain}>"
-    },
-    {
-    "type": "mrkdwn",
-    "text": "*Expiration:*\n${role.expiration}"
-    },
-    {
-    "type": "mrkdwn",
-    "text": "*Role:*\n<${role.roleLink}|${role.roleShortName}>"
-    },
-    {
-    "type": "mrkdwn",
-    "text": "*Member:*\n${role.member}"
-    }
-    <#if role.notes?has_content>
+        {
+            "type": "mrkdwn",
+            "text": "*Domain:*\n<${role.domainLink}|${role.domain}>"
+        },
+        {
+            "type": "mrkdwn",
+            "text": "*Expiration:*\n${role.expiration}"
+        },
+        {
+            "type": "mrkdwn",
+            "text": "*Role:*\n<${role.roleLink}|${role.roleName}>"
+        },
+        {
+            "type": "mrkdwn",
+            "text": "*Member:*\n${role.member}"
+        }
+        <#if role.notes?has_content>
         ,
         {
-        "type": "mrkdwn",
-        "text": "*Notes:*\n${role.notes}"
+            "type": "mrkdwn",
+            "text": "*Notes:*\n${role.notes}"
         }
-    </#if>
+        </#if>
     ]
-    },
-    {
+},
+{
     "type": "divider"
-    }
+}
 </#list>
 ]

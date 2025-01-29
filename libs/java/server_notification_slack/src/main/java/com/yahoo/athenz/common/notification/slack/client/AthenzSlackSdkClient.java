@@ -73,7 +73,7 @@ public class AthenzSlackSdkClient implements SlackClient {
     public boolean sendMessage(Collection<String> recipients, String message) {
 
         ChatPostMessageRequest request = ChatPostMessageRequest.builder()
-                .channel("#random") // Use a channel ID `C1234567` is preferable
+                .channel("#random")
                 .blocksAsString(message)
                 .build();
 
