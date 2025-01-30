@@ -144,6 +144,7 @@ public class NotificationManager {
             for (NotificationTask notificationTask: notificationTasks) {
                 try {
                     List<Notification> notifications = notificationTask.getNotifications();
+
                     notifications.stream()
                             .filter(Objects::nonNull)
                             .forEach(notification -> notificationServices.forEach(service -> {

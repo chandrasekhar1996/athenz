@@ -162,8 +162,9 @@ public class NotificationManagerTest {
 
         NotificationToEmailConverter converter = Mockito.mock(NotificationToEmailConverter.class);
         NotificationToMetricConverter metricConverter = Mockito.mock(NotificationToMetricConverter.class);
+        NotificationToSlackMessageConverter slackMessageConverter = Mockito.mock(NotificationToSlackMessageConverter.class);
         Notification notification = notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
-                recipients, details, converter, metricConverter);
+                recipients, details, converter, metricConverter, slackMessageConverter);
         assertNotNull(notification);
 
         assertTrue(notification.getRecipients().contains("user.recipient1"));
@@ -189,8 +190,9 @@ public class NotificationManagerTest {
 
         NotificationToEmailConverter converter = Mockito.mock(NotificationToEmailConverter.class);
         NotificationToMetricConverter metricConverter = Mockito.mock(NotificationToMetricConverter.class);
+        NotificationToSlackMessageConverter slackMessageConverter = Mockito.mock(NotificationToSlackMessageConverter.class);
         Notification notification = notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
-                recipient, details, converter, metricConverter);
+                recipient, details, converter, metricConverter, slackMessageConverter);
         Mockito.verify(rolesProvider, Mockito.times(0)).getRolesByDomain(any());
         assertNull(notification);
     }
@@ -211,8 +213,10 @@ public class NotificationManagerTest {
 
         NotificationToEmailConverter converter = Mockito.mock(NotificationToEmailConverter.class);
         NotificationToMetricConverter metricConverter = Mockito.mock(NotificationToMetricConverter.class);
+        NotificationToSlackMessageConverter slackMessageConverter = Mockito.mock(NotificationToSlackMessageConverter.class);
+
         Notification notification = notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
-                recipient, details, converter, metricConverter);
+                recipient, details, converter, metricConverter, slackMessageConverter);
         Mockito.verify(rolesProvider, Mockito.times(1)).getRole("test.domain", "admin", false, true, false);
         assertNull(notification);
     }
@@ -289,18 +293,20 @@ public class NotificationManagerTest {
 
         NotificationToEmailConverter converter = Mockito.mock(NotificationToEmailConverter.class);
         NotificationToMetricConverter metricConverter = Mockito.mock(NotificationToMetricConverter.class);
+        NotificationToSlackMessageConverter slackMessageConverter = Mockito.mock(NotificationToSlackMessageConverter.class);
+
         assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
-                (String) null, details, converter, metricConverter));
+                (String) null, details, converter, metricConverter, slackMessageConverter));
         assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
-                "", details, converter, metricConverter));
+                "", details, converter, metricConverter, slackMessageConverter));
         assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
-                "athenz", details, converter, metricConverter));
+                "athenz", details, converter, metricConverter, slackMessageConverter));
 
         // valid service name but we have no valid domain so we're still
         // going to get null notification
 
         assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
-                "athenz.service", details, converter, metricConverter));
+                "athenz.service", details, converter, metricConverter, slackMessageConverter));
     }
 
     @Test

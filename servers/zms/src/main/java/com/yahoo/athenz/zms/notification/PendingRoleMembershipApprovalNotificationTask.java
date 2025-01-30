@@ -38,27 +38,47 @@ public class PendingRoleMembershipApprovalNotificationTask implements Notificati
     private final static String DESCRIPTION = "pending role membership approvals reminders";
     private final PendingRoleMembershipApprovalNotificationToEmailConverter pendingMembershipApprovalNotificationToEmailConverter;
     private final PendingRoleMembershipApprovalNotificationToMetricConverter pendingRoleMembershipApprovalNotificationToMetricConverter;
+    private final PendingRoleMembershipApprovalNotificationToSlackMessageConverter pendingRoleMembershipApprovalNotificationToSlackMessageConverter;
 
     public PendingRoleMembershipApprovalNotificationTask(DBService dbService, int pendingRoleMemberLifespan, String monitorIdentity, String userDomainPrefix, NotificationToEmailConverterCommon notificationToEmailConverterCommon) {
         this.dbService = dbService;
         this.pendingRoleMemberLifespan = pendingRoleMemberLifespan;
         this.monitorIdentity = monitorIdentity;
         DomainRoleMembersFetcher domainRoleMembersFetcher = new DomainRoleMembersFetcher(dbService, USER_DOMAIN_PREFIX);
-        this.notificationCommon = new NotificationCommon(domainRoleMembersFetcher, userDomainPrefix);
+        DomainFetcher domainFetcher = new DomainFetcher(dbService);
+        this.notificationCommon = new NotificationCommon(domainRoleMembersFetcher, userDomainPrefix, domainFetcher);
         this.pendingMembershipApprovalNotificationToEmailConverter = new PendingRoleMembershipApprovalNotificationToEmailConverter(notificationToEmailConverterCommon);
         this.pendingRoleMembershipApprovalNotificationToMetricConverter = new PendingRoleMembershipApprovalNotificationToMetricConverter();
+        this.pendingRoleMembershipApprovalNotificationToSlackMessageConverter = new PendingRoleMembershipApprovalNotificationToSlackMessageConverter();
     }
 
     @Override
     public List<Notification> getNotifications() {
         dbService.processExpiredPendingMembers(pendingRoleMemberLifespan, monitorIdentity);
+
+        // set of roles which needs to be notified for pending role membership approval
+        // will have both audit roles and admin roles of domain
         Set<String> recipients = dbService.getPendingMembershipApproverRoles(1);
-        return Collections.singletonList(notificationCommon.createNotification(
+
+        Notification consolidateByPrincipalNotification = notificationCommon.createNotification(
                 Notification.Type.PENDING_ROLE_APPROVAL,
+                Notification.ConsolidatedBy.PRINCIPAL,
                 recipients,
                 null,
                 pendingMembershipApprovalNotificationToEmailConverter,
-                pendingRoleMembershipApprovalNotificationToMetricConverter));
+                pendingRoleMembershipApprovalNotificationToMetricConverter,
+                pendingRoleMembershipApprovalNotificationToSlackMessageConverter);
+
+        Notification consolidatedByDomainNotification = notificationCommon.createNotification(
+                Notification.Type.PENDING_ROLE_APPROVAL,
+                Notification.ConsolidatedBy.DOMAIN,
+                recipients,
+                null,
+                pendingMembershipApprovalNotificationToEmailConverter,
+                pendingRoleMembershipApprovalNotificationToMetricConverter,
+                pendingRoleMembershipApprovalNotificationToSlackMessageConverter);
+
+        return List.of(consolidateByPrincipalNotification, consolidatedByDomainNotification);
     }
 
     @Override
@@ -107,6 +127,14 @@ public class PendingRoleMembershipApprovalNotificationTask implements Notificati
             attributes.add(record);
             // This notification doesn't contain any details. We should consider adding the recipients in their own tags.
             return new NotificationMetric(attributes);
+        }
+    }
+
+    public static class PendingRoleMembershipApprovalNotificationToSlackMessageConverter implements NotificationToSlackMessageConverter {
+
+        @Override
+        public NotificationSlackMessage getNotificationAsSlackMessage(Notification notification) {
+            return null;
         }
     }
 }

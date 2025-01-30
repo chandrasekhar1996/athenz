@@ -34,16 +34,32 @@ public class NotificationCommon {
     private final DomainRoleMembersFetcher domainRoleMembersFetcher;
     private final String userDomainPrefix;
     private static final Logger LOGGER = LoggerFactory.getLogger(NotificationCommon.class);
+    private DomainFetcher domainFetcher;
 
     public NotificationCommon(DomainRoleMembersFetcher domainRoleMembersFetcher, String userDomainPrefix) {
         this.domainRoleMembersFetcher = domainRoleMembersFetcher;
         this.userDomainPrefix = userDomainPrefix;
     }
 
+    public NotificationCommon(DomainRoleMembersFetcher domainRoleMembersFetcher, String userDomainPrefix, DomainFetcher domainFetcher) {
+        this.domainRoleMembersFetcher = domainRoleMembersFetcher;
+        this.userDomainPrefix = userDomainPrefix;
+        this.domainFetcher = domainFetcher;
+    }
+
     public Notification createNotification(Notification.Type type, Set<String> recipients,
                                            Map<String, String> details,
                                            NotificationToEmailConverter notificationToEmailConverter,
                                            NotificationToMetricConverter notificationToMetricConverter) {
+
+        return createNotification(type, recipients, details, notificationToEmailConverter, notificationToMetricConverter, null);
+    }
+
+    public Notification createNotification(Notification.Type type, Set<String> recipients,
+                                           Map<String, String> details,
+                                           NotificationToEmailConverter notificationToEmailConverter,
+                                           NotificationToMetricConverter notificationToMetricConverter,
+                                           NotificationToSlackMessageConverter notificationToSlackMessageConverter) {
 
         if (recipients == null || recipients.isEmpty()) {
             LOGGER.error("Notification requires at least 1 recipient.");
@@ -54,9 +70,47 @@ public class NotificationCommon {
         notification.setDetails(details);
         notification.setNotificationToEmailConverter(notificationToEmailConverter);
         notification.setNotificationToMetricConverter(notificationToMetricConverter);
+        notification.setNotificationToSlackMessageConverter(notificationToSlackMessageConverter);
 
         for (String recipient : recipients) {
             addNotificationRecipient(notification, recipient, true);
+        }
+
+        if (notification.getRecipients() == null || notification.getRecipients().isEmpty()) {
+            LOGGER.error("Notification requires at least 1 recipient");
+            return null;
+        }
+
+        return notification;
+    }
+
+    public Notification createNotification(Notification.Type type, Notification.ConsolidatedBy consolidatedBy, Set<String> recipients,
+                                           Map<String, String> details,
+                                           NotificationToEmailConverter notificationToEmailConverter,
+                                           NotificationToMetricConverter notificationToMetricConverter,
+                                           NotificationToSlackMessageConverter notificationToSlackMessageConverter) {
+
+        if (recipients == null || recipients.isEmpty()) {
+            LOGGER.error("Notification requires at least 1 recipient.");
+            return null;
+        }
+
+        Notification notification = new Notification(type);
+        notification.setDetails(details);
+        notification.setNotificationToEmailConverter(notificationToEmailConverter);
+        notification.setNotificationToMetricConverter(notificationToMetricConverter);
+        notification.setConsolidatedBy(consolidatedBy);
+        notification.setNotificationToSlackMessageConverter(notificationToSlackMessageConverter);
+
+        if (Notification.ConsolidatedBy.PRINCIPAL.equals(consolidatedBy)) {
+            for (String recipient : recipients) {
+                addNotificationRecipient(notification, recipient, true);
+            }
+        } else {
+            // don't convert
+            for (String recipient : recipients) {
+                addNotificationRecipient(notification, recipient, true);
+            }
         }
 
         if (notification.getRecipients() == null || notification.getRecipients().isEmpty()) {
@@ -72,6 +126,16 @@ public class NotificationCommon {
                                            NotificationToEmailConverter notificationToEmailConverter,
                                            NotificationToMetricConverter notificationToMetricConverter) {
 
+        return createNotification(type, recipient, details, notificationToEmailConverter, notificationToMetricConverter, null);
+    }
+
+
+    public Notification createNotification(Notification.Type type, final String recipient,
+                                           Map<String, String> details,
+                                           NotificationToEmailConverter notificationToEmailConverter,
+                                           NotificationToMetricConverter notificationToMetricConverter,
+                                           NotificationToSlackMessageConverter notificationToSlackMessageConverter) {
+
         if (recipient == null || recipient.isEmpty()) {
             LOGGER.error("Notification requires a valid recipient");
             return null;
@@ -81,7 +145,7 @@ public class NotificationCommon {
         notification.setDetails(details);
         notification.setNotificationToEmailConverter(notificationToEmailConverter);
         notification.setNotificationToMetricConverter(notificationToMetricConverter);
-
+        notification.setNotificationToSlackMessageConverter(notificationToSlackMessageConverter);
         // if the recipient is a service then we're going to send a notification
         // to the service's domain admin users
 

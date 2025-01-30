@@ -16,6 +16,8 @@
 
 package com.yahoo.athenz.common.server.notification;
 
+import java.util.Set;
+
 public interface NotificationToSlackMessageConverter {
     /**
      *
@@ -23,4 +25,5 @@ public interface NotificationToSlackMessageConverter {
      * @return The slack block content for the given Notification
      */
     NotificationSlackMessage getNotificationAsSlackMessage(Notification notification);
+
 }

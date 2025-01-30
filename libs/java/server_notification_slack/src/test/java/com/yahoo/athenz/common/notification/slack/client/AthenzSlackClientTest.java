@@ -45,7 +45,7 @@ public class AthenzSlackClientTest {
     public void testAthenzSlackClientNotNull() {
         PrivateKeyStore privateKeyStore = mock(PrivateKeyStore.class);
         when(privateKeyStore.getSecret(anyString(), anyString(), anyString())).thenReturn("access-token-1".toCharArray());
-        AthenzSlackClient athenzSlackClient = new AthenzSlackClient(privateKeyStore);
+        AthenzSlackClient athenzSlackClient = new AthenzSlackClient(privateKeyStore, true);
         assertNotNull(athenzSlackClient);
     }
 

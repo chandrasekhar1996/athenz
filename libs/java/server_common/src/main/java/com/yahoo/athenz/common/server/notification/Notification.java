@@ -36,16 +36,16 @@ public class Notification {
         GROUP_MEMBER_DECISION
     }
 
-    public enum ChannelType {
-        EMAIL,
-        SLACK
+    public enum ConsolidatedBy {
+        DOMAIN,
+        PRINCIPAL
     }
-
-    // type of channel to send the notification, default is email
-    private ChannelType channelType = ChannelType.EMAIL;
 
     // type of the notification
     private final Type type;
+
+    // type of consolidation for the recipients
+    private ConsolidatedBy consolidatedBy;
 
     // Intended recipients of notification
     private Set<String> recipients;
@@ -70,12 +70,12 @@ public class Notification {
         return type;
     }
 
-    public ChannelType getChannelType() {
-        return channelType;
+    public ConsolidatedBy getConsolidatedBy() {
+        return consolidatedBy;
     }
 
-    public Notification setChannelType(ChannelType channelType) {
-        this.channelType = channelType;
+    public Notification setConsolidatedBy(ConsolidatedBy consolidatedBy) {
+        this.consolidatedBy = consolidatedBy;
         return this;
     }
 
@@ -166,7 +166,7 @@ public class Notification {
         Notification that = (Notification) o;
         Timestamp currentTime = Timestamp.fromMillis(System.currentTimeMillis());
         return  getType() == that.getType() &&
-                getChannelType() == that.getChannelType() &&
+                getConsolidatedBy() == that.getConsolidatedBy() &&
                 Objects.equals(getRecipients(), that.getRecipients()) &&
                 Objects.equals(getDetails(), that.getDetails()) &&
                 Objects.equals(getNotificationAsMetrics(currentTime), that.getNotificationAsMetrics(currentTime)) &&
@@ -196,7 +196,7 @@ public class Notification {
         }
         return "Notification{" +
                 "type=" + type +
-                "channelType=" + channelType +
+                "consolidatedBy=" + consolidatedBy +
                 ", recipients=" + recipients +
                 ", details=" + details +
                 ", emailConverterClass=" + emailConverterClassName +

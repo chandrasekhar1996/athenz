@@ -47,8 +47,8 @@ public class NotificationTest {
         detailsRes.put("domain", "dom1");
         detailsRes.put("role", "role1");
 
-        obj.setChannelType(Notification.ChannelType.EMAIL);
-        assertTrue(obj.getChannelType().equals(Notification.ChannelType.EMAIL));
+        obj.setConsolidatedBy(Notification.ConsolidatedBy.DOMAIN);
+        assertTrue(obj.getConsolidatedBy().equals(Notification.ConsolidatedBy.DOMAIN));
 
         assertEquals(obj.getRecipients(), recipientsRes);
         assertEquals(obj.getDetails(), detailsRes);
@@ -69,6 +69,7 @@ public class NotificationTest {
         Notification obj3 = new Notification(Notification.Type.ROLE_MEMBER_EXPIRY);
         obj3.addDetails("domain", "dom1").addDetails("role", "role1");
         obj3.addRecipient("user.user1");
+        obj3.setConsolidatedBy(Notification.ConsolidatedBy.DOMAIN);
 
         assertTrue(obj.equals(obj));
         String a = "";
@@ -76,8 +77,8 @@ public class NotificationTest {
         assertTrue(obj.equals(obj3));
 
         assertEquals(obj.hashCode(), obj3.hashCode());
-        obj3.setChannelType(Notification.ChannelType.SLACK);
-        assertTrue(obj3.getChannelType().equals(Notification.ChannelType.SLACK));
+        obj3.setConsolidatedBy(Notification.ConsolidatedBy.PRINCIPAL);
+        assertTrue(obj3.getConsolidatedBy().equals(Notification.ConsolidatedBy.PRINCIPAL));
 
         assertFalse(obj.equals(obj3));
         Notification obj4 = new Notification(Notification.Type.ROLE_MEMBER_EXPIRY);

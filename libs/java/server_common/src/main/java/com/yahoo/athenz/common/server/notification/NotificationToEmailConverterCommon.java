@@ -21,10 +21,6 @@ import org.eclipse.jetty.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
@@ -77,7 +73,7 @@ public class NotificationToEmailConverterCommon {
         supportText = System.getProperty(PROP_NOTIFICATION_SUPPORT_TEXT);
         supportUrl = System.getProperty(PROP_NOTIFICATION_SUPPORT_URL);
 
-        emailBaseCSS = readContentFromFile(getClass().getClassLoader(), EMAIL_TEMPLATE_CSS);
+        emailBaseCSS = NotificationConverterCommon.readContentFromFile(getClass().getClassLoader(), EMAIL_TEMPLATE_CSS);
 
         // If a notificationUserAuthority is configured load it.
         final String configuredNotificationAuthority = System.getProperty(PROP_NOTIFICATION_USER_AUTHORITY);
@@ -102,20 +98,7 @@ public class NotificationToEmailConverterCommon {
     }
 
     public String readContentFromFile(ClassLoader classLoader, String fileName) {
-        StringBuilder contents = new StringBuilder();
-        URL resource = classLoader.getResource(fileName);
-        if (resource != null) {
-            try (BufferedReader br = new BufferedReader(new InputStreamReader(resource.openStream()))) {
-                String line;
-                while ((line = br.readLine()) != null) {
-                    contents.append(line);
-                    contents.append(System.getProperty("line.separator"));
-                }
-            } catch (IOException ex) {
-                LOGGER.error("Could not read file: {}. Error message: {}", fileName, ex.getMessage());
-            }
-        }
-        return contents.toString();
+        return NotificationConverterCommon.readContentFromFile(classLoader, fileName);
     }
 
     public String generateBodyFromTemplate(Map<String, String> metaDetails, final String bodyTemplate,

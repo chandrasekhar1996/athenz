@@ -71,6 +71,13 @@ public class RoleMemberNotificationCommon {
 
         Map<String, DomainRoleMember> consolidatedMembers = consolidateRoleMembers(members);
 
+        // athenz, dma, (admin- craman, hga)
+        // calypso, dma (admin- craman)
+
+        // hga - athenz + dma
+        // craman - (athenz + dma) + (calypso + dma)
+
+
         // first we're going to send reminders to all the members indicating to
         // them that they're going to expiry (or nearing review date) and they should follow up with
         // domain admins to extend their membership.
@@ -119,6 +126,68 @@ public class RoleMemberNotificationCommon {
     }
 
     Map<String, DomainRoleMember> consolidateRoleMembers(Map<String, DomainRoleMember> members) {
+
+        Map<String, DomainRoleMember> consolidatedMembers = new HashMap<>();
+
+        // iterate through each principal. if the principal is:
+        // user -> add the roles to the list
+        // service -> lookup domain admins for the service and add to the individual human users only
+        // group -> lookup the configured notify roles users or domain admins (if no notify roles)
+        //          and add to the individual human users only
+
+        for (String principal : members.keySet()) {
+
+            int idx = principal.indexOf(AuthorityConsts.GROUP_SEP);
+            if (idx != -1) {
+                final String domainName = principal.substring(0, idx);
+                final String groupName = principal.substring(idx + AuthorityConsts.GROUP_SEP.length());
+                Group group = dbService.getGroup(domainName, groupName, Boolean.FALSE, Boolean.FALSE);
+                if (group == null) {
+                    LOGGER.error("unable to retrieve group: {} in domain: {}", groupName, domainName);
+                    continue;
+                }
+                Set<String> groupAdminMembers;
+                if (!StringUtil.isEmpty(group.getNotifyRoles())) {
+                    groupAdminMembers = NotificationUtils.extractNotifyRoleMembers(domainRoleMembersFetcher,
+                            domainName, group.getNotifyRoles());
+                } else {
+                    groupAdminMembers = domainRoleMembersFetcher.getDomainRoleMembers(domainName, ADMIN_ROLE_NAME);
+                }
+                if (ZMSUtils.isCollectionEmpty(groupAdminMembers)) {
+                    continue;
+                }
+                for (String groupAdminMember : groupAdminMembers) {
+                    addRoleMembers(groupAdminMember, consolidatedMembers, members.get(principal).getMemberRoles());
+                }
+            } else {
+                final String domainName = AthenzUtils.extractPrincipalDomainName(principal);
+                if (userDomainPrefix.equals(domainName + ".")) {
+                    addRoleMembers(principal, consolidatedMembers, members.get(principal).getMemberRoles());
+                } else {
+
+                    // domain role fetcher only returns the human users
+
+                    Set<String> domainAdminMembers = domainRoleMembersFetcher.getDomainRoleMembers(domainName, ADMIN_ROLE_NAME);
+                    if (ZMSUtils.isCollectionEmpty(domainAdminMembers)) {
+                        continue;
+                    }
+                    for (String domainAdminMember : domainAdminMembers) {
+                        addRoleMembers(domainAdminMember, consolidatedMembers, members.get(principal).getMemberRoles());
+                    }
+                }
+            }
+        }
+
+        return consolidatedMembers;
+    }
+
+    Map<String, DomainRoleMember> consolidateRoleMembersByDomain(Map<String, DomainRoleMember> members) {
+        // athenz, dma, (admin- craman, hga)
+        // calypso, dma (admin- craman)
+
+        // hga - athenz + dma
+        // craman - (athenz + dma) + (calypso + dma)
+
 
         Map<String, DomainRoleMember> consolidatedMembers = new HashMap<>();
 

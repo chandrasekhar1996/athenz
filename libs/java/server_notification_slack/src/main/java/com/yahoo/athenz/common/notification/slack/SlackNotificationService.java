@@ -35,7 +35,7 @@ public class SlackNotificationService implements NotificationService {
     private final AthenzSlackClient slackClient;
 
     public SlackNotificationService(PrivateKeyStore privateKeyStore) {
-        this.slackClient = new AthenzSlackClient(privateKeyStore);
+        this.slackClient = new AthenzSlackClient(privateKeyStore, false);
     }
 
     public SlackNotificationService(AthenzSlackClient slackClient) {

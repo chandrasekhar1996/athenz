@@ -40,13 +40,15 @@ public class AthenzSlackClient {
     private final int maxRetries;
     private final long rateLimitDelay;
 
-    public AthenzSlackClient(PrivateKeyStore privateKeyStore) {
+    public AthenzSlackClient(PrivateKeyStore privateKeyStore, boolean skipTokenRefresh) {
         this.privateKeyStore = privateKeyStore;
         this.slackClient = Slack.getInstance();
         this.maxRetries = Integer.parseInt(System.getProperty("athenz.slack.max_retries", "3"));
         this.rateLimitDelay = Long.parseLong(System.getProperty("athenz.slack.rate_limit_delay_ms", "1000"));
         refreshToken();
-        refreshTokenTimerTask();
+        if (!skipTokenRefresh) {
+            refreshTokenTimerTask();
+        }
     }
 
     public AthenzSlackClient(PrivateKeyStore privateKeyStore, Slack slackClient) {
