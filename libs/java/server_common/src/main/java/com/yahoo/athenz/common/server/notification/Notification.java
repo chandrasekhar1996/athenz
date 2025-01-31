@@ -62,6 +62,8 @@ public class Notification {
     // Utility class to convert the notification into metric attributes
     private NotificationToMetricConverter notificationToMetricConverter;
 
+    private Map<String, NotificationDomainMeta> notificationDomainMeta;
+
     public Notification(Type type) {
         this.type = type;
     }
@@ -153,6 +155,22 @@ public class Notification {
 
     public NotificationToSlackMessageConverter getNotificationToSlackMessageConverter() {
         return notificationToSlackMessageConverter;
+    }
+
+    public Map<String, NotificationDomainMeta> getNotificationDomainMeta() {
+        return notificationDomainMeta;
+    }
+
+    public void setNotificationDomainMeta(Map<String, NotificationDomainMeta> notificationDomainMeta) {
+        this.notificationDomainMeta = notificationDomainMeta;
+    }
+
+    public Notification addNotificationDomainMeta(String name, NotificationDomainMeta value) {
+        if (notificationDomainMeta == null) {
+            notificationDomainMeta = new HashMap<>();
+        }
+        notificationDomainMeta.put(name, value);
+        return this;
     }
 
     @Override

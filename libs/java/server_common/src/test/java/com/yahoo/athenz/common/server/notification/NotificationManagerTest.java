@@ -163,7 +163,7 @@ public class NotificationManagerTest {
         NotificationToEmailConverter converter = Mockito.mock(NotificationToEmailConverter.class);
         NotificationToMetricConverter metricConverter = Mockito.mock(NotificationToMetricConverter.class);
         NotificationToSlackMessageConverter slackMessageConverter = Mockito.mock(NotificationToSlackMessageConverter.class);
-        Notification notification = notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
+        Notification notification = notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY, Notification.ConsolidatedBy.PRINCIPAL,
                 recipients, details, converter, metricConverter, slackMessageConverter);
         assertNotNull(notification);
 
@@ -191,7 +191,7 @@ public class NotificationManagerTest {
         NotificationToEmailConverter converter = Mockito.mock(NotificationToEmailConverter.class);
         NotificationToMetricConverter metricConverter = Mockito.mock(NotificationToMetricConverter.class);
         NotificationToSlackMessageConverter slackMessageConverter = Mockito.mock(NotificationToSlackMessageConverter.class);
-        Notification notification = notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
+        Notification notification = notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY, Notification.ConsolidatedBy.PRINCIPAL,
                 recipient, details, converter, metricConverter, slackMessageConverter);
         Mockito.verify(rolesProvider, Mockito.times(0)).getRolesByDomain(any());
         assertNull(notification);
@@ -215,7 +215,7 @@ public class NotificationManagerTest {
         NotificationToMetricConverter metricConverter = Mockito.mock(NotificationToMetricConverter.class);
         NotificationToSlackMessageConverter slackMessageConverter = Mockito.mock(NotificationToSlackMessageConverter.class);
 
-        Notification notification = notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
+        Notification notification = notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY, Notification.ConsolidatedBy.PRINCIPAL,
                 recipient, details, converter, metricConverter, slackMessageConverter);
         Mockito.verify(rolesProvider, Mockito.times(1)).getRole("test.domain", "admin", false, true, false);
         assertNull(notification);
@@ -295,17 +295,17 @@ public class NotificationManagerTest {
         NotificationToMetricConverter metricConverter = Mockito.mock(NotificationToMetricConverter.class);
         NotificationToSlackMessageConverter slackMessageConverter = Mockito.mock(NotificationToSlackMessageConverter.class);
 
-        assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
+        assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY, Notification.ConsolidatedBy.PRINCIPAL,
                 (String) null, details, converter, metricConverter, slackMessageConverter));
-        assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
+        assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY, Notification.ConsolidatedBy.PRINCIPAL,
                 "", details, converter, metricConverter, slackMessageConverter));
-        assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
+        assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY, Notification.ConsolidatedBy.PRINCIPAL,
                 "athenz", details, converter, metricConverter, slackMessageConverter));
 
         // valid service name but we have no valid domain so we're still
         // going to get null notification
 
-        assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY,
+        assertNull(notificationCommon.createNotification(Notification.Type.ROLE_MEMBER_EXPIRY, Notification.ConsolidatedBy.PRINCIPAL,
                 "athenz.service", details, converter, metricConverter, slackMessageConverter));
     }
 

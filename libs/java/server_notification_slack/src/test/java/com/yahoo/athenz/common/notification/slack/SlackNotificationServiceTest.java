@@ -73,6 +73,7 @@ public class SlackNotificationServiceTest {
         SlackNotificationService svc = new SlackNotificationService(slackClient);
         Notification notification = mock(Notification.class);
         NotificationSlackMessage notificationAsSlack = new NotificationSlackMessage(message, recipients);
+        when(notification.getConsolidatedBy()).thenReturn(Notification.ConsolidatedBy.DOMAIN);
         when(notification.getNotificationAsSlackMessage()).thenReturn(notificationAsSlack);
 
         boolean status = svc.notify(notification);
@@ -90,7 +91,20 @@ public class SlackNotificationServiceTest {
         SlackNotificationService svc = new SlackNotificationService(slackClient);
         Notification notification = mock(Notification.class);
         NotificationSlackMessage notificationAsSlack = new NotificationSlackMessage(message, recipients);
+        when(notification.getConsolidatedBy()).thenReturn(Notification.ConsolidatedBy.DOMAIN);
         when(notification.getNotificationAsSlackMessage()).thenReturn(notificationAsSlack);
+
+        boolean status = svc.notify(notification);
+        assertFalse(status);
+    }
+
+    @Test
+    public void testNotifyPrincipalConsolidation() {
+        AthenzSlackClient slackClient = mock(AthenzSlackClient.class);
+
+        SlackNotificationService svc = new SlackNotificationService(slackClient);
+        Notification notification = mock(Notification.class);
+        when(notification.getConsolidatedBy()).thenReturn(Notification.ConsolidatedBy.PRINCIPAL);
 
         boolean status = svc.notify(notification);
         assertFalse(status);

@@ -1,9 +1,8 @@
 package com.yahoo.athenz.common.notification.slack;
 
 import com.yahoo.athenz.auth.Authority;
-import com.yahoo.athenz.auth.PrivateKeyStore;
 import com.yahoo.athenz.auth.util.StringUtils;
-import com.yahoo.athenz.common.notification.slack.client.AthenzSlackClient;
+import com.yahoo.athenz.common.server.notification.NotificationDomainMeta;
 import freemarker.cache.StringTemplateLoader;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
@@ -13,17 +12,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.StringWriter;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 
-public class NotificationToSlackMessageConverterCommon {
-    private static final Logger LOGGER = LoggerFactory.getLogger(NotificationToSlackMessageConverterCommon.class);
+public class NotificationToSlackMessageConverterCommon1 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(NotificationToSlackMessageConverterCommon1.class);
 
     private static final String AT = "@";
-
-    private final PrivateKeyStore privateKeyStore;
+    private static final String SLACK_CHANNEL_PREFIX = "#";
     private static final String PROP_NOTIFICATION_USER_AUTHORITY = "athenz.notification_user_authority";
     private static final String PROP_NOTIFICATION_WORKFLOW_URL = "athenz.notification_workflow_url";
     private static final String PROP_NOTIFICATION_ATHENZ_UI_URL = "athenz.notification_athenz_ui_url";
@@ -36,16 +34,12 @@ public class NotificationToSlackMessageConverterCommon {
     private final String athenzUIUrl;
     private final String emailDomainTo;
     private final Authority notificationUserAuthority;
-    private final AthenzSlackClient athenzSlackClient;
 
-    public NotificationToSlackMessageConverterCommon(PrivateKeyStore privateKeyStore, Authority notificationUserAuthority) {
+    public NotificationToSlackMessageConverterCommon1(Authority notificationUserAuthority) {
         emailDomainTo = System.getProperty(PROP_NOTIFICATION_EMAIL_DOMAIN_TO);
         userDomainPrefix = System.getProperty(PROP_USER_DOMAIN, USER_DOMAIN_DEFAULT);
         workflowUrl = System.getProperty(PROP_NOTIFICATION_WORKFLOW_URL);
         athenzUIUrl = System.getProperty(PROP_NOTIFICATION_ATHENZ_UI_URL);
-        this.privateKeyStore = privateKeyStore;
-
-        athenzSlackClient = new AthenzSlackClient(privateKeyStore, true);
 
         final String configuredNotificationAuthority = System.getProperty(PROP_NOTIFICATION_USER_AUTHORITY);
         if (configuredNotificationAuthority != null) {
@@ -68,18 +62,14 @@ public class NotificationToSlackMessageConverterCommon {
         return authority;
     }
 
-    public Set<String> getFullyQualifiedEmailAddresses(Set<String> recipients) {
-        return recipients.stream()
-                .map(userName -> {
-                    if (notificationUserAuthority != null) {
-                        String email = notificationUserAuthority.getUserEmail(userName);
-                        if (!StringUtil.isEmpty(email)) {
-                            return email;
-                        }
-                    }
-                    return userName.replaceAll(userDomainPrefix, "") + AT + emailDomainTo;
-                })
-                .collect(Collectors.toSet());
+    public String getFullyQualifiedEmailAddress(String userName) {
+        if (notificationUserAuthority != null) {
+            String email = notificationUserAuthority.getUserEmail(userName);
+            if (!StringUtil.isEmpty(email)) {
+                return email;
+            }
+        }
+        return userName.replaceAll(userDomainPrefix, "") + AT + emailDomainTo;
     }
 
     public String getWorkflowUrl() {
@@ -137,9 +127,25 @@ public class NotificationToSlackMessageConverterCommon {
         return athenzUIUrl + "/domain/" + domainName + "/group/" + groupName + "/members";
     }
 
+    public Set<String> getSlackRecipients(Set<String> notificationRecipients, Map<String, NotificationDomainMeta> domainMetaMap) {
+        Set<String> slackRecipients = new HashSet<>();
 
+        for (String recipient: notificationRecipients) {
+            if (recipient.startsWith(userDomainPrefix)) {
+                // if user then convert to email id
+                String emailId = getFullyQualifiedEmailAddress(recipient);
+                slackRecipients.add(emailId);
+            } else {
+                // for domain name, use domainMetaMap to get slack channel
+                NotificationDomainMeta domainMeta = domainMetaMap.get(recipient);
+                if (domainMeta != null && !StringUtils.isEmpty(domainMeta.getSlackChannel())) {
+                    slackRecipients.add(domainMeta.getSlackChannel());
+                }
+            }
+        }
 
-
+        return slackRecipients;
+    }
 
 
 }

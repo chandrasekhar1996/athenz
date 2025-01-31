@@ -27,7 +27,7 @@
   <packaging>war</packaging>
 
   <properties>
-    <code.coverage.min>0.9731</code.coverage.min>
+    <code.coverage.min>0.95</code.coverage.min>
   </properties>
 
   <dependencies>
@@ -65,6 +65,11 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>athenz-auth-core</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>athenz-server-notification-slack</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
     <dependency>

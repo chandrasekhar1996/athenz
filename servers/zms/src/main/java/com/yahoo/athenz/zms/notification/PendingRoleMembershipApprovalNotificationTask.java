@@ -22,7 +22,6 @@ import com.yahoo.rdl.Timestamp;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -40,14 +39,14 @@ public class PendingRoleMembershipApprovalNotificationTask implements Notificati
     private final PendingRoleMembershipApprovalNotificationToMetricConverter pendingRoleMembershipApprovalNotificationToMetricConverter;
     private final PendingRoleMembershipApprovalNotificationToSlackMessageConverter pendingRoleMembershipApprovalNotificationToSlackMessageConverter;
 
-    public PendingRoleMembershipApprovalNotificationTask(DBService dbService, int pendingRoleMemberLifespan, String monitorIdentity, String userDomainPrefix, NotificationToEmailConverterCommon notificationToEmailConverterCommon) {
+    public PendingRoleMembershipApprovalNotificationTask(DBService dbService, int pendingRoleMemberLifespan, String monitorIdentity, String userDomainPrefix, NotificationConverterCommon notificationConverterCommon) {
         this.dbService = dbService;
         this.pendingRoleMemberLifespan = pendingRoleMemberLifespan;
         this.monitorIdentity = monitorIdentity;
         DomainRoleMembersFetcher domainRoleMembersFetcher = new DomainRoleMembersFetcher(dbService, USER_DOMAIN_PREFIX);
-        DomainFetcher domainFetcher = new DomainFetcher(dbService);
+        DomainMetaFetcher domainFetcher = new DomainMetaFetcher(dbService);
         this.notificationCommon = new NotificationCommon(domainRoleMembersFetcher, userDomainPrefix, domainFetcher);
-        this.pendingMembershipApprovalNotificationToEmailConverter = new PendingRoleMembershipApprovalNotificationToEmailConverter(notificationToEmailConverterCommon);
+        this.pendingMembershipApprovalNotificationToEmailConverter = new PendingRoleMembershipApprovalNotificationToEmailConverter(notificationConverterCommon);
         this.pendingRoleMembershipApprovalNotificationToMetricConverter = new PendingRoleMembershipApprovalNotificationToMetricConverter();
         this.pendingRoleMembershipApprovalNotificationToSlackMessageConverter = new PendingRoleMembershipApprovalNotificationToSlackMessageConverter();
     }
@@ -90,26 +89,26 @@ public class PendingRoleMembershipApprovalNotificationTask implements Notificati
         private static final String EMAIL_TEMPLATE_NOTIFICATION_APPROVAL_REMINDER = "messages/membership-approval-reminder.html";
         private static final String MEMBERSHIP_APPROVAL_REMINDER_SUBJECT = "athenz.notification.email.membership.reminder.subject";
 
-        private final NotificationToEmailConverterCommon notificationToEmailConverterCommon;
+        private final NotificationConverterCommon notificationConverterCommon;
         private final String emailMembershipApprovalReminderBody;
 
-        public PendingRoleMembershipApprovalNotificationToEmailConverter(NotificationToEmailConverterCommon notificationToEmailConverterCommon) {
-            this.notificationToEmailConverterCommon = notificationToEmailConverterCommon;
-            emailMembershipApprovalReminderBody = notificationToEmailConverterCommon.readContentFromFile(getClass().getClassLoader(), EMAIL_TEMPLATE_NOTIFICATION_APPROVAL_REMINDER);
+        public PendingRoleMembershipApprovalNotificationToEmailConverter(NotificationConverterCommon notificationConverterCommon) {
+            this.notificationConverterCommon = notificationConverterCommon;
+            emailMembershipApprovalReminderBody = notificationConverterCommon.readContentFromFile(getClass().getClassLoader(), EMAIL_TEMPLATE_NOTIFICATION_APPROVAL_REMINDER);
         }
 
         private String getMembershipApprovalReminderBody() {
-            String workflowUrl = notificationToEmailConverterCommon.getWorkflowUrl();
-            String athenzUIUrl = notificationToEmailConverterCommon.getAthenzUIUrl();
+            String workflowUrl = notificationConverterCommon.getWorkflowUrl();
+            String athenzUIUrl = notificationConverterCommon.getAthenzUIUrl();
             String body = MessageFormat.format(emailMembershipApprovalReminderBody, workflowUrl, athenzUIUrl);
-            return notificationToEmailConverterCommon.addCssStyleToBody(body);
+            return notificationConverterCommon.addCssStyleToBody(body);
         }
 
         @Override
         public NotificationEmail getNotificationAsEmail(Notification notification) {
-            String subject = notificationToEmailConverterCommon.getSubject(MEMBERSHIP_APPROVAL_REMINDER_SUBJECT);
+            String subject = notificationConverterCommon.getSubject(MEMBERSHIP_APPROVAL_REMINDER_SUBJECT);
             String body = getMembershipApprovalReminderBody();
-            Set<String> fullyQualifiedEmailAddresses = notificationToEmailConverterCommon.getFullyQualifiedEmailAddresses(notification.getRecipients());
+            Set<String> fullyQualifiedEmailAddresses = notificationConverterCommon.getFullyQualifiedEmailAddresses(notification.getRecipients());
             return new NotificationEmail(subject, body, fullyQualifiedEmailAddresses);
         }
     }

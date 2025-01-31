@@ -33,7 +33,7 @@ import static org.mockito.Mockito.mock;
 import static org.testng.Assert.*;
 import static org.testng.Assert.assertTrue;
 
-public class NotificationToEmailConverterCommonTest {
+public class NotificationConverterCommonTest {
 
     @Test
     public void testGetFullyQualifiedEmailAddresses() {
@@ -44,8 +44,8 @@ public class NotificationToEmailConverterCommonTest {
 
         Set<String> recipients = new HashSet<>(Arrays.asList("entuser.user1", "entuser.user2", "entuser.user3"));
 
-        NotificationToEmailConverterCommon notificationToEmailConverterCommon = new NotificationToEmailConverterCommon(null);
-        Set<String> recipientsResp = notificationToEmailConverterCommon.getFullyQualifiedEmailAddresses(recipients);
+        NotificationConverterCommon notificationConverterCommon = new NotificationConverterCommon(null);
+        Set<String> recipientsResp = notificationConverterCommon.getFullyQualifiedEmailAddresses(recipients);
         assertNotNull(recipientsResp);
 
         assertEquals(recipientsResp.size(), 3);
@@ -68,9 +68,9 @@ public class NotificationToEmailConverterCommonTest {
         Set<String> recipients = new HashSet<>(Arrays.asList("entuser.user1", "entuser.user2", "entuser.user3", "unknown.user"));
 
         Authority notificationAuthorityForTest = new NotificationAuthorityForTest();
-        NotificationToEmailConverterCommon notificationToEmailConverterCommon =
-                new NotificationToEmailConverterCommon(notificationAuthorityForTest);
-        Set<String> recipientsResp = notificationToEmailConverterCommon.getFullyQualifiedEmailAddresses(recipients);
+        NotificationConverterCommon notificationConverterCommon =
+                new NotificationConverterCommon(notificationAuthorityForTest);
+        Set<String> recipientsResp = notificationConverterCommon.getFullyQualifiedEmailAddresses(recipients);
         assertNotNull(recipientsResp);
 
         assertEquals(recipientsResp.size(), 4);
@@ -96,9 +96,9 @@ public class NotificationToEmailConverterCommonTest {
 
         // Verify when athenz.notification_user_authority is set it will take precedence over passed authority
         DebugUserAuthority debugUserAuthority = new DebugUserAuthority();
-        NotificationToEmailConverterCommon notificationToEmailConverterCommon =
-                new NotificationToEmailConverterCommon(debugUserAuthority);
-        Set<String> recipientsResp = notificationToEmailConverterCommon.getFullyQualifiedEmailAddresses(recipients);
+        NotificationConverterCommon notificationConverterCommon =
+                new NotificationConverterCommon(debugUserAuthority);
+        Set<String> recipientsResp = notificationConverterCommon.getFullyQualifiedEmailAddresses(recipients);
         assertNotNull(recipientsResp);
 
         assertEquals(recipientsResp.size(), 4);
@@ -119,8 +119,8 @@ public class NotificationToEmailConverterCommonTest {
         System.setProperty("athenz.notification_email_domain_to", "test.com");
 
         Set<String> recipients = new HashSet<>(Arrays.asList("user.user1", "user.user2", "user.user3"));
-        NotificationToEmailConverterCommon notificationToEmailConverterCommon = new NotificationToEmailConverterCommon(null);
-        Set<String> recipientsResp = notificationToEmailConverterCommon.getFullyQualifiedEmailAddresses(recipients);
+        NotificationConverterCommon notificationConverterCommon = new NotificationConverterCommon(null);
+        Set<String> recipientsResp = notificationConverterCommon.getFullyQualifiedEmailAddresses(recipients);
         assertNotNull(recipientsResp);
 
         assertEquals(recipientsResp.size(), 3);
@@ -134,45 +134,45 @@ public class NotificationToEmailConverterCommonTest {
 
     @Test
     public void testReadContentFromFile() {
-        NotificationToEmailConverterCommon notificationToEmailConverterCommon = new NotificationToEmailConverterCommon(null);
-        assertTrue(notificationToEmailConverterCommon.readContentFromFile(
+        NotificationConverterCommon notificationConverterCommon = new NotificationConverterCommon(null);
+        assertTrue(notificationConverterCommon.readContentFromFile(
                 getClass().getClassLoader(), "resources/non-existent").isEmpty());
     }
 
     @Test
     public void testReadContentFromFileNull() throws Exception {
-        NotificationToEmailConverterCommon notificationToEmailConverterCommon = new NotificationToEmailConverterCommon(null);
+        NotificationConverterCommon notificationConverterCommon = new NotificationConverterCommon(null);
 
         BufferedReader reader = mock(BufferedReader.class);
         Mockito.when(reader.readLine()).thenReturn(null);
-        assertTrue(notificationToEmailConverterCommon.readContentFromFile(
+        assertTrue(notificationConverterCommon.readContentFromFile(
                 getClass().getClassLoader(), "resources/dummy").isEmpty());
     }
 
     @Test
     public void testReadContentFromFileException() throws Exception {
-        NotificationToEmailConverterCommon notificationToEmailConverterCommon =
-                new NotificationToEmailConverterCommon(null);
+        NotificationConverterCommon notificationConverterCommon =
+                new NotificationConverterCommon(null);
 
         BufferedReader reader = mock(BufferedReader.class);
         Mockito.when(reader.readLine()).thenThrow(new IOException());
-        assertTrue(notificationToEmailConverterCommon.readContentFromFile(
+        assertTrue(notificationConverterCommon.readContentFromFile(
                 getClass().getClassLoader(), "resources/dummy").isEmpty());
     }
 
     @Test
     public void testgettTbleEntryTemplate() {
-        NotificationToEmailConverterCommon notificationToEmailConverterCommon = new NotificationToEmailConverterCommon(null);
+        NotificationConverterCommon notificationConverterCommon = new NotificationConverterCommon(null);
         int numOfColumns = 1;
-        String tableEntryTemplate = notificationToEmailConverterCommon.getTableEntryTemplate(numOfColumns, null);
+        String tableEntryTemplate = notificationConverterCommon.getTableEntryTemplate(numOfColumns, null);
         assertEquals(tableEntryTemplate, "<tr><td class=\"cv\">{0}</td></tr>");
 
         numOfColumns = 3;
-        tableEntryTemplate = notificationToEmailConverterCommon.getTableEntryTemplate(numOfColumns, null);
+        tableEntryTemplate = notificationConverterCommon.getTableEntryTemplate(numOfColumns, null);
         assertEquals(tableEntryTemplate, "<tr><td class=\"cv\">{0}</td><td class=\"cv\">{1}</td><td class=\"cv\">{2}</td></tr>");
 
         numOfColumns = 6;
-        tableEntryTemplate = notificationToEmailConverterCommon.getTableEntryTemplate(numOfColumns, null);
+        tableEntryTemplate = notificationConverterCommon.getTableEntryTemplate(numOfColumns, null);
         assertEquals(tableEntryTemplate, "<tr><td class=\"cv\">{0}</td><td class=\"cv\">{1}</td><td class=\"cv\">{2}</td><td class=\"cv\">{3}</td><td class=\"cv\">{4}</td><td class=\"cv\">{5}</td></tr>");
     }
 
@@ -180,7 +180,7 @@ public class NotificationToEmailConverterCommonTest {
     public void testgettTbleEntryTemplateColumnNames() {
 
         System.clearProperty("athenz.notification_athenz_ui_url");
-        NotificationToEmailConverterCommon converter = new NotificationToEmailConverterCommon(null);
+        NotificationConverterCommon converter = new NotificationConverterCommon(null);
         int numOfColumns = 3;
         String[] columnNames = { "DOMAIN", "ROLE", "GROUP" };
 
@@ -191,14 +191,14 @@ public class NotificationToEmailConverterCommonTest {
         // similarly, with empty url, there are no changes either
 
         System.setProperty("athenz.notification_athenz_ui_url", "");
-        converter = new NotificationToEmailConverterCommon(null);
+        converter = new NotificationConverterCommon(null);
         tableEntryTemplate = converter.getTableEntryTemplate(numOfColumns, columnNames);
         assertEquals(tableEntryTemplate, "<tr><td class=\"cv\">{0}</td><td class=\"cv\">{1}</td><td class=\"cv\">{2}</td></tr>");
 
         // we're going to set the url but no domain in the column names
 
         System.setProperty("athenz.notification_athenz_ui_url", "https://athenz.io");
-        converter = new NotificationToEmailConverterCommon(null);
+        converter = new NotificationConverterCommon(null);
         columnNames = new String[]{ "ROLE", "GROUP" };
 
         tableEntryTemplate = converter.getTableEntryTemplate(numOfColumns, columnNames);
@@ -220,7 +220,7 @@ public class NotificationToEmailConverterCommonTest {
     @Test
     public void testGetTableColumnIndex() {
 
-        NotificationToEmailConverterCommon converter = new NotificationToEmailConverterCommon(null);
+        NotificationConverterCommon converter = new NotificationConverterCommon(null);
         assertNull(converter.getTableColumnName(3, 4, null));
         assertNull(converter.getTableColumnName(3, 4, new String[]{"DOMAIN"}));
         assertNull(converter.getTableColumnName(2, 1, new String[]{"DOMAIN"}));
@@ -232,7 +232,7 @@ public class NotificationToEmailConverterCommonTest {
     @Test
     public void testGetAthenzUIUrl() {
         System.setProperty("athenz.notification_athenz_ui_url", "https://athenz.io");
-        NotificationToEmailConverterCommon converter = new NotificationToEmailConverterCommon(null);
+        NotificationConverterCommon converter = new NotificationConverterCommon(null);
         assertEquals(converter.getAthenzUIUrl(), "https://athenz.io");
         System.clearProperty("athenz.notification_athenz_ui_url");
     }
@@ -240,7 +240,7 @@ public class NotificationToEmailConverterCommonTest {
     @Test
     public void testGetWorkflowUrl() {
         System.setProperty("athenz.notification_workflow_url", "https://athenz.io");
-        NotificationToEmailConverterCommon converter = new NotificationToEmailConverterCommon(null);
+        NotificationConverterCommon converter = new NotificationConverterCommon(null);
         assertEquals(converter.getWorkflowUrl(), "https://athenz.io");
         System.clearProperty("athenz.notification_workflow_url");
     }
@@ -248,7 +248,7 @@ public class NotificationToEmailConverterCommonTest {
     @Test
     public void testProcessEntry() {
 
-        NotificationToEmailConverterCommon converter = new NotificationToEmailConverterCommon(null);
+        NotificationConverterCommon converter = new NotificationConverterCommon(null);
 
         String entryNames = "athenz;admin;user.joe;2023-01-01T000000Z|athenz;readers;user.jane;2023-01-01T000000Z|athenz;writers;user.bad";
         String entryFormat = "<tr><td class=\"cv\">{0}</td><td class=\"cv\">{1}</td><td class=\"cv\">{2}</td><td class=\"cv\">{3}</td></tr>";
@@ -283,7 +283,7 @@ public class NotificationToEmailConverterCommonTest {
     public void testGenerateBodyFromTemplate() {
 
         System.setProperty("athenz.notification_athenz_ui_url", "https://athenz.io");
-        NotificationToEmailConverterCommon converter = new NotificationToEmailConverterCommon(null);
+        NotificationConverterCommon converter = new NotificationConverterCommon(null);
 
         String emailBody = converter.readContentFromFile(getClass().getClassLoader(), "messages/role-member-expiry.html");
         String[] columnNames = new String[] { "DOMAIN", "ROLE", "MEMBER", "EXPIRATION" };
@@ -307,14 +307,14 @@ public class NotificationToEmailConverterCommonTest {
     public void testInvalidNotificationClass() {
 
         System.setProperty("athenz.notification_user_authority", "unknown-class");
-        NotificationToEmailConverterCommon converter = new NotificationToEmailConverterCommon(null);
+        NotificationConverterCommon converter = new NotificationConverterCommon(null);
         assertNotNull(converter);
         System.clearProperty("athenz.notification_user_authority");
     }
 
     @Test
     public void testGetSubject() {
-        NotificationToEmailConverterCommon converter = new NotificationToEmailConverterCommon(null);
+        NotificationConverterCommon converter = new NotificationConverterCommon(null);
         assertEquals(converter.getSubject("athenz.notification.email.role_member.expiry.subject"),
                 "Athenz Role Member Expiration Notification");
     }
@@ -322,7 +322,7 @@ public class NotificationToEmailConverterCommonTest {
     @Test
     public void testReadContentsFromFileFailure() throws IOException {
 
-        NotificationToEmailConverterCommon converter = new NotificationToEmailConverterCommon(null);
+        NotificationConverterCommon converter = new NotificationConverterCommon(null);
         ClassLoader loader = Mockito.mock(ClassLoader.class);
         URL resource = Mockito.mock(URL.class);
         Mockito.when(loader.getResource("file1")).thenReturn(resource);

@@ -17,8 +17,9 @@
 package com.yahoo.athenz.zms.notification;
 
 import com.yahoo.athenz.auth.impl.UserAuthority;
+import com.yahoo.athenz.common.notification.slack.NotificationToSlackMessageConverterCommon1;
 import com.yahoo.athenz.common.server.notification.Notification;
-import com.yahoo.athenz.common.server.notification.NotificationToEmailConverterCommon;
+import com.yahoo.athenz.common.server.notification.NotificationConverterCommon;
 import com.yahoo.athenz.zms.*;
 import com.yahoo.rdl.Timestamp;
 import org.mockito.Mockito;
@@ -57,7 +58,7 @@ public class RoleMemberNotificationCommonTest {
 
         RoleMemberNotificationCommon roleMemberNotificationCommon = new RoleMemberNotificationCommon(dbsvc,
                 USER_DOMAIN_PREFIX);
-        NotificationToEmailConverterCommon notificationToEmailConverterCommon = new NotificationToEmailConverterCommon(null);
+        NotificationConverterCommon notificationConverterCommon = new NotificationConverterCommon(null);
 
         // Verify no notification for member without member roles
         DomainRoleMember roleMember = new DomainRoleMember();
@@ -68,13 +69,15 @@ public class RoleMemberNotificationCommonTest {
         groupMember.setMemberName("test.domain:group.testgroup");
         members.put("test.domain:group.testgroup", groupMember);
         List<Notification> notifications = roleMemberNotificationCommon.getNotificationDetails(
-                Notification.Type.ROLE_MEMBER_EXPIRY, members,
-                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
-                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                Notification.Type.ROLE_MEMBER_EXPIRY, Notification.ConsolidatedBy.PRINCIPAL, members,
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationConverterCommon),
                 new RoleMemberExpiryNotificationTask.ExpiryRoleMemberDetailStringer(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToMetricConverter(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToMetricConverter(),
-                memberRole -> DisableNotificationEnum.getEnumSet(0));
+                memberRole -> DisableNotificationEnum.getEnumSet(0),
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToSlackConverter(notificationConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToSlackConverter(notificationConverterCommon));
 
         assertEquals(notifications.size(), 0);
 
@@ -83,8 +86,8 @@ public class RoleMemberNotificationCommonTest {
         groupMember.setMemberRoles(Collections.emptyList());
         notifications = roleMemberNotificationCommon.getNotificationDetails(
                 Notification.Type.ROLE_MEMBER_EXPIRY, members,
-                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
-                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationConverterCommon),
                 new RoleMemberExpiryNotificationTask.ExpiryRoleMemberDetailStringer(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToMetricConverter(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToMetricConverter(),
@@ -106,8 +109,8 @@ public class RoleMemberNotificationCommonTest {
         groupMember.setMemberRoles(groupMemberRoles);
         notifications = roleMemberNotificationCommon.getNotificationDetails(
                 Notification.Type.ROLE_MEMBER_EXPIRY, members,
-                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
-                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationConverterCommon),
                 new RoleMemberExpiryNotificationTask.ExpiryRoleMemberDetailStringer(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToMetricConverter(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToMetricConverter(),
@@ -130,8 +133,8 @@ public class RoleMemberNotificationCommonTest {
 
         notifications = roleMemberNotificationCommon.getNotificationDetails(
                 Notification.Type.ROLE_MEMBER_EXPIRY, members,
-                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
-                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationConverterCommon),
                 new RoleMemberExpiryNotificationTask.ExpiryRoleMemberDetailStringer(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToMetricConverter(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToMetricConverter(),
@@ -155,8 +158,8 @@ public class RoleMemberNotificationCommonTest {
         DBService dbsvc = Mockito.mock(DBService.class);
         RoleMemberNotificationCommon roleMemberNotificationCommon = new RoleMemberNotificationCommon(dbsvc,
                 USER_DOMAIN_PREFIX);
-        NotificationToEmailConverterCommon notificationToEmailConverterCommon =
-                new NotificationToEmailConverterCommon(null);
+        NotificationConverterCommon notificationConverterCommon =
+                new NotificationConverterCommon(null);
 
         // our dev-team group has no notify roles set up so the admin notification
         // must go the domain admins
@@ -207,8 +210,8 @@ public class RoleMemberNotificationCommonTest {
 
         List<Notification> notifications = roleMemberNotificationCommon.getNotificationDetails(
                 Notification.Type.ROLE_MEMBER_EXPIRY, members,
-                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
-                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationConverterCommon),
                 new RoleMemberExpiryNotificationTask.ExpiryRoleMemberDetailStringer(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToMetricConverter(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToMetricConverter(),
@@ -260,7 +263,7 @@ public class RoleMemberNotificationCommonTest {
                 .thenReturn(adminRole);
         RoleMemberNotificationCommon roleMemberNotificationCommon = new RoleMemberNotificationCommon(
                 dbsvc, USER_DOMAIN_PREFIX);
-        NotificationToEmailConverterCommon notificationToEmailConverterCommon = new NotificationToEmailConverterCommon(null);
+        NotificationConverterCommon notificationConverterCommon = new NotificationConverterCommon(null);
 
         // Verify no notification for member without member roles
         DomainRoleMember roleMember = new DomainRoleMember();
@@ -269,8 +272,8 @@ public class RoleMemberNotificationCommonTest {
         members.put("user.joe", roleMember);
         List<Notification> notification = roleMemberNotificationCommon.getNotificationDetails(
                 Notification.Type.ROLE_MEMBER_EXPIRY, members,
-                new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
-                new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationConverterCommon),
+                new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationConverterCommon),
                 new RoleMemberReviewNotificationTask.ReviewRoleMemberDetailStringer(),
                 new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToMetricConverter(),
                 new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToMetricConverter(),
@@ -282,8 +285,8 @@ public class RoleMemberNotificationCommonTest {
         roleMember.setMemberRoles(Collections.emptyList());
         notification = roleMemberNotificationCommon.getNotificationDetails(
                 Notification.Type.ROLE_MEMBER_EXPIRY, members,
-                new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
-                new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationConverterCommon),
+                new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationConverterCommon),
                 new RoleMemberReviewNotificationTask.ReviewRoleMemberDetailStringer(),
                 new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToMetricConverter(),
                 new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToMetricConverter(),
@@ -300,8 +303,8 @@ public class RoleMemberNotificationCommonTest {
 
         notification = roleMemberNotificationCommon.getNotificationDetails(
                 Notification.Type.ROLE_MEMBER_EXPIRY, members,
-                new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
-                new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationConverterCommon),
+                new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationConverterCommon),
                 new RoleMemberReviewNotificationTask.ReviewRoleMemberDetailStringer(),
                 new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToMetricConverter(),
                 new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToMetricConverter(),
@@ -325,8 +328,8 @@ public class RoleMemberNotificationCommonTest {
 
         notification = roleMemberNotificationCommon.getNotificationDetails(
                 Notification.Type.ROLE_MEMBER_EXPIRY, members,
-                new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
-                new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationConverterCommon),
+                new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationConverterCommon),
                 new RoleMemberReviewNotificationTask.ReviewRoleMemberDetailStringer(),
                 new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToMetricConverter(),
                 new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToMetricConverter(),
@@ -359,7 +362,7 @@ public class RoleMemberNotificationCommonTest {
                 .thenReturn(adminRole);
         RoleMemberNotificationCommon roleMemberNotificationCommon = new RoleMemberNotificationCommon(
                 dbsvc, USER_DOMAIN_PREFIX);
-        NotificationToEmailConverterCommon notificationToEmailConverterCommon = new NotificationToEmailConverterCommon(null);
+        NotificationConverterCommon notificationConverterCommon = new NotificationConverterCommon(null);
 
         DomainRoleMember roleMember = new DomainRoleMember();
         roleMember.setMemberName("user.joe");
@@ -377,8 +380,8 @@ public class RoleMemberNotificationCommonTest {
         // Verify disable notification for users
         List<Notification> notification = roleMemberNotificationCommon.getNotificationDetails(
                 Notification.Type.ROLE_MEMBER_EXPIRY, members,
-                new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
-                new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationConverterCommon),
+                new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationConverterCommon),
                 new RoleMemberReviewNotificationTask.ReviewRoleMemberDetailStringer(),
                 new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToMetricConverter(),
                 new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToMetricConverter(),
@@ -393,8 +396,8 @@ public class RoleMemberNotificationCommonTest {
         // Verify disable notification for admins
         notification = roleMemberNotificationCommon.getNotificationDetails(
                 Notification.Type.ROLE_MEMBER_EXPIRY, members,
-                new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
-                new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationConverterCommon),
+                new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationConverterCommon),
                 new RoleMemberReviewNotificationTask.ReviewRoleMemberDetailStringer(),
                 new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToMetricConverter(),
                 new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToMetricConverter(),
@@ -410,8 +413,8 @@ public class RoleMemberNotificationCommonTest {
         // Verify disable all notifications
         notification = roleMemberNotificationCommon.getNotificationDetails(
                 Notification.Type.ROLE_MEMBER_EXPIRY, members,
-                new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
-                new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationConverterCommon),
+                new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationConverterCommon),
                 new RoleMemberReviewNotificationTask.ReviewRoleMemberDetailStringer(),
                 new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToMetricConverter(),
                 new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToMetricConverter(),
@@ -437,7 +440,7 @@ public class RoleMemberNotificationCommonTest {
                 .thenReturn(admin);
         RoleMemberNotificationCommon roleMemberNotificationCommon = new RoleMemberNotificationCommon(dbsvc,
                 USER_DOMAIN_PREFIX);
-        NotificationToEmailConverterCommon notificationToEmailConverterCommon = new NotificationToEmailConverterCommon(null);
+        NotificationConverterCommon notificationConverterCommon = new NotificationConverterCommon(null);
 
         // Verify no notification for member without member roles
         DomainRoleMember roleMember = new DomainRoleMember();
@@ -449,8 +452,8 @@ public class RoleMemberNotificationCommonTest {
         members.put("test.domain:group.testgroup", groupMember);
         List<Notification> notification = roleMemberNotificationCommon.getNotificationDetails(
                 Notification.Type.ROLE_MEMBER_EXPIRY, members,
-                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
-                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationConverterCommon),
                 new RoleMemberExpiryNotificationTask.ExpiryRoleMemberDetailStringer(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToMetricConverter(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToMetricConverter(),
@@ -463,8 +466,8 @@ public class RoleMemberNotificationCommonTest {
         groupMember.setMemberRoles(Collections.emptyList());
         notification = roleMemberNotificationCommon.getNotificationDetails(
                 Notification.Type.ROLE_MEMBER_EXPIRY, members,
-                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
-                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationConverterCommon),
                 new RoleMemberExpiryNotificationTask.ExpiryRoleMemberDetailStringer(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToMetricConverter(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToMetricConverter(),
@@ -490,8 +493,8 @@ public class RoleMemberNotificationCommonTest {
 
         notification = roleMemberNotificationCommon.getNotificationDetails(
                 Notification.Type.ROLE_MEMBER_EXPIRY, members,
-                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
-                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationConverterCommon),
                 new RoleMemberExpiryNotificationTask.ExpiryRoleMemberDetailStringer(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToMetricConverter(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToMetricConverter(),
@@ -515,8 +518,8 @@ public class RoleMemberNotificationCommonTest {
 
         notification = roleMemberNotificationCommon.getNotificationDetails(
                 Notification.Type.ROLE_MEMBER_EXPIRY, members,
-                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
-                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToEmailConverter(notificationConverterCommon),
+                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToEmailConverter(notificationConverterCommon),
                 new RoleMemberExpiryNotificationTask.ExpiryRoleMemberDetailStringer(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToMetricConverter(),
                 new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToMetricConverter(),
@@ -802,8 +805,8 @@ public class RoleMemberNotificationCommonTest {
 
         UserAuthority userAuthority = Mockito.mock(UserAuthority.class);
 
-        NotificationToEmailConverterCommon notificationToEmailConverterCommon
-                = new NotificationToEmailConverterCommon(userAuthority);
+        NotificationConverterCommon notificationConverterCommon
+                = new NotificationConverterCommon(userAuthority);
 
         RoleMemberNotificationCommon.DisableRoleMemberNotificationFilter disableRoleMemberNotificationFilter =
                 Mockito.mock(RoleMemberNotificationCommon.DisableRoleMemberNotificationFilter.class);
@@ -812,8 +815,8 @@ public class RoleMemberNotificationCommonTest {
 
         List<Notification> notifications = task.getNotificationDetails(
                 Notification.Type.ROLE_MEMBER_REVIEW, members,
-                new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationToEmailConverterCommon),
-                new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationToEmailConverterCommon),
+                new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToEmailConverter(notificationConverterCommon),
+                new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToEmailConverter(notificationConverterCommon),
                 new RoleMemberReviewNotificationTask.ReviewRoleMemberDetailStringer(),
                 new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToMetricConverter(),
                 new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToMetricConverter(),

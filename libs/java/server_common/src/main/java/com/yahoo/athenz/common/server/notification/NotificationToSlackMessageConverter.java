@@ -16,8 +16,6 @@
 
 package com.yahoo.athenz.common.server.notification;
 
-import java.util.Set;
-
 public interface NotificationToSlackMessageConverter {
     /**
      *

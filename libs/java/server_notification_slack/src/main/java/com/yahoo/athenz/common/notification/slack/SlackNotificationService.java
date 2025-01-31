@@ -44,7 +44,7 @@ public class SlackNotificationService implements NotificationService {
 
     @Override
     public boolean notify(Notification notification) {
-        if (notification == null) {
+        if (notification == null || !Notification.ConsolidatedBy.DOMAIN.equals(notification.getConsolidatedBy())) {
             return false;
         }
 
@@ -65,10 +65,10 @@ public class SlackNotificationService implements NotificationService {
         }
 
         if (sendSlackMessage(recipients, message)) {
-            LOGGER.info("Successfully sent email notification. Type={}, Recipients={}", notification.getType(), recipients);
+            LOGGER.info("Successfully sent slack notification. Type={}, Recipients={}", notification.getType(), recipients);
             return true;
         } else {
-            LOGGER.error("Failed sending email notification. Type={}, Recipients={}", notification.getType(), recipients);
+            LOGGER.error("Failed sending slack notification. Type={}, Recipients={}", notification.getType(), recipients);
             return false;
         }
     }

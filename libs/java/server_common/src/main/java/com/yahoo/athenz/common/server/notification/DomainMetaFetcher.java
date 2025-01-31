@@ -21,31 +21,29 @@ import com.yahoo.athenz.zms.Domain;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
+public class DomainMetaFetcher {
 
-public class DomainFetcher {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(DomainFetcher.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DomainMetaFetcher.class);
 
     private final DomainProvider domainProvider;
 
-    public DomainFetcher(DomainProvider domainProvider) {
+    public DomainMetaFetcher(DomainProvider domainProvider) {
         this.domainProvider = domainProvider;
     }
 
-    public Map<String, String> getDomainMeta(String domainName, boolean masterCopy) {
+    public NotificationDomainMeta getDomainMeta(String domainName, boolean masterCopy) {
 
-        Map<String, String> domainMeta = new HashMap<>();
+        NotificationDomainMeta domainMeta = new NotificationDomainMeta(domainName);
         if (domainProvider == null) {
-            return new HashMap<>();
+            return domainMeta;
         }
 
-        try{
+        try {
             Domain domain = domainProvider.getDomain(domainName, masterCopy);
-            if (domain != null) {
-                domainMeta.put("slackChannel", domain.getSlackChannel());
+            if (domain == null) {
+                return domainMeta;
             }
+            domainMeta.setSlackChannel(domain.getSlackChannel());
         } catch (Exception ex) {
             LOGGER.error("unable to fetch domain meta for domain: {} error: {}",
                     domainName, ex.getMessage(), ex);
