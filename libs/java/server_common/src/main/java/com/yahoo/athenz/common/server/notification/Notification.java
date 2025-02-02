@@ -149,8 +149,9 @@ public class Notification {
         return null;
     }
 
-    public void setNotificationToSlackMessageConverter(NotificationToSlackMessageConverter notificationToSlackMessageConverter) {
+    public Notification setNotificationToSlackMessageConverter(NotificationToSlackMessageConverter notificationToSlackMessageConverter) {
         this.notificationToSlackMessageConverter = notificationToSlackMessageConverter;
+        return this;
     }
 
     public NotificationToSlackMessageConverter getNotificationToSlackMessageConverter() {

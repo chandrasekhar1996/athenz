@@ -18,7 +18,7 @@ public class NotificationSlackMessage {
     }
 
 
-    public Set<String> getRecepients() {
+    public Set<String> getRecipients() {
         return recepients;
     }
 
@@ -32,11 +32,11 @@ public class NotificationSlackMessage {
         }
         NotificationSlackMessage that = (NotificationSlackMessage) o;
         return  Objects.equals(getMessage(), that.getMessage()) &&
-                Objects.equals(getRecepients(), that.getRecepients());
+                Objects.equals(getRecipients(), that.getRecipients());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getMessage(), getRecepients());
+        return Objects.hash(getMessage(), getRecipients());
     }
 }

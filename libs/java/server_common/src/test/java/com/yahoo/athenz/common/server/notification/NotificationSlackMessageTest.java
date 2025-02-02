@@ -34,7 +34,7 @@ public class NotificationSlackMessageTest {
 
         assertEquals(slackMessage1.hashCode(), slackMessage2.hashCode());
         assertEquals(slackMessage1.getMessage(), "message1");
-        assertEquals(slackMessage1.getRecepients(), recipients);
+        assertEquals(slackMessage1.getRecipients(), recipients);
 
         assertEquals(slackMessage1, slackMessage2);
         assertEquals(slackMessage1, slackMessage1);
