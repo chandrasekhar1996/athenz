@@ -39,6 +39,7 @@ public class GroupMemberExpiryNotificationTask implements NotificationTask {
     private final String userDomainPrefix;
     private final NotificationCommon notificationCommon;
     private final DomainRoleMembersFetcher domainRoleMembersFetcher;
+    private final DomainMetaFetcher domainMetaFetcher;
     private static final Logger LOGGER = LoggerFactory.getLogger(GroupMemberExpiryNotificationTask.class);
     private final static String DESCRIPTION = "group membership expiration reminders";
     private final GroupExpiryDomainNotificationToEmailConverter groupExpiryDomainNotificationToEmailConverter;
@@ -56,7 +57,8 @@ public class GroupMemberExpiryNotificationTask implements NotificationTask {
         this.dbService = dbService;
         this.userDomainPrefix = userDomainPrefix;
         this.domainRoleMembersFetcher = new DomainRoleMembersFetcher(dbService, userDomainPrefix);
-        this.notificationCommon = new NotificationCommon(domainRoleMembersFetcher, userDomainPrefix);
+        this.domainMetaFetcher = new DomainMetaFetcher(dbService);
+        this.notificationCommon = new NotificationCommon(domainRoleMembersFetcher, userDomainPrefix, domainMetaFetcher);
         this.groupExpiryPrincipalNotificationToEmailConverter =
                 new GroupExpiryPrincipalNotificationToEmailConverter(notificationConverterCommon);
         this.groupExpiryDomainNotificationToEmailConverter =
@@ -577,7 +579,7 @@ public class GroupMemberExpiryNotificationTask implements NotificationTask {
 
             String[] members = metaDetails.get(NOTIFICATION_DETAILS_MEMBERS_LIST).split("\\|");
             for (String member: members) {
-                String[] memberDetails = member.split(";");
+                String[] memberDetails = member.split(";", -1);
 
                 if (memberDetails.length != TEMPLATE_COLUMN_NAMES.length) {
                     LOGGER.error("Invalid member details: {}", member);
@@ -599,6 +601,7 @@ public class GroupMemberExpiryNotificationTask implements NotificationTask {
                 groupDataModel.add(groupMap);
             }
             rootDataModel.put("groupData", groupDataModel);
+            rootDataModel.put("uiUrl", notificationConverterCommon.getAthenzUIUrl());
 
             return notificationConverterCommon.generateSlackMessageFromTemplate(
                     rootDataModel,
@@ -636,7 +639,7 @@ public class GroupMemberExpiryNotificationTask implements NotificationTask {
 
             String[] groups = metaDetails.get(NOTIFICATION_DETAILS_ROLES_LIST).split("\\|");
             for (String group: groups) {
-                String[] groupDetails = group.split(";");
+                String[] groupDetails = group.split(";", -1);
 
                 if (groupDetails.length != TEMPLATE_COLUMN_NAMES.length) {
                     LOGGER.error("Invalid group details: {}", group);

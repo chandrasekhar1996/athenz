@@ -17,7 +17,6 @@
 package com.yahoo.athenz.zms.notification;
 
 import com.yahoo.athenz.auth.impl.UserAuthority;
-import com.yahoo.athenz.common.notification.slack.NotificationToSlackMessageConverterCommon1;
 import com.yahoo.athenz.common.server.notification.Notification;
 import com.yahoo.athenz.common.server.notification.NotificationConverterCommon;
 import com.yahoo.athenz.zms.*;
@@ -604,6 +603,76 @@ public class RoleMemberNotificationCommonTest {
     }
 
     @Test
+    public void testConsolidateRoleMembersByDomain() {
+
+        DBService dbsvc = Mockito.mock(DBService.class);
+
+        List<Role> athenzRoles = new ArrayList<>();
+        List<RoleMember> roleMembers = new ArrayList<>();
+        roleMembers.add(new RoleMember().setMemberName("user.joe"));
+        Role role = new Role().setName("athenz:role.admin").setRoleMembers(roleMembers);
+        athenzRoles.add(role);
+        Mockito.when(dbsvc.getRolesByDomain("athenz")).thenReturn(athenzRoles);
+        Mockito.when(dbsvc.getRole("athenz", "admin", Boolean.FALSE, Boolean.TRUE, Boolean.FALSE))
+                .thenReturn(role);
+
+        List<Role> sportsRoles = new ArrayList<>();
+        roleMembers = new ArrayList<>();
+        roleMembers.add(new RoleMember().setMemberName("sports.api"));
+        roleMembers.add(new RoleMember().setMemberName("sports:group.dev-team"));
+        role = new Role().setName("sports:role.admin").setRoleMembers(roleMembers);
+        sportsRoles.add(role);
+        Mockito.when(dbsvc.getRolesByDomain("sports")).thenReturn(sportsRoles);
+        Mockito.when(dbsvc.getRole("sports", "admin", Boolean.FALSE, Boolean.TRUE, Boolean.FALSE))
+                .thenReturn(role);
+
+        List<Role> weatherRoles = new ArrayList<>();
+        role = new Role().setName("weather:role.admin").setRoleMembers(new ArrayList<>());
+        weatherRoles.add(role);
+        Mockito.when(dbsvc.getRolesByDomain("weather")).thenReturn(weatherRoles);
+        Mockito.when(dbsvc.getRole("weather", "admin", Boolean.FALSE, Boolean.TRUE, Boolean.FALSE))
+                .thenReturn(role);
+
+        RoleMemberNotificationCommon task = new RoleMemberNotificationCommon(
+                dbsvc, USER_DOMAIN_PREFIX);
+
+        Map<String, DomainRoleMember> members = new HashMap<>();
+
+        List<MemberRole> memberRoles = new ArrayList<>();
+        memberRoles.add(new MemberRole().setMemberName("user.joe").setDomainName("athenz").setRoleName("dev-team"));
+        memberRoles.add(new MemberRole().setMemberName("user.joe").setDomainName("sports").setRoleName("qa-team"));
+        DomainRoleMember domainRoleMember = new DomainRoleMember().setMemberName("user.joe")
+                .setMemberRoles(memberRoles);
+        members.put("user.joe", domainRoleMember);
+
+        memberRoles = new ArrayList<>();
+        memberRoles.add(new MemberRole().setMemberName("athenz.api").setDomainName("athenz").setRoleName("dev-team"));
+        memberRoles.add(new MemberRole().setMemberName("athenz.api").setDomainName("coretech").setRoleName("qa-team"));
+        domainRoleMember = new DomainRoleMember().setMemberName("athenz.api")
+                .setMemberRoles(memberRoles);
+        members.put("athenz.api", domainRoleMember);
+
+        memberRoles = new ArrayList<>();
+        memberRoles.add(new MemberRole().setMemberName("sports.api").setDomainName("sports").setRoleName("dev-team"));
+        domainRoleMember = new DomainRoleMember().setMemberName("sports.api")
+                .setMemberRoles(memberRoles);
+        members.put("sports.api", domainRoleMember);
+
+        memberRoles = new ArrayList<>();
+        memberRoles.add(new MemberRole().setMemberName("weather.api").setDomainName("weather").setRoleName("dev-team"));
+        domainRoleMember = new DomainRoleMember().setMemberName("weather.api")
+                .setMemberRoles(memberRoles);
+        members.put("weather.api", domainRoleMember);
+
+        Map<String, DomainRoleMember> consolidatedMembers = task.consolidateRoleMembersByDomain(members);
+        assertEquals(consolidatedMembers.size(), 4);
+        assertNotNull(consolidatedMembers.get("weather"));
+        assertNotNull(consolidatedMembers.get("sports"));
+        assertNotNull(consolidatedMembers.get("athenz"));
+        assertNotNull(consolidatedMembers.get("user.joe"));
+    }
+
+    @Test
     public void testConsolidateDomainMembers() {
 
         DBService dbsvc = Mockito.mock(DBService.class);
@@ -672,6 +741,81 @@ public class RoleMemberNotificationCommonTest {
         domainRoleMembers = new HashMap<>();
         domainRoleMembers.put("athenz", new ArrayList<>());
         consolidatedMembers = task.consolidateDomainAdmins(domainRoleMembers);
+        assertTrue(consolidatedMembers.isEmpty());
+    }
+
+    @Test
+    public void testConsolidateDomainMembersByDomain() {
+
+        DBService dbsvc = Mockito.mock(DBService.class);
+
+        List<Role> athenzRoles = new ArrayList<>();
+        List<RoleMember> roleMembers = new ArrayList<>();
+        roleMembers.add(new RoleMember().setMemberName("user.joe"));
+        Role role = new Role().setName("athenz:role.admin").setRoleMembers(roleMembers);
+        athenzRoles.add(role);
+        Mockito.when(dbsvc.getRolesByDomain("athenz")).thenReturn(athenzRoles);
+        Mockito.when(dbsvc.getRole("athenz", "admin", Boolean.FALSE, Boolean.TRUE, Boolean.FALSE))
+                .thenReturn(role);
+
+        List<Role> sportsRoles = new ArrayList<>();
+        roleMembers = new ArrayList<>();
+        roleMembers.add(new RoleMember().setMemberName("sports.api"));
+        roleMembers.add(new RoleMember().setMemberName("sports:group.dev-team"));
+        role = new Role().setName("sports:role.admin").setRoleMembers(roleMembers);
+        sportsRoles.add(role);
+        Mockito.when(dbsvc.getRolesByDomain("sports")).thenReturn(sportsRoles);
+        Mockito.when(dbsvc.getRole("sports", "admin", Boolean.FALSE, Boolean.TRUE, Boolean.FALSE))
+                .thenReturn(role);
+
+        List<Role> weatherRoles = new ArrayList<>();
+        role = new Role().setName("weather:role.admin").setRoleMembers(new ArrayList<>());
+        weatherRoles.add(role);
+        Mockito.when(dbsvc.getRolesByDomain("weather")).thenReturn(weatherRoles);
+        Mockito.when(dbsvc.getRole("weather", "admin", Boolean.FALSE, Boolean.TRUE, Boolean.FALSE))
+                .thenReturn(role);
+
+        RoleMemberNotificationCommon task = new RoleMemberNotificationCommon(dbsvc, USER_DOMAIN_PREFIX);
+
+        Map<String, List<MemberRole>> domainRoleMembers = new HashMap<>();
+
+        List<MemberRole> memberRoles = new ArrayList<>();
+        memberRoles.add(new MemberRole().setMemberName("athenz.api").setDomainName("athenz").setRoleName("dev-team"));
+        memberRoles.add(new MemberRole().setMemberName("athenz.api").setDomainName("coretech").setRoleName("qa-team"));
+        domainRoleMembers.put("athenz", memberRoles);
+
+        memberRoles = new ArrayList<>();
+        memberRoles.add(new MemberRole().setMemberName("sports.api").setDomainName("sports").setRoleName("dev-team"));
+        domainRoleMembers.put("sports", memberRoles);
+
+        memberRoles = new ArrayList<>();
+        memberRoles.add(new MemberRole().setMemberName("weather.api").setDomainName("weather").setRoleName("dev-team"));
+        domainRoleMembers.put("weather", memberRoles);
+
+        Map<String, DomainRoleMember> consolidatedMembers = task.consolidateDomains(domainRoleMembers);
+        assertEquals(consolidatedMembers.size(), 4);
+        assertNotNull(consolidatedMembers.get("sports"));
+        assertNotNull(consolidatedMembers.get("weather"));
+        assertNotNull(consolidatedMembers.get("athenz"));
+        assertNotNull(consolidatedMembers.get("coretech"));
+
+        // empty list should give us empty map
+
+        consolidatedMembers = task.consolidateDomains(Collections.emptyMap());
+        assertTrue(consolidatedMembers.isEmpty());
+
+        // list with null member should give us empty map
+
+        domainRoleMembers = new HashMap<>();
+        domainRoleMembers.put("athenz", null);
+        consolidatedMembers = task.consolidateDomains(domainRoleMembers);
+        assertTrue(consolidatedMembers.isEmpty());
+
+        // list with empty list as member should give us empty map
+
+        domainRoleMembers = new HashMap<>();
+        domainRoleMembers.put("athenz", new ArrayList<>());
+        consolidatedMembers = task.consolidateDomains(domainRoleMembers);
         assertTrue(consolidatedMembers.isEmpty());
     }
 

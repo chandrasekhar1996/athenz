@@ -1,5 +1,4 @@
-{
-"blocks": [
+[
 {
 "type": "header",
 "text": {
@@ -59,4 +58,3 @@
     }
 </#list>
 ]
-}

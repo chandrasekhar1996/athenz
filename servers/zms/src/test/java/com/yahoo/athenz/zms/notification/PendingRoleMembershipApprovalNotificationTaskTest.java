@@ -63,10 +63,20 @@ public class PendingRoleMembershipApprovalNotificationTaskTest {
         expectedNotification.setConsolidatedBy(Notification.ConsolidatedBy.PRINCIPAL);
         expectedNotification.setNotificationToEmailConverter(new PendingRoleMembershipApprovalNotificationTask.PendingRoleMembershipApprovalNotificationToEmailConverter(notificationConverterCommon));
         expectedNotification.setNotificationToMetricConverter(new PendingRoleMembershipApprovalNotificationTask.PendingRoleMembershipApprovalNotificationToMetricConverter());
+        expectedNotification.setNotificationToSlackMessageConverter(new PendingRoleMembershipApprovalNotificationTask.PendingRoleMembershipApprovalNotificationToSlackMessageConverter(notificationConverterCommon));
+
         expectedNotification.addRecipient("user.joe");
         assertEquals(notifications.get(0), expectedNotification);
 
-        // TODO chandu add second notification
+        Notification expectedSecondNotification = new Notification(Notification.Type.PENDING_ROLE_APPROVAL);
+        expectedSecondNotification.setConsolidatedBy(Notification.ConsolidatedBy.DOMAIN);
+        expectedSecondNotification.setNotificationToEmailConverter(new PendingRoleMembershipApprovalNotificationTask.PendingRoleMembershipApprovalNotificationToEmailConverter(notificationConverterCommon));
+        expectedSecondNotification.setNotificationToMetricConverter(new PendingRoleMembershipApprovalNotificationTask.PendingRoleMembershipApprovalNotificationToMetricConverter());
+        expectedSecondNotification.setNotificationToSlackMessageConverter(new PendingRoleMembershipApprovalNotificationTask.PendingRoleMembershipApprovalNotificationToSlackMessageConverter(notificationConverterCommon));
+
+        expectedSecondNotification.addRecipient("user.joe");
+        assertEquals(notifications.get(1), expectedSecondNotification);
+
         notificationManager.shutdown();
     }
 

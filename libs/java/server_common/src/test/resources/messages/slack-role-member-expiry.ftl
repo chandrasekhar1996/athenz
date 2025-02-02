@@ -1,9 +1,10 @@
-[
+{
+"blocks": [
 {
 "type": "header",
 "text": {
 "type": "plain_text",
-"text": ":clock1: Athenz Domain Group Member Expiration Notification :clock1:",
+"text": ":athenz: Role Member Expiration Notification :clock1:",
 "emoji": true
 }
 },
@@ -11,19 +12,19 @@
 "type": "section",
 "text": {
 "type": "mrkdwn",
-"text": "You have one or more principals in your Athenz groups whose access will expire soon. Please review this list and, if necessary, login to *<${uiUrl}|Athenz UI>* to extend their expiration dates.",
+"text": "Please review this list and, if necessary, follow up with the respective domain administrators to extend those expiration dates.",
 "verbatim": false
 }
 },
 {
 "type": "divider"
 }
-<#list groupData as item>
+<#list roleData as item>
     ,{
     "type": "section",
     "text": {
     "type": "mrkdwn",
-    "text": "*<${item["groupLink"]}|${item["domain"]}:group.${item["group"]}>*"
+    "text": "*<${item["roleLink"]}|${item["domain"]}:role.${item["role"]}>*"
     }
     },
     {
@@ -39,7 +40,7 @@
     },
     {
     "type": "mrkdwn",
-    "text": "*Group:*\n<${item["groupLink"]}|${item["group"]}>"
+    "text": "*Role:*\n<${item["roleLink"]}|${item["role"]}>"
     },
     {
     "type": "mrkdwn",
@@ -58,3 +59,4 @@
     }
 </#list>
 ]
+}

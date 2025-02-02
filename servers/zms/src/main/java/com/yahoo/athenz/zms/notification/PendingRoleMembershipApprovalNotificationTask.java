@@ -21,9 +21,7 @@ import com.yahoo.athenz.zms.DBService;
 import com.yahoo.rdl.Timestamp;
 
 import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static com.yahoo.athenz.common.ServerCommonConsts.USER_DOMAIN_PREFIX;
 import static com.yahoo.athenz.common.server.notification.impl.MetricNotificationService.METRIC_NOTIFICATION_TYPE_KEY;
@@ -48,7 +46,7 @@ public class PendingRoleMembershipApprovalNotificationTask implements Notificati
         this.notificationCommon = new NotificationCommon(domainRoleMembersFetcher, userDomainPrefix, domainFetcher);
         this.pendingMembershipApprovalNotificationToEmailConverter = new PendingRoleMembershipApprovalNotificationToEmailConverter(notificationConverterCommon);
         this.pendingRoleMembershipApprovalNotificationToMetricConverter = new PendingRoleMembershipApprovalNotificationToMetricConverter();
-        this.pendingRoleMembershipApprovalNotificationToSlackMessageConverter = new PendingRoleMembershipApprovalNotificationToSlackMessageConverter();
+        this.pendingRoleMembershipApprovalNotificationToSlackMessageConverter = new PendingRoleMembershipApprovalNotificationToSlackMessageConverter(notificationConverterCommon);
     }
 
     @Override
@@ -131,9 +129,32 @@ public class PendingRoleMembershipApprovalNotificationTask implements Notificati
 
     public static class PendingRoleMembershipApprovalNotificationToSlackMessageConverter implements NotificationToSlackMessageConverter {
 
+        private static final String SLACK_TEMPLATE_NOTIFICATION_APPROVAL_REMINDER = "messages/slack-role-membership-approval-reminder.ftl";
+
+        private final NotificationConverterCommon notificationConverterCommon;
+        private final String slackMembershipApprovalReminderTemplate;
+
+        public PendingRoleMembershipApprovalNotificationToSlackMessageConverter(NotificationConverterCommon notificationConverterCommon) {
+            this.notificationConverterCommon = notificationConverterCommon;
+            slackMembershipApprovalReminderTemplate = notificationConverterCommon.readContentFromFile(getClass().getClassLoader(), SLACK_TEMPLATE_NOTIFICATION_APPROVAL_REMINDER);
+        }
+
+        private String getMembershipApprovalReminderSlackMessage() {
+            Map<String, Object> dataModel = new HashMap<>();
+            dataModel.put("workflowUrl", notificationConverterCommon.getWorkflowUrl());
+            return notificationConverterCommon.generateSlackMessageFromTemplate(
+                    dataModel,
+                    slackMembershipApprovalReminderTemplate);
+        }
+
         @Override
         public NotificationSlackMessage getNotificationAsSlackMessage(Notification notification) {
-            return null;
+            String slackMessageContent = getMembershipApprovalReminderSlackMessage();
+            // TODO Chandu generate slack recipients
+            Set<String> slackRecipients = notificationConverterCommon.getSlackRecipients(notification.getRecipients(), notification.getNotificationDomainMeta());
+            return new NotificationSlackMessage(
+                    slackMessageContent,
+                    slackRecipients);
         }
     }
 }

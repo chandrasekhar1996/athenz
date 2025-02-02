@@ -3,7 +3,7 @@
 "type": "header",
 "text": {
 "type": "plain_text",
-"text": ":athenz: Pending Membership Approved Details",
+"text": ":athenz: Pending Group Membership Approved Details",
 "emoji": true
 }
 },
@@ -22,7 +22,7 @@
 "type": "section",
 "text": {
 "type": "mrkdwn",
-"text": "*<${roleLink}|${domain}:role.${role}>*"
+"text": "*<fakeLink.toEmployeeProfile.com|${domain}:group.${role}>*"
 }
 },
 {
@@ -30,11 +30,15 @@
 "fields": [
 {
 "type": "mrkdwn",
-"text": "*Domain:*\n<${domainLink}|${domain}>"
+"text": "*Domain:*\n<fakeLink.toEmployeeProfile.com|${domain}>"
 },
 {
 "type": "mrkdwn",
-"text": "*Role:*\n<${roleLink}|${role}>"
+"text": "*Expiration:*\n${expiration}"
+},
+{
+"type": "mrkdwn",
+"text": "*Group:*\n<fakeLink.toEmployeeProfile.com|${role}>"
 },
 {
 "type": "mrkdwn",
@@ -42,19 +46,19 @@
 },
 {
 "type": "mrkdwn",
-"text": "*Requestor:*\n${requester!''}"
+"text": "*Requestor:*\n${requestor}"
 },
 {
 "type": "mrkdwn",
-"text": "*Pending Operation:*\n${pendingState!''}"
+"text": "*Pending Operation:*\n${operation}"
 },
 {
 "type": "mrkdwn",
-"text": "*Approved By:*\n${actionPrincipal}"
+"text": "*Approved By:*\n${approvedBy}"
 },
 {
 "type": "mrkdwn",
-"text": "*Reason:*\n${reason!''}"
+"text": "*Reason:*\n${reason}"
 }
 ]
 },

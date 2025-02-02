@@ -133,6 +133,8 @@ public class GroupMemberExpiryNotificationTaskTest {
         Mockito.when(dbsvc.getRolesByDomain("athenz1")).thenReturn(domain.getRoles());
         Mockito.when(dbsvc.getRole("athenz1", "admin", Boolean.FALSE, Boolean.TRUE, Boolean.FALSE))
                 .thenReturn(adminRole);
+        Domain athenz1Domain = new Domain().setName("athenz1").setSlackChannel("channel-1");
+        Mockito.when(dbsvc.getDomain("athenz1", false)).thenReturn(athenz1Domain);
 
         List<Notification> notifications = new GroupMemberExpiryNotificationTask(dbsvc, USER_DOMAIN_PREFIX,
                 notificationConverterCommon).getNotifications();
@@ -190,6 +192,9 @@ public class GroupMemberExpiryNotificationTaskTest {
                 new GroupMemberExpiryNotificationTask.GroupExpiryDomainNotificationToMetricConverter());
         expectedFourthNotification.setNotificationToSlackMessageConverter(
                 new GroupMemberExpiryNotificationTask.GroupExpiryDomainNotificationToSlackConverter(notificationConverterCommon));
+        Map<String, NotificationDomainMeta> notificationDomainMetaMap = new HashMap<>();
+        notificationDomainMetaMap.put("athenz1", new NotificationDomainMeta("athenz1").setSlackChannel("channel-1"));
+        expectedFourthNotification.setNotificationDomainMeta(notificationDomainMetaMap);
 
         assertEquals(notifications.get(0), expectedFirstNotification);
         assertEquals(notifications.get(1), expectedSecondNotification);
@@ -260,7 +265,8 @@ public class GroupMemberExpiryNotificationTaskTest {
         Group group = new Group().setTags(tags);
         Mockito.when(dbsvc.getGroup("athenz1", "group1", false, false)).thenReturn(group);
         Mockito.when(dbsvc.getGroup("athenz1", "group2", false, false)).thenReturn(group);
-
+        Domain athenz1Domain = new Domain().setName("athenz1").setSlackChannel("channel-1");
+        Mockito.when(dbsvc.getDomain("athenz1", false)).thenReturn(athenz1Domain);
         List<Notification> notifications = new GroupMemberExpiryNotificationTask(dbsvc, USER_DOMAIN_PREFIX,
                 notificationConverterCommon).getNotifications();
 
@@ -319,6 +325,9 @@ public class GroupMemberExpiryNotificationTaskTest {
                 new GroupMemberExpiryNotificationTask.GroupExpiryDomainNotificationToMetricConverter());
         expectedFourthNotification.setNotificationToSlackMessageConverter(
                 new GroupMemberExpiryNotificationTask.GroupExpiryDomainNotificationToSlackConverter(notificationConverterCommon));
+        Map<String, NotificationDomainMeta> notificationDomainMetaMap = new HashMap<>();
+        notificationDomainMetaMap.put("athenz1", new NotificationDomainMeta("athenz1").setSlackChannel("channel-1"));
+        expectedFourthNotification.setNotificationDomainMeta(notificationDomainMetaMap);
 
         assertEquals(notifications.get(0), expectedFirstNotification);
         assertEquals(notifications.get(1), expectedSecondNotification);
@@ -599,6 +608,8 @@ public class GroupMemberExpiryNotificationTaskTest {
         Mockito.when(dbsvc.getRolesByDomain("athenz1")).thenReturn(domain.getRoles());
         Mockito.when(dbsvc.getRole("athenz1", "admin", Boolean.FALSE, Boolean.TRUE, Boolean.FALSE))
                 .thenReturn(adminRole);
+        Domain athenz1Domain = new Domain().setName("athenz1").setSlackChannel("channel-1");
+        Mockito.when(dbsvc.getDomain("athenz1", false)).thenReturn(athenz1Domain);
 
         List<Notification> notifications = new GroupMemberExpiryNotificationTask(dbsvc, USER_DOMAIN_PREFIX,
                 notificationConverterCommon).getNotifications();
@@ -660,7 +671,9 @@ public class GroupMemberExpiryNotificationTaskTest {
                 new GroupMemberExpiryNotificationTask.GroupExpiryDomainNotificationToMetricConverter());
         expectedFourthNotification.setNotificationToSlackMessageConverter(
                 new GroupMemberExpiryNotificationTask.GroupExpiryDomainNotificationToSlackConverter(notificationConverterCommon));
-
+        Map<String, NotificationDomainMeta> notificationDomainMetaMap = new HashMap<>();
+        notificationDomainMetaMap.put("athenz1", new NotificationDomainMeta("athenz1").setSlackChannel("channel-1"));
+        expectedFourthNotification.setNotificationDomainMeta(notificationDomainMetaMap);
 
         assertEquals(notifications.get(0), expectedFirstNotification);
         assertEquals(notifications.get(1), expectedSecondNotification);
@@ -808,6 +821,46 @@ public class GroupMemberExpiryNotificationTaskTest {
         domainGroupMembers.put("athenz", new ArrayList<>());
         consolidatedMembers = task.consolidateDomainAdmins(domainGroupMembers);
         assertTrue(consolidatedMembers.isEmpty());
+
+        domainGroupMembers = new HashMap<>();
+
+        groupMembers = new ArrayList<>();
+        groupMembers.add(new GroupMember().setMemberName("athenz.api").setDomainName("athenz").setGroupName("dev-team"));
+        groupMembers.add(new GroupMember().setMemberName("athenz.api").setDomainName("coretech").setGroupName("qa-team"));
+        domainGroupMembers.put("athenz", groupMembers);
+
+        groupMembers = new ArrayList<>();
+        groupMembers.add(new GroupMember().setMemberName("sports.api").setDomainName("sports").setGroupName("dev-team"));
+        domainGroupMembers.put("sports", groupMembers);
+
+        groupMembers = new ArrayList<>();
+        groupMembers.add(new GroupMember().setMemberName("weather.api").setDomainName("weather").setGroupName("dev-team"));
+        domainGroupMembers.put("weather", groupMembers);
+
+        Map<String, DomainGroupMember> consolidatedMembersByDomain = task.consolidateDomainAdminsByDomain(domainGroupMembers);
+        assertEquals(consolidatedMembersByDomain.size(), 3);
+        assertNotNull(consolidatedMembersByDomain.get("sports"));
+        assertNotNull(consolidatedMembersByDomain.get("athenz"));
+        assertNotNull(consolidatedMembersByDomain.get("weather"));
+
+        // empty list should give us empty map
+
+        consolidatedMembersByDomain = task.consolidateDomainAdminsByDomain(Collections.emptyMap());
+        assertTrue(consolidatedMembersByDomain.isEmpty());
+
+        // list with null member should give us empty map
+
+        domainGroupMembers = new HashMap<>();
+        domainGroupMembers.put("athenz", null);
+        consolidatedMembersByDomain = task.consolidateDomainAdminsByDomain(domainGroupMembers);
+        assertTrue(consolidatedMembersByDomain.isEmpty());
+
+        // list with empty list as member should give us empty map
+
+        domainGroupMembers = new HashMap<>();
+        domainGroupMembers.put("athenz", new ArrayList<>());
+        consolidatedMembersByDomain = task.consolidateDomainAdminsByDomain(domainGroupMembers);
+        assertTrue(consolidatedMembersByDomain.isEmpty());
     }
 
     @Test
@@ -882,6 +935,27 @@ public class GroupMemberExpiryNotificationTaskTest {
         assertEqualsNoOrder(expectedValues, actualValues);
 
         domainGroupMember = consolidatedMembers.get("user.jane");
+        assertNotNull(domainGroupMember);
+        Assert.assertEquals(domainGroupMember.getMemberGroups().size(), 1);
+        Assert.assertEquals(domainGroupMember.getMemberGroups().get(0).getMemberName(), "user.user4");
+
+        Map<String, DomainGroupMember> consolidatedMembersByDomain = task.consolidateDomainAdminsByDomain(domainGroupMembers);
+        Assert.assertEquals(consolidatedMembersByDomain.size(), 3);
+
+        domainGroupMember = consolidatedMembersByDomain.get("athenz");
+        assertNotNull(domainGroupMember);
+        Assert.assertEquals(domainGroupMember.getMemberGroups().size(), 1);
+        Assert.assertEquals(domainGroupMember.getMemberGroups().get(0).getMemberName(), "user.user1");
+
+        domainGroupMember = consolidatedMembersByDomain.get("user.dave");
+        assertNotNull(domainGroupMember);
+        Assert.assertEquals(domainGroupMember.getMemberGroups().size(), 2);
+        expectedValues = Arrays.asList("user.user2", "user.user3");
+        actualValues = domainGroupMember.getMemberGroups().stream().map(GroupMember::getMemberName)
+                .collect(Collectors.toList());
+        assertEqualsNoOrder(expectedValues, actualValues);
+
+        domainGroupMember = consolidatedMembersByDomain.get("user.jane");
         assertNotNull(domainGroupMember);
         Assert.assertEquals(domainGroupMember.getMemberGroups().size(), 1);
         Assert.assertEquals(domainGroupMember.getMemberGroups().get(0).getMemberName(), "user.user4");

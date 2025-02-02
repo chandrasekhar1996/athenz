@@ -78,11 +78,14 @@ public class PutGroupMembershipDecisionNotificationTaskTest {
         PutGroupMembershipDecisionNotificationTask.PutGroupMembershipDecisionNotificationToMetricConverter metricConverter =
                 new PutGroupMembershipDecisionNotificationTask.PutGroupMembershipDecisionNotificationToMetricConverter();
         notification.setNotificationToMetricConverter(metricConverter);
+        PutGroupMembershipDecisionNotificationTask.PutGroupMembershipDecisionNotificationToSlackConverter slackConverter =
+                new PutGroupMembershipDecisionNotificationTask.PutGroupMembershipDecisionNotificationToSlackConverter(notificationConverterCommon, true);
+        notification.setNotificationToSlackMessageConverter(slackConverter);
 
-        Mockito.verify(mockNotificationService, atLeastOnce()).notify(captor.capture());
-        Notification actualNotification = captor.getValue();
+        Mockito.verify(mockNotificationService, atLeast(2)).notify(captor.capture());
+        List<Notification> actualNotifications = captor.getAllValues();
 
-        assertEquals(actualNotification, notification);
+        assertEquals(actualNotifications.get(0), notification);
     }
 
     @Test
@@ -132,6 +135,10 @@ public class PutGroupMembershipDecisionNotificationTaskTest {
         PutGroupMembershipDecisionNotificationTask.PutGroupMembershipDecisionNotificationToMetricConverter metricConverter =
                 new PutGroupMembershipDecisionNotificationTask.PutGroupMembershipDecisionNotificationToMetricConverter();
         notification.setNotificationToMetricConverter(metricConverter);
+
+        PutGroupMembershipDecisionNotificationTask.PutGroupMembershipDecisionNotificationToSlackConverter slackConverter =
+                new PutGroupMembershipDecisionNotificationTask.PutGroupMembershipDecisionNotificationToSlackConverter(notificationConverterCommon, true);
+        notification.setNotificationToSlackMessageConverter(slackConverter);
 
         Mockito.verify(mockNotificationService, atLeastOnce()).notify(captor.capture());
         Notification actualNotification = captor.getValue();

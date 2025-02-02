@@ -132,6 +132,9 @@ public class RoleMemberExpiryNotificationTaskTest {
         Mockito.when(dbsvc.getRole("athenz1", "admin", Boolean.FALSE, Boolean.TRUE, Boolean.FALSE))
                 .thenReturn(adminRole);
 
+        Domain athenz1Domain = new Domain().setName("athenz1").setSlackChannel("channel-1");
+        Mockito.when(dbsvc.getDomain("athenz1", false)).thenReturn(athenz1Domain);
+
         List<Notification> notifications = new RoleMemberExpiryNotificationTask(dbsvc, USER_DOMAIN_PREFIX,
                 new NotificationConverterCommon(null)).getNotifications();
 
@@ -192,6 +195,9 @@ public class RoleMemberExpiryNotificationTaskTest {
         expectedFourthNotification.setNotificationToSlackMessageConverter(
                 new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToSlackConverter(
                         new NotificationConverterCommon(null)));
+        Map<String, NotificationDomainMeta> notificationDomainMetaMap = new HashMap<>();
+        notificationDomainMetaMap.put("athenz1", new NotificationDomainMeta("athenz1").setSlackChannel("channel-1"));
+        expectedFourthNotification.setNotificationDomainMeta(notificationDomainMetaMap);
 
         assertEquals(notifications.get(0), expectedFirstNotification);
         assertEquals(notifications.get(1), expectedSecondNotification);
@@ -249,6 +255,8 @@ public class RoleMemberExpiryNotificationTaskTest {
         Mockito.when(dbsvc.getRolesByDomain("athenz1")).thenReturn(domain.getRoles());
         Mockito.when(dbsvc.getRole("athenz1", "admin", Boolean.FALSE, Boolean.TRUE, Boolean.FALSE))
                 .thenReturn(adminRole);
+        Domain athenz1Domain = new Domain().setName("athenz1").setSlackChannel("channel-1");
+        Mockito.when(dbsvc.getDomain("athenz1", false)).thenReturn(athenz1Domain);
 
         Map<String, TagValueList> tags = new HashMap<>();
         TagValueList tagValueList = new TagValueList().setList(Collections.singletonList("4"));
@@ -315,6 +323,9 @@ public class RoleMemberExpiryNotificationTaskTest {
                 new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToMetricConverter());
         expectedFourthNotification.setNotificationToSlackMessageConverter(
                 new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToSlackConverter(converterCommon));
+        Map<String, NotificationDomainMeta> notificationDomainMetaMap = new HashMap<>();
+        notificationDomainMetaMap.put("athenz1", new NotificationDomainMeta("athenz1").setSlackChannel("channel-1"));
+        expectedFourthNotification.setNotificationDomainMeta(notificationDomainMetaMap);
 
         assertEquals(notifications.get(0), expectedFirstNotification);
         assertEquals(notifications.get(1), expectedSecondNotification);

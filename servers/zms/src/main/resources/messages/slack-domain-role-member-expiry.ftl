@@ -1,5 +1,4 @@
-{
-"blocks": [
+[
 {
 "type": "header",
 "text": {
@@ -19,7 +18,7 @@
 {
 "type": "divider"
 }
-<#list memberData as item>
+<#list roleData as item>
     ,{
     "type": "section",
     "text": {
@@ -46,6 +45,12 @@
     "type": "mrkdwn",
     "text": "*Member:*\n${item["member"]}"
     }
+    <#if item["notes"]?has_content>
+        ,{
+        "type": "mrkdwn",
+        "text": "*Notes:*\n${item["notes"]}"
+        }
+    </#if>
     ]
     },
     {
@@ -53,4 +58,3 @@
     }
 </#list>
 ]
-}

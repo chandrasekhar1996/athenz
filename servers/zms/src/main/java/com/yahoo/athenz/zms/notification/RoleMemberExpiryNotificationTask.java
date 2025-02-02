@@ -265,7 +265,7 @@ public class RoleMemberExpiryNotificationTask implements NotificationTask {
 
             String[] members = metaDetails.get(NOTIFICATION_DETAILS_MEMBERS_LIST).split("\\|");
             for (String member: members) {
-                String[] memberDetails = member.split(";");
+                String[] memberDetails = member.split(";", -1);
 
                 if (memberDetails.length != TEMPLATE_COLUMN_NAMES.length) {
                     LOGGER.error("Invalid member details: {}", member);
@@ -287,6 +287,7 @@ public class RoleMemberExpiryNotificationTask implements NotificationTask {
                 roleDataModel.add(roleMap);
             }
             rootDataModel.put("roleData", roleDataModel);
+            rootDataModel.put("uiUrl", notificationConverterCommon.getAthenzUIUrl());
 
             return notificationConverterCommon.generateSlackMessageFromTemplate(
                     rootDataModel,
@@ -324,7 +325,7 @@ public class RoleMemberExpiryNotificationTask implements NotificationTask {
 
             String[] roles = metaDetails.get(NOTIFICATION_DETAILS_ROLES_LIST).split("\\|");
             for (String role: roles) {
-                String[] roleDetails = role.split(";");
+                String[] roleDetails = role.split(";", -1);
 
                 if (roleDetails.length != TEMPLATE_COLUMN_NAMES.length) {
                     LOGGER.error("Invalid role details: {}", role);

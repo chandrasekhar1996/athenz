@@ -58,13 +58,24 @@ public class PendingGroupMembershipApprovalNotificationTaskTest {
         List<Notification> notifications = reminder.getNotifications();
 
         // Verify contents of notification is as expected
-        assertEquals(notifications.size(), 1);
+        assertEquals(notifications.size(), 2);
         Notification expectedNotification = new Notification(Notification.Type.PENDING_GROUP_APPROVAL);
         expectedNotification.setConsolidatedBy(Notification.ConsolidatedBy.PRINCIPAL);
         expectedNotification.setNotificationToEmailConverter(new PendingGroupMembershipApprovalNotificationTask.PendingGroupMembershipApprovalNotificationToEmailConverter(new NotificationConverterCommon(null)));
         expectedNotification.setNotificationToMetricConverter(new PendingGroupMembershipApprovalNotificationTask.PendingGroupMembershipApprovalNotificationToMetricConverter());
+        expectedNotification.setNotificationToSlackMessageConverter(new PendingGroupMembershipApprovalNotificationTask.PendingGroupMembershipApprovalNotificationToSlackConverter(new NotificationConverterCommon(null)));
+
         expectedNotification.addRecipient("user.joe");
         assertEquals(notifications.get(0), expectedNotification);
+
+        Notification expectedSecondNotification = new Notification(Notification.Type.PENDING_GROUP_APPROVAL);
+        expectedSecondNotification.setConsolidatedBy(Notification.ConsolidatedBy.DOMAIN);
+        expectedSecondNotification.setNotificationToEmailConverter(new PendingGroupMembershipApprovalNotificationTask.PendingGroupMembershipApprovalNotificationToEmailConverter(new NotificationConverterCommon(null)));
+        expectedSecondNotification.setNotificationToMetricConverter(new PendingGroupMembershipApprovalNotificationTask.PendingGroupMembershipApprovalNotificationToMetricConverter());
+        expectedSecondNotification.setNotificationToSlackMessageConverter(new PendingGroupMembershipApprovalNotificationTask.PendingGroupMembershipApprovalNotificationToSlackConverter(new NotificationConverterCommon(null)));
+
+        expectedSecondNotification.addRecipient("user.joe");
+        assertEquals(notifications.get(1), expectedSecondNotification);
         notificationManager.shutdown();
     }
 

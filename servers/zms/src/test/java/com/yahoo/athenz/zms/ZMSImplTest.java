@@ -31165,7 +31165,8 @@ public class ZMSImplTest {
         assertEquals(resrole.getRoleMembers().size(), 1);
         assertEquals(resrole.getRoleMembers().get(0).getMemberName(), "user.bob");
         assertTrue(resrole.getRoleMembers().get(0).getApproved());
-        List<Notification> expectedNotifications = Collections.singletonList(
+        List<Notification> expectedNotifications = new ArrayList<>();
+        expectedNotifications.add(
                 new Notification(Notification.Type.ROLE_MEMBER_DECISION)
                         .addRecipient("user.bob")
                         .addRecipient("user.user2")
@@ -31178,6 +31179,30 @@ public class ZMSImplTest {
                         .addDetails("pendingState", "ADD")
                         .addDetails("actionPrincipal", "user.user1")
                         .addDetails("membershipDecision", "approve")
+                        .setNotificationToSlackMessageConverter(
+                                new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToSlackConverter(
+                                        new NotificationConverterCommon(null), true))
+                        .setNotificationToEmailConverter(
+                                new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToEmailConverter(
+                                        new NotificationConverterCommon(null), true))
+                        .setNotificationToMetricConverter(
+                                new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToMetricConverter()));
+        expectedNotifications.add(
+                new Notification(Notification.Type.ROLE_MEMBER_DECISION)
+                        .addRecipient("user.bob")
+                        .addRecipient("user.user2")
+                        .setConsolidatedBy(Notification.ConsolidatedBy.DOMAIN)
+                        .addDetails("requester", "user.user2")
+                        .addDetails("reason", auditRef)
+                        .addDetails("role", "review-role")
+                        .addDetails("domain", domainName)
+                        .addDetails("member", "user.bob")
+                        .addDetails("pendingState", "ADD")
+                        .addDetails("actionPrincipal", "user.user1")
+                        .addDetails("membershipDecision", "approve")
+                        .setNotificationToSlackMessageConverter(
+                                new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToSlackConverter(
+                                        new NotificationConverterCommon(null), true))
                         .setNotificationToEmailConverter(
                                 new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToEmailConverter(
                                         new NotificationConverterCommon(null), true))
@@ -31256,7 +31281,8 @@ public class ZMSImplTest {
 
         resrole = zmsImpl.getRole(ctx, domainName, roleName, false, false, true);
         assertEquals(resrole.getRoleMembers().size(), 0);
-        List<Notification> expectedNotifications = Collections.singletonList(
+        List<Notification> expectedNotifications = new ArrayList<>();
+        expectedNotifications.add(
                 new Notification(Notification.Type.ROLE_MEMBER_DECISION)
                         .addRecipient("user.bob")
                         .addRecipient("user.user2")
@@ -31269,6 +31295,30 @@ public class ZMSImplTest {
                         .addDetails("pendingState", "ADD")
                         .addDetails("actionPrincipal", "user.user1")
                         .addDetails("membershipDecision", "reject")
+                        .setNotificationToSlackMessageConverter(
+                                new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToSlackConverter(
+                                        new NotificationConverterCommon(null), false))
+                        .setNotificationToEmailConverter(
+                                new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToEmailConverter(
+                                        new NotificationConverterCommon(null), false))
+                        .setNotificationToMetricConverter(
+                                new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToMetricConverter()));
+        expectedNotifications.add(
+                new Notification(Notification.Type.ROLE_MEMBER_DECISION)
+                        .addRecipient("user.bob")
+                        .addRecipient("user.user2")
+                        .setConsolidatedBy(Notification.ConsolidatedBy.DOMAIN)
+                        .addDetails("requester", "user.user2")
+                        .addDetails("reason", auditRef)
+                        .addDetails("role", "review-role")
+                        .addDetails("domain", domainName)
+                        .addDetails("member", "user.bob")
+                        .addDetails("pendingState", "ADD")
+                        .addDetails("actionPrincipal", "user.user1")
+                        .addDetails("membershipDecision", "reject")
+                        .setNotificationToSlackMessageConverter(
+                                new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToSlackConverter(
+                                        new NotificationConverterCommon(null), false))
                         .setNotificationToEmailConverter(
                                 new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToEmailConverter(
                                         new NotificationConverterCommon(null), false))
@@ -31341,7 +31391,8 @@ public class ZMSImplTest {
 
         resrole = zmsImpl.getRole(ctx, domainName, "role1", false, false, true);
         assertEquals(resrole.getRoleMembers().size(), 0);
-        List<Notification> expextedNotifications = Collections.singletonList(
+        List<Notification> expextedNotifications = new ArrayList<>();
+        expextedNotifications.add(
                 new Notification(Notification.Type.ROLE_MEMBER_DECISION)
                         .addRecipient("user.joe")
                         .addRecipient("user.user2")
@@ -31354,6 +31405,30 @@ public class ZMSImplTest {
                         .addDetails("pendingState", "DELETE")
                         .addDetails("actionPrincipal", "user.user1")
                         .addDetails("membershipDecision", "approve")
+                        .setNotificationToSlackMessageConverter(
+                                new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToSlackConverter(
+                                        new NotificationConverterCommon(null), true))
+                        .setNotificationToEmailConverter(
+                                new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToEmailConverter(
+                                        new NotificationConverterCommon(null), true))
+                        .setNotificationToMetricConverter(
+                                new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToMetricConverter()));
+        expextedNotifications.add(
+                new Notification(Notification.Type.ROLE_MEMBER_DECISION)
+                        .addRecipient("user.joe")
+                        .addRecipient("user.user2")
+                        .setConsolidatedBy(Notification.ConsolidatedBy.DOMAIN)
+                        .addDetails("requester", "user.user2")
+                        .addDetails("reason", auditRef)
+                        .addDetails("role", "role1")
+                        .addDetails("domain", domainName)
+                        .addDetails("member", "user.joe")
+                        .addDetails("pendingState", "DELETE")
+                        .addDetails("actionPrincipal", "user.user1")
+                        .addDetails("membershipDecision", "approve")
+                        .setNotificationToSlackMessageConverter(
+                                new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToSlackConverter(
+                                        new NotificationConverterCommon(null), true))
                         .setNotificationToEmailConverter(
                                 new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToEmailConverter(
                                         new NotificationConverterCommon(null), true))
@@ -31426,7 +31501,8 @@ public class ZMSImplTest {
 
         resrole = zmsImpl.getRole(ctx, domainName, "role1", false, false, true);
         assertEquals(resrole.getRoleMembers().size(), 1);
-        List<Notification> expextedNotifications = Collections.singletonList(
+        List<Notification> expextedNotifications = new ArrayList<>();
+        expextedNotifications.add(
                 new Notification(Notification.Type.ROLE_MEMBER_DECISION)
                         .addRecipient("user.joe")
                         .addRecipient("user.user2")
@@ -31439,6 +31515,30 @@ public class ZMSImplTest {
                         .addDetails("pendingState", "DELETE")
                         .addDetails("actionPrincipal", "user.user1")
                         .addDetails("membershipDecision", "reject")
+                        .setNotificationToSlackMessageConverter(
+                                new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToSlackConverter(
+                                new NotificationConverterCommon(null), false))
+                        .setNotificationToEmailConverter(
+                                new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToEmailConverter(
+                                        new NotificationConverterCommon(null), false))
+                        .setNotificationToMetricConverter(
+                                new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToMetricConverter()));
+        expextedNotifications.add(
+                new Notification(Notification.Type.ROLE_MEMBER_DECISION)
+                        .addRecipient("user.joe")
+                        .addRecipient("user.user2")
+                        .setConsolidatedBy(Notification.ConsolidatedBy.DOMAIN)
+                        .addDetails("requester", "user.user2")
+                        .addDetails("reason", auditRef)
+                        .addDetails("role", "role1")
+                        .addDetails("domain", domainName)
+                        .addDetails("member", "user.joe")
+                        .addDetails("pendingState", "DELETE")
+                        .addDetails("actionPrincipal", "user.user1")
+                        .addDetails("membershipDecision", "reject")
+                        .setNotificationToSlackMessageConverter(
+                                new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToSlackConverter(
+                                        new NotificationConverterCommon(null), false))
                         .setNotificationToEmailConverter(
                                 new PutRoleMembershipDecisionNotificationTask.PutRoleMembershipDecisionNotificationToEmailConverter(
                                         new NotificationConverterCommon(null), false))

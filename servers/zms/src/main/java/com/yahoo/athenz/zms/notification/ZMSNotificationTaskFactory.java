@@ -51,10 +51,16 @@ public class ZMSNotificationTaskFactory implements NotificationTaskFactory {
                 monitorIdentity, userDomainPrefix, notificationConverterCommon));
         notificationTasks.add(new PendingGroupMembershipApprovalNotificationTask(dbService, pendingRoleMemberLifespan,
                 monitorIdentity, userDomainPrefix, notificationConverterCommon));
+
+
+
+
         notificationTasks.add(new RoleMemberExpiryNotificationTask(dbService, userDomainPrefix,
                 notificationConverterCommon));
+
         notificationTasks.add(new RoleMemberReviewNotificationTask(dbService, userDomainPrefix,
                 notificationConverterCommon));
+
         notificationTasks.add(new GroupMemberExpiryNotificationTask(dbService, userDomainPrefix,
                 notificationConverterCommon));
         return notificationTasks;
