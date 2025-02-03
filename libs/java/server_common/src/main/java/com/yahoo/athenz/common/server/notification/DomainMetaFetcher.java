@@ -33,7 +33,7 @@ public class DomainMetaFetcher {
 
     public NotificationDomainMeta getDomainMeta(String domainName, boolean masterCopy) {
 
-        NotificationDomainMeta domainMeta = new NotificationDomainMeta(domainName);
+        NotificationDomainMeta domainMeta = null;
         if (domainProvider == null) {
             return domainMeta;
         }
@@ -43,6 +43,7 @@ public class DomainMetaFetcher {
             if (domain == null) {
                 return domainMeta;
             }
+            domainMeta = new NotificationDomainMeta(domainName);
             domainMeta.setSlackChannel(domain.getSlackChannel());
         } catch (Exception ex) {
             LOGGER.error("unable to fetch domain meta for domain: {} error: {}",

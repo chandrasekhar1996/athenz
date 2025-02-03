@@ -635,4 +635,89 @@ public class RoleMemberReviewNotificationTaskTest {
 
         assertEquals(new NotificationMetric(expectedAttributesPrincipal), notificationAsMetricsPrincipal);
     }
+
+    @Test
+    public void testGetSlackMessage() {
+        System.setProperty("athenz.notification_workflow_url", "https://athenz.example.com/workflow");
+        System.setProperty("athenz.notification_support_text", "#Athenz slack channel");
+        System.setProperty("athenz.notification_support_url", "https://link.to.athenz.channel.com");
+
+        Map<String, String> details = new HashMap<>();
+        details.put("domain", "dom1");
+        details.put("role", "role1");
+        details.put("member", "user.member1");
+        details.put("reason", "test reason");
+        details.put("requester", "user.requester");
+
+        // First try the review admin reminder
+
+        Notification notification = new Notification(Notification.Type.ROLE_MEMBER_REVIEW);
+        RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToSlackConverter converter = new RoleMemberReviewNotificationTask.RoleReviewDomainNotificationToSlackConverter(notificationConverterCommon);
+        NotificationSlackMessage notificationAsSlackMessage = converter.getNotificationAsSlackMessage(notification);
+        assertNull(notificationAsSlackMessage);
+
+        notification.setDetails(details);
+        notificationAsSlackMessage = converter.getNotificationAsSlackMessage(notification);
+
+        assertNull(notificationAsSlackMessage);
+
+        // now set the correct review members details
+        // with one bad entry that should be skipped
+
+        details.put(NOTIFICATION_DETAILS_MEMBERS_LIST,
+                "athenz;role1;user.joe;2020-12-01T12:00:00.000Z;notify+details%20test|athenz;role1;user.jane;2020-12-01T12:00:00.000Z;|athenz;role3;user.bad");
+
+        NotificationSlackMessage notificationSlackMessage = converter.getNotificationAsSlackMessage(notification);
+        String message = notificationSlackMessage.getMessage();
+        assertNotNull(message);
+        assertTrue(message.contains("user.joe"));
+        assertTrue(message.contains("user.jane"));
+        assertTrue(message.contains("role1"));
+        assertTrue(message.contains("2020-12-01T12:00:00.000Z"));
+        assertTrue(message.contains("notify details test"));
+
+        // make sure the bad entries are not included
+
+        assertFalse(message.contains("user.bad"));
+        assertFalse(message.contains("role3"));
+
+        // Make sure support text and url do not appear
+
+        assertFalse(message.contains("slack"));
+        assertFalse(message.contains("link.to.athenz.channel.com"));
+
+        // now try the review principal reminder
+
+        notification = new Notification(Notification.Type.ROLE_MEMBER_REVIEW);
+        RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToSlackConverter principalConverter =
+                new RoleMemberReviewNotificationTask.RoleReviewPrincipalNotificationToSlackConverter(notificationConverterCommon);
+        NotificationSlackMessage principalConverterNotificationAsSlackMessage = principalConverter.getNotificationAsSlackMessage(notification);
+        assertNull(principalConverterNotificationAsSlackMessage);
+
+        notification.setDetails(details);
+        principalConverterNotificationAsSlackMessage = principalConverter.getNotificationAsSlackMessage(notification);
+        assertNull(principalConverterNotificationAsSlackMessage);
+
+        details.put(NOTIFICATION_DETAILS_ROLES_LIST,
+                "athenz1;role1;user.joe;2020-12-01T12:00:00.000Z;notify+details|athenz2;role2;user.joe;2020-12-01T12:00:00.000Z;");
+        notification.setDetails(details);
+        principalConverterNotificationAsSlackMessage = principalConverter.getNotificationAsSlackMessage(notification);
+        message = principalConverterNotificationAsSlackMessage.getMessage();
+        assertNotNull(message);
+        assertTrue(message.contains("athenz1"));
+        assertTrue(message.contains("athenz2"));
+        assertTrue(message.contains("role1"));
+        assertTrue(message.contains("role2"));
+        assertTrue(message.contains("2020-12-01T12:00:00.000Z"));
+        assertTrue(message.contains("notify details"));
+
+        // Make sure support text and url do not appear
+
+        assertFalse(message.contains("slack"));
+        assertFalse(message.contains("link.to.athenz.channel.com"));
+
+        System.clearProperty("athenz.notification_workflow_url");
+        System.clearProperty("notification_support_text");
+        System.clearProperty("notification_support_url");
+    }
 }

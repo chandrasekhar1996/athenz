@@ -16,6 +16,7 @@
 
 package com.yahoo.athenz.zms.notification;
 
+import com.yahoo.athenz.auth.util.StringUtils;
 import com.yahoo.athenz.common.server.notification.*;
 import com.yahoo.athenz.zms.*;
 import com.yahoo.rdl.Timestamp;
@@ -265,7 +266,11 @@ public class RoleMemberReviewNotificationTask implements NotificationTask {
             Map<String, Object> rootDataModel = new HashMap<>();
             List<Map<String, String>> roleDataModel = new ArrayList<>();
 
-            String[] roles = metaDetails.get(NOTIFICATION_DETAILS_ROLES_LIST).split("\\|");
+            String entry = metaDetails.get(NOTIFICATION_DETAILS_ROLES_LIST);
+            if (entry == null) {
+                return null;
+            }
+            String[] roles = entry.split("\\|");
             for (String role: roles) {
                 String[] roleDetails = role.split(";", -1);
 
@@ -273,7 +278,7 @@ public class RoleMemberReviewNotificationTask implements NotificationTask {
                     LOGGER.error("Invalid role details: {}", role);
                     continue;
                 }
-
+                notificationConverterCommon.decodeTableComponents(roleDetails);
                 Map<String, String> roleMap = new HashMap<>();
                 String domainName = roleDetails[0];
                 String roleName = roleDetails[1];
@@ -298,6 +303,9 @@ public class RoleMemberReviewNotificationTask implements NotificationTask {
         @Override
         public NotificationSlackMessage getNotificationAsSlackMessage(Notification notification) {
             String slackMessageContent = getPrincipalExpirySlackMessage(notification.getDetails());
+            if (StringUtils.isEmpty(slackMessageContent)) {
+                return null;
+            }
             Set<String> slackRecipients = notificationConverterCommon.getSlackRecipients(notification.getRecipients(), notification.getNotificationDomainMeta());
             return new NotificationSlackMessage(
                     slackMessageContent,
@@ -325,7 +333,11 @@ public class RoleMemberReviewNotificationTask implements NotificationTask {
             Map<String, Object> rootDataModel = new HashMap<>();
             List<Map<String, String>> roleDataModel = new ArrayList<>();
 
-            String[] members = metaDetails.get(NOTIFICATION_DETAILS_MEMBERS_LIST).split("\\|");
+            String entry = metaDetails.get(NOTIFICATION_DETAILS_MEMBERS_LIST);
+            if (entry == null) {
+                return null;
+            }
+            String[] members = entry.split("\\|");
             for (String member: members) {
                 String[] memberDetails = member.split(";", -1);
 
@@ -333,7 +345,7 @@ public class RoleMemberReviewNotificationTask implements NotificationTask {
                     LOGGER.error("Invalid member details: {}", member);
                     continue;
                 }
-
+                notificationConverterCommon.decodeTableComponents(memberDetails);
                 Map<String, String> roleMap = new HashMap<>();
                 String domainName = memberDetails[0];
                 String roleName = memberDetails[1];
@@ -358,6 +370,9 @@ public class RoleMemberReviewNotificationTask implements NotificationTask {
         @Override
         public NotificationSlackMessage getNotificationAsSlackMessage(Notification notification) {
             String slackMessageContent = getDomainExpirySlackMessage(notification.getDetails());
+            if (StringUtils.isEmpty(slackMessageContent)) {
+                return null;
+            }
             Set<String> slackRecipients = notificationConverterCommon.getSlackRecipients(notification.getRecipients(), notification.getNotificationDomainMeta());
             return new NotificationSlackMessage(
                     slackMessageContent,

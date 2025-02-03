@@ -22,7 +22,6 @@ import com.yahoo.athenz.common.ServerCommonConsts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -76,15 +75,12 @@ public class NotificationCommon {
         notification.setConsolidatedBy(consolidatedBy);
         notification.setNotificationToSlackMessageConverter(notificationToSlackMessageConverter);
 
-        if (Notification.ConsolidatedBy.PRINCIPAL.equals(consolidatedBy)) {
-            for (String recipient : recipients) {
+        for (String recipient : recipients) {
+            if (Notification.ConsolidatedBy.DOMAIN.equals(consolidatedBy)) {
+                addNotificationRecipientByDomain(notification, recipient);
+            } else if (Notification.ConsolidatedBy.PRINCIPAL.equals(consolidatedBy)) {
                 addNotificationRecipient(notification, recipient, true);
             }
-        } else if (Notification.ConsolidatedBy.DOMAIN.equals(consolidatedBy)) {
-            for (String recipient : recipients) {
-                notification.addRecipient(recipient);
-            }
-            addNotificationDomainMeta(notification);
         }
 
         if (notification.getRecipients() == null || notification.getRecipients().isEmpty()) {
@@ -126,8 +122,7 @@ public class NotificationCommon {
             // to the service's domain admin users
             addNotificationRecipient(notification, recipient, false);
         } else if (Notification.ConsolidatedBy.DOMAIN.equals(consolidatedBy)) {
-            notification.addRecipient(recipient);
-            addNotificationDomainMeta(notification);
+            addNotificationRecipientByDomain(notification, recipient);
         }
 
         if (notification.getRecipients() == null || notification.getRecipients().isEmpty()) {
@@ -136,6 +131,20 @@ public class NotificationCommon {
         }
 
         return notification;
+    }
+
+    void addDomainRecipient(Notification notification, final String domainName) {
+        if (domainMetaFetcher == null) {
+            return;
+        }
+
+        NotificationDomainMeta domainMetaMap = domainMetaFetcher.getDomainMeta(domainName, false);
+        if (domainMetaMap == null) {
+            return;
+        }
+
+        notification.addRecipient(domainName);
+        notification.addNotificationDomainMeta(domainName, domainMetaMap);
     }
 
     void addDomainRoleRecipients(Notification notification, final String domainName, final String roleName) {
@@ -166,6 +175,22 @@ public class NotificationCommon {
         }
     }
 
+    void addNotificationRecipientByDomain(Notification notification, final String recipient) {
+
+        int roleDomainIndex = recipient.indexOf(AuthorityConsts.ROLE_SEP);
+        if (recipient.startsWith(userDomainPrefix)) {
+            notification.addRecipient(recipient);
+        } else if (recipient.contains(AuthorityConsts.GROUP_SEP)) {
+            // Do nothing. Group members will not get notifications.
+        } else if (roleDomainIndex != -1) {
+            addDomainRoleRecipients(notification, recipient.substring(0, roleDomainIndex),
+                    recipient.substring(roleDomainIndex + AuthorityConsts.ROLE_SEP.length()));
+        } else {
+            // add domain name with meta
+            addDomainRecipient(notification, recipient);
+        }
+    }
+
     public List<Notification> printNotificationDetailsToLog(List<Notification> notificationDetails, String description) {
         if (notificationDetails != null && !notificationDetails.isEmpty()) {
             StringBuilder detailsForLog = new StringBuilder();
@@ -179,22 +204,4 @@ public class NotificationCommon {
         }
         return notificationDetails;
     }
-
-    void addNotificationDomainMeta(Notification notification) {
-        if (domainMetaFetcher == null) {
-            return;
-        }
-
-        Map<String, NotificationDomainMeta> notificationDomainMetaMap = new HashMap<>();
-        if (notification.getNotificationDomainMeta() != null) {
-            notificationDomainMetaMap = notification.getNotificationDomainMeta();
-        }
-
-        for (String domainName : notification.getRecipients()) {
-            NotificationDomainMeta domainMeta = domainMetaFetcher.getDomainMeta(domainName, false);
-            notificationDomainMetaMap.put(domainName, domainMeta);
-        }
-        notification.setNotificationDomainMeta(notificationDomainMetaMap);
-    }
-
 }

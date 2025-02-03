@@ -31,7 +31,7 @@
     "fields": [
     {
     "type": "mrkdwn",
-    "text": "*Domain:*\n<https://athenz.io/domain/athenz|athenz>"
+    "text": "*Domain:*\n<https://athenz.io/domain/athenz/role|athenz>"
     },
     {
     "type": "mrkdwn",
@@ -62,7 +62,7 @@
     "fields": [
     {
     "type": "mrkdwn",
-    "text": "*Domain:*\n<https://athenz.io/domain/athenz|athenz.dev>"
+    "text": "*Domain:*\n<https://athenz.io/domain/athenz/role|athenz.dev>"
     },
     {
     "type": "mrkdwn",

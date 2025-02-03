@@ -13,8 +13,9 @@ public class NotificationDomainMeta {
         return domainName;
     }
 
-    public void setSlackChannel(String slackChannel) {
+    public NotificationDomainMeta setSlackChannel(String slackChannel) {
         this.slackChannel = slackChannel;
+        return this;
     }
 
     public String getSlackChannel() {

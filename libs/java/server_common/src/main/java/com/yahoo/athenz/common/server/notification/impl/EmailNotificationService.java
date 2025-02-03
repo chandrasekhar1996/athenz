@@ -84,7 +84,7 @@ public class EmailNotificationService implements NotificationService {
 
     @Override
     public boolean notify(Notification notification) {
-        if (notification == null) {
+        if (notification == null || !Notification.ConsolidatedBy.PRINCIPAL.equals(notification.getConsolidatedBy())) {
             return false;
         }
 

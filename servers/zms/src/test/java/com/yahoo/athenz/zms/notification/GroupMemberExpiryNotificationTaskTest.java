@@ -1116,6 +1116,94 @@ public class GroupMemberExpiryNotificationTaskTest {
                 );
     }
 
+    @Test
+    public void testGetSlackMessage() {
+        NotificationConverterCommon notificationConverterCommon = new NotificationConverterCommon(null);
+        System.setProperty("athenz.notification_workflow_url", "https://athenz.example.com/workflow");
+        System.setProperty("athenz.notification_support_text", "#Athenz slack channel");
+        System.setProperty("athenz.notification_support_url", "https://link.to.athenz.channel.com");
+
+        Map<String, String> details = new HashMap<>();
+        details.put("domain", "dom1");
+        details.put("group", "group1");
+        details.put("member", "user.member1");
+        details.put("reason", "test reason");
+        details.put("requester", "user.requester");
+
+        Notification notification = new Notification(Notification.Type.GROUP_MEMBER_EXPIRY).setConsolidatedBy(Notification.ConsolidatedBy.DOMAIN);
+        GroupMemberExpiryNotificationTask.GroupExpiryDomainNotificationToSlackConverter converter =
+                new GroupMemberExpiryNotificationTask.GroupExpiryDomainNotificationToSlackConverter(
+                        notificationConverterCommon);
+        NotificationSlackMessage notificationSlackMessage = converter.getNotificationAsSlackMessage(notification);
+        assertNotNull(notificationSlackMessage);
+        assertNull(notificationSlackMessage.getMessage());
+
+        notification.setDetails(details);
+        notificationSlackMessage = converter.getNotificationAsSlackMessage(notification);
+        assertNotNull(notificationSlackMessage);
+        assertNull(notificationSlackMessage.getMessage());
+
+        // now set the correct expiry members details
+        // with one bad entry that should be skipped
+
+        details.put(NOTIFICATION_DETAILS_MEMBERS_LIST,
+                "athenz;group1;user.joe;2020-12-01T12:00:00.000Z;notify+details|athenz;group1;user.jane;2020-12-01T12:00:00.000Z;|athenz;group3;user.bad");
+
+        NotificationSlackMessage notificationAsSlackMessage = converter.getNotificationAsSlackMessage(notification);
+        String message = notificationAsSlackMessage.getMessage();
+        assertNotNull(message);
+        assertTrue(message.contains("user.joe"));
+        assertTrue(message.contains("user.jane"));
+        assertTrue(message.contains("group1"));
+        assertTrue(message.contains("2020-12-01T12:00:00.000Z"));
+        assertTrue(message.contains("notify details"));
+
+        // make sure the bad entries are not included
+
+        assertFalse(message.contains("user.bad"));
+        assertFalse(message.contains("group3"));
+
+        // Make sure support text and url do not appear
+
+        assertFalse(message.contains("slack"));
+        assertFalse(message.contains("link.to.athenz.channel.com"));
+
+        // now try the expiry groups reminder
+        notification = new Notification(Notification.Type.GROUP_MEMBER_EXPIRY);
+        GroupMemberExpiryNotificationTask.GroupExpiryPrincipalNotificationToSlackConverter principalConverter =
+                new GroupMemberExpiryNotificationTask.GroupExpiryPrincipalNotificationToSlackConverter(
+                        notificationConverterCommon);
+        NotificationSlackMessage principalConverterNotificationAsSlackMessage = principalConverter.getNotificationAsSlackMessage(notification);
+        assertNull(principalConverterNotificationAsSlackMessage.getMessage());
+
+        notification.setDetails(details);
+        principalConverterNotificationAsSlackMessage = principalConverter.getNotificationAsSlackMessage(notification);
+        assertNull(principalConverterNotificationAsSlackMessage.getMessage());
+
+        details.put(NOTIFICATION_DETAILS_ROLES_LIST,
+                "athenz1;group1;user.joe;2020-12-01T12:00:00.000Z;notify%20details|athenz2;group2;user.joe;2020-12-01T12:00:00.000Z;");
+        notification.setDetails(details);
+        principalConverterNotificationAsSlackMessage = principalConverter.getNotificationAsSlackMessage(notification);
+
+        message = principalConverterNotificationAsSlackMessage.getMessage();
+        assertNotNull(message);
+        assertTrue(message.contains("athenz1"));
+        assertTrue(message.contains("athenz2"));
+        assertTrue(message.contains("group1"));
+        assertTrue(message.contains("group2"));
+        assertTrue(message.contains("2020-12-01T12:00:00.000Z"));
+        assertTrue(message.contains("notify details"));
+
+        // Make sure support text and url do not appear
+
+        assertFalse(message.contains("slack"));
+        assertFalse(message.contains("link.to.athenz.channel.com"));
+
+        System.clearProperty("athenz.notification_workflow_url");
+        System.clearProperty("notification_support_text");
+        System.clearProperty("notification_support_url");
+    }
+
     private Notification getNotification(List<Notification> notifications, String recipient, String detailsKey) {
         for (Notification notification : notifications) {
             if (notification.getRecipients().contains(recipient) && notification.getDetails().containsKey(detailsKey)) {

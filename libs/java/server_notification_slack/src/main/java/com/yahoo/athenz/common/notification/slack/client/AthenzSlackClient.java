@@ -31,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.yahoo.athenz.common.notification.slack.SlackNotificationConsts.*;
 
+// TODO Chandu implement an interface similar to email provider
 public class AthenzSlackClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AthenzSlackClient.class);
@@ -152,6 +153,7 @@ public class AthenzSlackClient {
                 return true;
             }
         } catch (InterruptedException e) {
+            // TODO chandu remove
             Thread.currentThread().interrupt();
             LOGGER.error("Interrupted while handling retry for {}", operation);
         }

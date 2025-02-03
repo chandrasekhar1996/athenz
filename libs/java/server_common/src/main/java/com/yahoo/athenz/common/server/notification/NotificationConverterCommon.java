@@ -64,6 +64,7 @@ public class NotificationConverterCommon {
     // can be moved to constructor which can take Locale as input parameter and return appropriate resource bundle
     private static final ResourceBundle RB = ResourceBundle.getBundle("messages/ServerCommon");
 
+    private final String userDomainPrefixRegex;
     private final String userDomainPrefix;
     private final String emailDomainTo;
     private final String workflowUrl;
@@ -76,7 +77,8 @@ public class NotificationConverterCommon {
     public NotificationConverterCommon(Authority notificationUserAuthority) {
 
         String userDomain = System.getProperty(PROP_USER_DOMAIN, USER_DOMAIN_DEFAULT);
-        userDomainPrefix = userDomain + "\\.";
+        userDomainPrefixRegex = userDomain + "\\.";
+        userDomainPrefix = userDomain + ".";
         emailDomainTo = System.getProperty(PROP_NOTIFICATION_EMAIL_DOMAIN_TO);
         workflowUrl = System.getProperty(PROP_NOTIFICATION_WORKFLOW_URL);
         athenzUIUrl = System.getProperty(PROP_NOTIFICATION_ATHENZ_UI_URL);
@@ -247,7 +249,7 @@ public class NotificationConverterCommon {
         }
     }
 
-    void decodeTableComponents(String[] comps) {
+    public void decodeTableComponents(String[] comps) {
         for (int i = 0; i < comps.length; i++) {
             if (comps[i].contains("%") || comps[i].contains("+")) {
                 comps[i] = URLDecoder.decode(comps[i], StandardCharsets.UTF_8);
@@ -261,15 +263,7 @@ public class NotificationConverterCommon {
 
     public Set<String> getFullyQualifiedEmailAddresses(Set<String> recipients) {
         return recipients.stream()
-                .map(userName -> {
-                    if (notificationUserAuthority != null) {
-                        String email = notificationUserAuthority.getUserEmail(userName);
-                        if (!StringUtil.isEmpty(email)) {
-                            return email;
-                        }
-                    }
-                    return userName.replaceAll(userDomainPrefix, "") + AT + emailDomainTo;
-                })
+                .map(userName -> getFullyQualifiedEmailAddress(userName))
                 .collect(Collectors.toSet());
     }
 
@@ -280,14 +274,20 @@ public class NotificationConverterCommon {
                 return email;
             }
         }
-        return userName.replaceAll(userDomainPrefix, "") + AT + emailDomainTo;
+        return userName.replaceAll(userDomainPrefixRegex, "") + AT + emailDomainTo;
     }
 
     public String getWorkflowUrl() {
+        if (workflowUrl == null || workflowUrl.isEmpty()) {
+            return "";
+        }
         return workflowUrl;
     }
 
     public String getAthenzUIUrl() {
+        if (athenzUIUrl == null || athenzUIUrl.isEmpty()) {
+            return "";
+        }
         return athenzUIUrl;
     }
 
@@ -321,7 +321,7 @@ public class NotificationConverterCommon {
         if (StringUtils.isEmpty(athenzUIUrl)) {
             return "";
         }
-        return athenzUIUrl + "/domain/" + domainName;
+        return athenzUIUrl + "/domain/" + domainName + "/role";
     }
 
     public String getRoleLink(String domainName, String roleName) {
@@ -340,6 +340,9 @@ public class NotificationConverterCommon {
 
     public Set<String> getSlackRecipients(Set<String> notificationRecipients, Map<String, NotificationDomainMeta> domainMetaMap) {
         Set<String> slackRecipients = new HashSet<>();
+        if (notificationRecipients == null) {
+            return slackRecipients;
+        }
 
         for (String recipient: notificationRecipients) {
             if (recipient.startsWith(userDomainPrefix)) {

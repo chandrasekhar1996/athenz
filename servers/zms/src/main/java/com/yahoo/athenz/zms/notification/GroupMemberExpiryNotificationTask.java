@@ -557,6 +557,69 @@ public class GroupMemberExpiryNotificationTask implements NotificationTask {
         }
     }
 
+    public static class GroupExpiryPrincipalNotificationToSlackConverter implements NotificationToSlackMessageConverter {
+        private static final String SLACK_TEMPLATE_PRINCIPAL_MEMBER_EXPIRY = "messages/slack-group-member-expiry.ftl";
+        private final NotificationConverterCommon notificationConverterCommon;
+        private final String slackPrincipalExpiryTemplate;
+
+        public GroupExpiryPrincipalNotificationToSlackConverter(NotificationConverterCommon notificationConverterCommon) {
+            this.notificationConverterCommon = notificationConverterCommon;
+            slackPrincipalExpiryTemplate = notificationConverterCommon.readContentFromFile(
+                    getClass().getClassLoader(), SLACK_TEMPLATE_PRINCIPAL_MEMBER_EXPIRY);
+        }
+
+        private String getPrincipalExpirySlackMessage(Map<String, String> metaDetails) {
+            if (metaDetails == null) {
+                return null;
+            }
+
+            Map<String, Object> rootDataModel = new HashMap<>();
+            List<Map<String, String>> groupDataModel = new ArrayList<>();
+
+            String entry = metaDetails.get(NOTIFICATION_DETAILS_ROLES_LIST);
+            if (entry == null) {
+                return null;
+            }
+            String[] groups = entry.split("\\|");
+            for (String group: groups) {
+                String[] groupDetails = group.split(";", -1);
+                notificationConverterCommon.decodeTableComponents(groupDetails);
+                if (groupDetails.length != TEMPLATE_COLUMN_NAMES.length) {
+                    LOGGER.error("Invalid group details: {}", group);
+                    continue;
+                }
+
+                Map<String, String> groupMap = new HashMap<>();
+                String domainName = groupDetails[0];
+                String groupName = groupDetails[1];
+
+                groupMap.put("domain", domainName);
+                groupMap.put("group", groupName);
+                groupMap.put("member", groupDetails[2]);
+                groupMap.put("expiration", groupDetails[3]);
+                groupMap.put("notes", groupDetails[4]);
+
+                groupMap.put("groupLink", notificationConverterCommon.getGroupLink(domainName, groupName));
+                groupMap.put("domainLink", notificationConverterCommon.getDomainLink(domainName));
+                groupDataModel.add(groupMap);
+            }
+            rootDataModel.put("groupData", groupDataModel);
+
+            return notificationConverterCommon.generateSlackMessageFromTemplate(
+                    rootDataModel,
+                    slackPrincipalExpiryTemplate);
+        }
+
+        @Override
+        public NotificationSlackMessage getNotificationAsSlackMessage(Notification notification) {
+            String slackMessageContent = getPrincipalExpirySlackMessage(notification.getDetails());
+            Set<String> slackRecipients = notificationConverterCommon.getSlackRecipients(notification.getRecipients(), notification.getNotificationDomainMeta());
+            return new NotificationSlackMessage(
+                    slackMessageContent,
+                    slackRecipients);
+        }
+    }
+
     public static class GroupExpiryDomainNotificationToSlackConverter implements NotificationToSlackMessageConverter {
 
         private static final String SLACK_TEMPLATE_DOMAIN_MEMBER_EXPIRY = "messages/slack-domain-group-member-expiry.ftl";
@@ -577,10 +640,14 @@ public class GroupMemberExpiryNotificationTask implements NotificationTask {
             Map<String, Object> rootDataModel = new HashMap<>();
             List<Map<String, String>> groupDataModel = new ArrayList<>();
 
-            String[] members = metaDetails.get(NOTIFICATION_DETAILS_MEMBERS_LIST).split("\\|");
+            String entry = metaDetails.get(NOTIFICATION_DETAILS_MEMBERS_LIST);
+            if (entry == null) {
+                return null;
+            }
+            String[] members = entry.split("\\|");
             for (String member: members) {
                 String[] memberDetails = member.split(";", -1);
-
+                notificationConverterCommon.decodeTableComponents(memberDetails);
                 if (memberDetails.length != TEMPLATE_COLUMN_NAMES.length) {
                     LOGGER.error("Invalid member details: {}", member);
                     continue;
@@ -611,65 +678,6 @@ public class GroupMemberExpiryNotificationTask implements NotificationTask {
         @Override
         public NotificationSlackMessage getNotificationAsSlackMessage(Notification notification) {
             String slackMessageContent = getDomainExpirySlackMessage(notification.getDetails());
-            Set<String> slackRecipients = notificationConverterCommon.getSlackRecipients(notification.getRecipients(), notification.getNotificationDomainMeta());
-            return new NotificationSlackMessage(
-                    slackMessageContent,
-                    slackRecipients);
-        }
-    }
-
-    public static class GroupExpiryPrincipalNotificationToSlackConverter implements NotificationToSlackMessageConverter {
-        private static final String SLACK_TEMPLATE_PRINCIPAL_MEMBER_EXPIRY = "messages/slack-group-member-expiry.ftl";
-        private final NotificationConverterCommon notificationConverterCommon;
-        private final String slackPrincipalExpiryTemplate;
-
-        public GroupExpiryPrincipalNotificationToSlackConverter(NotificationConverterCommon notificationConverterCommon) {
-            this.notificationConverterCommon = notificationConverterCommon;
-            slackPrincipalExpiryTemplate = notificationConverterCommon.readContentFromFile(
-                    getClass().getClassLoader(), SLACK_TEMPLATE_PRINCIPAL_MEMBER_EXPIRY);
-        }
-
-        private String getPrincipalExpirySlackMessage(Map<String, String> metaDetails) {
-            if (metaDetails == null) {
-                return null;
-            }
-
-            Map<String, Object> rootDataModel = new HashMap<>();
-            List<Map<String, String>> groupDataModel = new ArrayList<>();
-
-            String[] groups = metaDetails.get(NOTIFICATION_DETAILS_ROLES_LIST).split("\\|");
-            for (String group: groups) {
-                String[] groupDetails = group.split(";", -1);
-
-                if (groupDetails.length != TEMPLATE_COLUMN_NAMES.length) {
-                    LOGGER.error("Invalid group details: {}", group);
-                    continue;
-                }
-
-                Map<String, String> groupMap = new HashMap<>();
-                String domainName = groupDetails[0];
-                String groupName = groupDetails[1];
-
-                groupMap.put("domain", domainName);
-                groupMap.put("group", groupName);
-                groupMap.put("member", groupDetails[2]);
-                groupMap.put("expiration", groupDetails[3]);
-                groupMap.put("notes", groupDetails[4]);
-
-                groupMap.put("groupLink", notificationConverterCommon.getGroupLink(domainName, groupName));
-                groupMap.put("domainLink", notificationConverterCommon.getDomainLink(domainName));
-                groupDataModel.add(groupMap);
-            }
-            rootDataModel.put("groupData", groupDataModel);
-
-            return notificationConverterCommon.generateSlackMessageFromTemplate(
-                    rootDataModel,
-                    slackPrincipalExpiryTemplate);
-        }
-
-        @Override
-        public NotificationSlackMessage getNotificationAsSlackMessage(Notification notification) {
-            String slackMessageContent = getPrincipalExpirySlackMessage(notification.getDetails());
             Set<String> slackRecipients = notificationConverterCommon.getSlackRecipients(notification.getRecipients(), notification.getNotificationDomainMeta());
             return new NotificationSlackMessage(
                     slackMessageContent,

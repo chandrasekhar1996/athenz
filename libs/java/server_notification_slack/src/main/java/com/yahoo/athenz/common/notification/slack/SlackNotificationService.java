@@ -53,7 +53,7 @@ public class SlackNotificationService implements NotificationService {
             return false;
         }
 
-        Set<String> recipients = notificationSlackMessage.getRecepients();
+        Set<String> recipients = notificationSlackMessage.getRecipients();
         final String message = notificationSlackMessage.getMessage();
 
         // if our list of recipients is empty then we have nothing to do,

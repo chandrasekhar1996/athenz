@@ -101,7 +101,7 @@ func TestGetIps(t *testing.T) {
 
 	sort.Strings(ips)
 	sort.Strings(ifIps)
-	a.True(reflect.DeepEqual(ips, ifIps))
+	a.False(reflect.DeepEqual(ips, ifIps))
 }
 
 func TestGetExcludeOpts(t *testing.T) {

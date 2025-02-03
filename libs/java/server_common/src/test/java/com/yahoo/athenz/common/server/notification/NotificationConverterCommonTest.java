@@ -330,4 +330,172 @@ public class NotificationConverterCommonTest {
         String contents = converter.readContentFromFile(loader, "file1");
         assertTrue(contents.isEmpty());
     }
+
+    @Test
+    public void testReadContentFromFileSlackTemplate() {
+        NotificationConverterCommon converter = new NotificationConverterCommon(null);
+        String fileContent = converter.readContentFromFile(getClass().getClassLoader(), "messages/slack-role-member-expiry.ftl");
+        assertNotEquals(fileContent, "");
+    }
+
+    @Test
+    public void testGenerateSlackMessageFromTemplateEmptyNotes() {
+        System.setProperty("athenz.notification_athenz_ui_url", "https://athenz.io");
+        NotificationConverterCommon converter = new NotificationConverterCommon(null);
+        Map<String, Object> rootDataModel = new HashMap<>();
+
+        List<Map<String, String>> dataModel = new ArrayList<>();
+        Map<String, String> role1 = new HashMap<>();
+        role1.put("domain", "athenz");
+        role1.put("role", "admin");
+        role1.put("member", "user.joe");
+        role1.put("expiration", "2023-01-01T000000Z");
+        role1.put("notes", "");
+        role1.put("roleLink", converter.getRoleLink("athenz", "admin"));
+        role1.put("domainLink", converter.getDomainLink("athenz"));
+
+        dataModel.add(role1);
+        rootDataModel.put("roleData", dataModel);
+        String slackTemplate = converter.readContentFromFile(getClass().getClassLoader(),"messages/slack-role-member-expiry.ftl");
+        String entryNames = "athenz;admin;user.joe;2023-01-01T000000Z|athenz;readers;user.jane;2023-01-01T000000Z|athenz;writers;user.bad";
+        Map<String, String> metaDetails = new HashMap<>();
+        metaDetails.put(NOTIFICATION_DETAILS_ROLES_LIST, entryNames);
+        String slackMessage = converter.generateSlackMessageFromTemplate(rootDataModel, slackTemplate);
+        assertEquals(slackMessage, converter.readContentFromFile(getClass().getClassLoader(),
+                "messages/role-member-expiry-slack.txt"));
+
+        System.clearProperty("notification_athenz_ui_url");
+    }
+
+    @Test
+    public void testGenerateSlackMessageFromTemplateMultipleRoles() {
+        System.setProperty("athenz.notification_athenz_ui_url", "https://athenz.io");
+        NotificationConverterCommon converter = new NotificationConverterCommon(null);
+        Map<String, Object> rootDataModel = new HashMap<>();
+
+        List<Map<String, String>> dataModel = new ArrayList<>();
+        Map<String, String> role1 = new HashMap<>();
+        role1.put("domain", "athenz");
+        role1.put("role", "admin");
+        role1.put("member", "user.joe");
+        role1.put("expiration", "2023-01-01T000000Z");
+        role1.put("notes", "");
+        role1.put("roleLink", converter.getRoleLink("athenz", "admin"));
+        role1.put("domainLink", converter.getDomainLink("athenz"));
+
+        dataModel.add(role1);
+
+        Map<String, String> role2 = new HashMap<>();
+        role2.put("domain", "athenz.dev");
+        role2.put("role", "admin-dev");
+        role2.put("member", "user.john");
+        role2.put("expiration", "2024-01-01T000000Z");
+        role2.put("notes", "Lorem Ipsum");
+        role2.put("roleLink", converter.getRoleLink("athenz", "admin-dev"));
+        role2.put("domainLink", converter.getDomainLink("athenz"));
+
+        dataModel.add(role2);
+        rootDataModel.put("roleData", dataModel);
+
+        String slackTemplate = converter.readContentFromFile(getClass().getClassLoader(),"messages/slack-role-member-expiry.ftl");
+        String entryNames = "athenz;admin;user.joe;2023-01-01T000000Z|athenz;readers;user.jane;2023-01-01T000000Z|athenz;writers;user.bad";
+        Map<String, String> metaDetails = new HashMap<>();
+        metaDetails.put(NOTIFICATION_DETAILS_ROLES_LIST, entryNames);
+        String slackMessage = converter.generateSlackMessageFromTemplate(rootDataModel, slackTemplate);
+        assertEquals(slackMessage, converter.readContentFromFile(getClass().getClassLoader(),
+                "messages/role-member-expiry-multiple-roles-slack.txt"));
+
+        System.clearProperty("notification_athenz_ui_url");
+    }
+
+    @Test
+    public void testGenerateSlackMessageFromTemplateException() {
+        NotificationConverterCommon converter = new NotificationConverterCommon(null);
+        String invalidTemplateContent = "<#ftl>\n"
+                + "${InvalidFreemarkerSyntax???}\n";
+
+        String result = converter.generateSlackMessageFromTemplate(new HashMap<>(), invalidTemplateContent);
+        assertNull(result);
+    }
+
+    @Test
+    public void testGetDominLink() {
+        System.setProperty("athenz.notification_athenz_ui_url", "https://athenz.io");
+
+        NotificationConverterCommon converter = new NotificationConverterCommon(null);
+        String domainName = "athenz";
+        String domainLink = converter.getDomainLink(domainName);
+        assertEquals(domainLink, "https://athenz.io/domain/" + domainName + "/role");
+
+        System.clearProperty("athenz.notification_athenz_ui_url");
+        converter = new NotificationConverterCommon(null);
+        domainLink = converter.getDomainLink(domainName);
+        assertEquals(domainLink, "");
+    }
+
+    @Test
+    public void testGetRoleLink() {
+        System.setProperty("athenz.notification_athenz_ui_url", "https://athenz.io");
+
+        NotificationConverterCommon converter = new NotificationConverterCommon(null);
+        String domainName = "athenz";
+        String roleName = "team";
+        String roleLink = converter.getRoleLink(domainName, roleName);
+        assertEquals(roleLink, "https://athenz.io/domain/" + domainName + "/role/" + roleName + "/members");
+
+        System.clearProperty("athenz.notification_athenz_ui_url");
+        converter = new NotificationConverterCommon(null);
+        roleLink = converter.getRoleLink(domainName, roleName);
+        assertEquals(roleLink, "");
+    }
+
+    @Test
+    public void testGetGroupLink() {
+        System.setProperty("athenz.notification_athenz_ui_url", "https://athenz.io");
+
+        NotificationConverterCommon converter = new NotificationConverterCommon(null);
+        String domainName = "athenz";
+        String groupName = "team";
+        String groupLink = converter.getGroupLink(domainName, groupName);
+        assertEquals(groupLink, "https://athenz.io/domain/" + domainName + "/group/" + groupName + "/members");
+
+        System.clearProperty("athenz.notification_athenz_ui_url");
+        converter = new NotificationConverterCommon(null);
+        groupLink = converter.getGroupLink(domainName, groupName);
+        assertEquals(groupLink, "");
+    }
+
+    @Test
+    public void testGetSlackRecipients() {
+        System.setProperty("athenz.notification_email_domain_to", "yahoo.com");
+        System.setProperty("athenz.user_domain", "entuser");
+        NotificationConverterCommon converter = new NotificationConverterCommon(null);
+        Set<String> slackRecipientsEmpty = converter.getSlackRecipients(null, null);
+        assertTrue(slackRecipientsEmpty.isEmpty());
+
+        Set<String> recipients = new HashSet<>(Arrays.asList("athenz", "sports", "weather"));
+        Map<String, NotificationDomainMeta> domainMetaMap = new HashMap<>();
+        domainMetaMap.put("athenz", new NotificationDomainMeta("athenz").setSlackChannel("channel1"));
+        domainMetaMap.put("sports", new NotificationDomainMeta("sports").setSlackChannel("channel2"));
+
+        Set<String> slackRecipients = converter.getSlackRecipients(recipients, domainMetaMap);
+        assertEquals(slackRecipients.size(), 2);
+        assertTrue(slackRecipients.contains("channel1"));
+        assertTrue(slackRecipients.contains("channel2"));
+
+        recipients = new HashSet<>(Arrays.asList("athenz", "sports", "entuser.user1"));
+        domainMetaMap = new HashMap<>();
+        domainMetaMap.put("athenz", new NotificationDomainMeta("athenz").setSlackChannel("channel1"));
+        domainMetaMap.put("sports", new NotificationDomainMeta("sports").setSlackChannel("channel2"));
+        domainMetaMap.put("weather", new NotificationDomainMeta("sports").setSlackChannel("channel2"));
+
+        slackRecipients = converter.getSlackRecipients(recipients, domainMetaMap);
+        assertEquals(slackRecipients.size(), 3);
+        assertTrue(slackRecipients.contains("channel1"));
+        assertTrue(slackRecipients.contains("channel2"));
+        assertTrue(slackRecipients.contains("user1@yahoo.com"));
+
+        System.clearProperty("athenz.user_domain");
+        System.clearProperty("athenz.notification_email_domain_to");
+    }
 }

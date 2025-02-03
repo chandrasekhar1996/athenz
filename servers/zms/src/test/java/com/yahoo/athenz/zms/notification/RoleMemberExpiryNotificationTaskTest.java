@@ -659,4 +659,88 @@ public class RoleMemberExpiryNotificationTaskTest {
         disabledNotificationState = notificationFilter.getDisabledNotificationState(memberRoleInvalid);
         assertTrue(disabledNotificationState.isEmpty());
     }
+
+    @Test
+    public void testGetSlackMessage() {
+        System.setProperty("athenz.notification_workflow_url", "https://athenz.example.com/workflow");
+        System.setProperty("athenz.notification_support_text", "#Athenz slack channel");
+        System.setProperty("athenz.notification_support_url", "https://link.to.athenz.channel.com");
+
+        Map<String, String> details = new HashMap<>();
+        details.put("domain", "dom1");
+        details.put("role", "role1");
+        details.put("member", "user.member1");
+        details.put("reason", "test reason");
+        details.put("requester", "user.requester");
+
+        Notification notification = new Notification(Notification.Type.ROLE_MEMBER_EXPIRY).setConsolidatedBy(Notification.ConsolidatedBy.DOMAIN);
+        RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToSlackConverter converter =
+                new RoleMemberExpiryNotificationTask.RoleExpiryDomainNotificationToSlackConverter(
+                        new NotificationConverterCommon(null));
+        NotificationSlackMessage notificationAsSlackMessage = converter.getNotificationAsSlackMessage(notification);
+        assertNull(notificationAsSlackMessage);
+
+        notification.setDetails(details);
+        notificationAsSlackMessage = converter.getNotificationAsSlackMessage(notification);
+        assertNull(notificationAsSlackMessage);
+        // now set the correct expiry members details
+        // with one bad entry that should be skipped
+
+        details.put(NOTIFICATION_DETAILS_MEMBERS_LIST,
+                "athenz;role1;user.joe;2020-12-01T12:00:00.000Z;notify+details|athenz;role1;user.jane;2020-12-01T12:00:00.000Z;|athenz;role3;user.bad");
+
+        notificationAsSlackMessage = converter.getNotificationAsSlackMessage(notification);
+        assertNotNull(notificationAsSlackMessage);
+        String slackMessage = notificationAsSlackMessage.getMessage();
+        assertNotNull(slackMessage);
+        assertTrue(slackMessage.contains("user.joe"));
+        assertTrue(slackMessage.contains("user.jane"));
+        assertTrue(slackMessage.contains("role1"));
+        assertTrue(slackMessage.contains("2020-12-01T12:00:00.000Z"));
+        assertTrue(slackMessage.contains("notify details"));
+
+        // make sure the bad entries are not included
+
+        assertFalse(slackMessage.contains("user.bad"));
+        assertFalse(slackMessage.contains("role3"));
+
+        // Make sure support text and url do not appear
+
+        assertFalse(slackMessage.contains("link.to.athenz.channel.com"));
+
+        // now try the expiry roles reminder
+        notification = new Notification(Notification.Type.ROLE_MEMBER_EXPIRY).setConsolidatedBy(Notification.ConsolidatedBy.DOMAIN);
+        RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToSlackConverter principalConverter =
+                new RoleMemberExpiryNotificationTask.RoleExpiryPrincipalNotificationToSlackConverter(
+                        new NotificationConverterCommon(null));
+        NotificationSlackMessage principalNotificationAsSlackMessage = principalConverter.getNotificationAsSlackMessage(notification);
+        assertNull(principalNotificationAsSlackMessage);
+
+        notification.setDetails(details);
+        principalNotificationAsSlackMessage = principalConverter.getNotificationAsSlackMessage(notification);
+        assertNull(principalNotificationAsSlackMessage);
+
+        details.put(NOTIFICATION_DETAILS_ROLES_LIST,
+                "athenz1;role1;user.joe;2020-12-01T12:00:00.000Z;notify%20details|athenz2;role2;user.joe;2020-12-01T12:00:00.000Z;|athenz;role3;user.bad");
+        notification.setDetails(details);
+        principalNotificationAsSlackMessage = principalConverter.getNotificationAsSlackMessage(notification);
+        assertNotNull(principalNotificationAsSlackMessage);
+        slackMessage = principalNotificationAsSlackMessage.getMessage();
+        assertNotNull(slackMessage);
+        assertTrue(slackMessage.contains("athenz1"));
+        assertTrue(slackMessage.contains("athenz2"));
+        assertTrue(slackMessage.contains("role1"));
+        assertTrue(slackMessage.contains("role2"));
+        assertTrue(slackMessage.contains("2020-12-01T12:00:00.000Z"));
+        assertTrue(slackMessage.contains("notify details"));
+
+        // Make sure support text and url do not appear
+
+        assertFalse(slackMessage.contains("slack"));
+        assertFalse(slackMessage.contains("link.to.athenz.channel.com"));
+
+        System.clearProperty("athenz.notification_workflow_url");
+        System.clearProperty("notification_support_text");
+        System.clearProperty("notification_support_url");
+    }
 }
