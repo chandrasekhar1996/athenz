@@ -259,13 +259,13 @@ public class RoleMemberExpiryNotificationTask implements NotificationTask {
 
         @Override
         public NotificationSlackMessage getNotificationAsSlackMessage(Notification notification) {
-            String slackMessageContent = notificationConverterCommon.getSlackMessageFromTemplate(notification.getDetails(), slackPrincipalExpiryTemplate, NOTIFICATION_DETAILS_ROLES_LIST, TEMPLATE_COLUMN_NAMES.length, ServerCommonConsts.OBJECT_ROLE);
-            if (StringUtil.isEmpty(slackMessageContent)) {
+            List<String> slackMessageContentList = notificationConverterCommon.getSlackMessageFromTemplate(notification.getDetails(), slackPrincipalExpiryTemplate, NOTIFICATION_DETAILS_ROLES_LIST, TEMPLATE_COLUMN_NAMES.length, ServerCommonConsts.OBJECT_ROLE);
+            if (slackMessageContentList == null || slackMessageContentList.isEmpty()) {
                 return null;
             }
             Set<String> slackRecipients = notificationConverterCommon.getSlackRecipients(notification.getRecipients(), notification.getNotificationDomainMeta());
             return new NotificationSlackMessage(
-                    slackMessageContent,
+                    slackMessageContentList,
                     slackRecipients);
         }
     }
@@ -284,13 +284,13 @@ public class RoleMemberExpiryNotificationTask implements NotificationTask {
 
         @Override
         public NotificationSlackMessage getNotificationAsSlackMessage(Notification notification) {
-            String slackMessageContent = notificationConverterCommon.getSlackMessageFromTemplate(notification.getDetails(), slackDomainExpiryTemplate, NOTIFICATION_DETAILS_MEMBERS_LIST, TEMPLATE_COLUMN_NAMES.length, ServerCommonConsts.OBJECT_ROLE);
-            if (StringUtil.isEmpty(slackMessageContent)) {
+            List<String> slackMessageContentList = notificationConverterCommon.getSlackMessageFromTemplate(notification.getDetails(), slackDomainExpiryTemplate, NOTIFICATION_DETAILS_MEMBERS_LIST, TEMPLATE_COLUMN_NAMES.length, ServerCommonConsts.OBJECT_ROLE);
+            if (slackMessageContentList == null || slackMessageContentList.isEmpty()) {
                 return null;
             }
             Set<String> slackRecipients = notificationConverterCommon.getSlackRecipients(notification.getRecipients(), notification.getNotificationDomainMeta());
             return new NotificationSlackMessage(
-                    slackMessageContent,
+                    slackMessageContentList,
                     slackRecipients);
         }
     }

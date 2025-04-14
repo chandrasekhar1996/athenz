@@ -368,7 +368,7 @@ public class NotificationConverterCommon {
         return slackRecipients;
     }
 
-    public String getSlackMessageFromTemplate(Map<String, String> metaDetails, String template, String detailsKey, Integer numColumns, String collectionType) {
+    public List<String> getSlackMessageFromTemplate(Map<String, String> metaDetails, String template, String detailsKey, Integer numColumns, String collectionType) {
         if (metaDetails == null) {
             return null;
         }
@@ -380,39 +380,51 @@ public class NotificationConverterCommon {
             return null;
         }
 
+        List<String> slackMessageList = new ArrayList<>();
         String[] items = entries.split("\\|");
-        for (String item: items) {
-            String[] details = item.split(";", -1);
-            if (details.length != numColumns) {
-                LOGGER.error("Invalid details: {}", details);
-                continue;
+            List<String> itemsList = Arrays.asList(items);
+            List<List<String>> partitionedItems = new ArrayList<>();
+            for (int i = 0; i < itemsList.size(); i += 15) {
+                partitionedItems.add(itemsList.subList(i, Math.min(i + 15, itemsList.size())));
             }
 
-            decodeTableComponents(details);
-            Map<String, String> itemMap = new HashMap<>();
-            String domainName = details[0];
-            String collectionName = details[1]; // can be role or group
+            for (List<String> partitionedItem: partitionedItems) {
+                Map<String, Object> partitionedDataModel = new HashMap<>();
+                List<Map<String, String>> partitionedData = new ArrayList<>();
+                for (String item: partitionedItem) {
+                    String[] details = item.split(";", -1);
+                    if (details.length != numColumns) {
+                        LOGGER.error("Invalid details: {}", details);
+                        continue;
+                    }
 
-            itemMap.put("domain", domainName);
-            itemMap.put("collection", collectionName);
-            itemMap.put("member", details[2]);
-            itemMap.put("expirationOrReviewDate", details[3]);
-            itemMap.put("notes", details[4]);
-            itemMap.put("domainLink", getDomainLink(domainName));
-            if (ServerCommonConsts.OBJECT_ROLE.equals(collectionType)) {
-                itemMap.put("collectionLink", getRoleLink(domainName, collectionName));
-            } else if (ServerCommonConsts.OBJECT_GROUP.equals(collectionType)) {
-                itemMap.put("collectionLink", getGroupLink(domainName, collectionName));
+                    decodeTableComponents(details);
+                    Map<String, String> itemMap = new HashMap<>();
+                    String domainName = details[0];
+                    String collectionName = details[1]; // can be role or group
+
+                    itemMap.put("domain", domainName);
+                    itemMap.put("collection", collectionName);
+                    itemMap.put("member", details[2]);
+                    itemMap.put("expirationOrReviewDate", details[3]);
+                    itemMap.put("notes", details[4]);
+                    itemMap.put("domainLink", getDomainLink(domainName));
+                    if (ServerCommonConsts.OBJECT_ROLE.equals(collectionType)) {
+                        itemMap.put("collectionLink", getRoleLink(domainName, collectionName));
+                    } else if (ServerCommonConsts.OBJECT_GROUP.equals(collectionType)) {
+                        itemMap.put("collectionLink", getGroupLink(domainName, collectionName));
+                    }
+
+                    partitionedData.add(itemMap);
+                }
+                partitionedDataModel.put("collectionData", partitionedData);
+                partitionedDataModel.put("uiUrl", getAthenzUIUrl());
+                String slackMessage = generateSlackMessageFromTemplate(partitionedDataModel, template);
+                if (slackMessage != null) {
+                    slackMessageList.add(slackMessage);
+                }
             }
 
-            dataModel.add(itemMap);
-        }
-        if (dataModel.isEmpty()) {
-            return null;
-        }
-        rootDataModel.put("collectionData", dataModel);
-        rootDataModel.put("uiUrl", getAthenzUIUrl());
-
-        return generateSlackMessageFromTemplate(rootDataModel, template);
+            return slackMessageList;
     }
 }

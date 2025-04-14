@@ -16,26 +16,27 @@
 
 package com.yahoo.athenz.common.server.notification;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
 public class NotificationSlackMessage {
 
-    private final String message;
-    private final Set<String> recepients;
+    private final Set<String> recipients;
+    private final List<String> messageList;
 
-    public NotificationSlackMessage(String message, Set<String> recepients) {
-        this.recepients = recepients;
-        this.message = message;
+    public NotificationSlackMessage(List<String> messageList, Set<String> recipients) {
+        this.recipients = recipients;
+        this.messageList = messageList;
     }
 
-    public String getMessage() {
-        return message;
+    public List<String> getMessageList() {
+        return messageList;
     }
 
 
     public Set<String> getRecipients() {
-        return recepients;
+        return recipients;
     }
 
     @Override
@@ -47,12 +48,12 @@ public class NotificationSlackMessage {
             return false;
         }
         NotificationSlackMessage that = (NotificationSlackMessage) o;
-        return  Objects.equals(getMessage(), that.getMessage()) &&
+        return  Objects.equals(getMessageList(), that.getMessageList()) &&
                 Objects.equals(getRecipients(), that.getRecipients());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getMessage(), getRecipients());
+        return Objects.hash(getMessageList(), getRecipients());
     }
 }

@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -115,6 +116,18 @@ public class AthenzSlackClient {
                 allSuccessful = false;
             }
         }
+        return allSuccessful;
+    }
+
+    public boolean sendMessage(Collection<String> recipients, List<String> message) {
+        Boolean allSuccessful = true;
+
+        for (String msg : message) {
+            if (!sendMessage(recipients, msg)) {
+                allSuccessful = false;
+            }
+        }
+
         return allSuccessful;
     }
 

@@ -24,6 +24,7 @@ import com.yahoo.athenz.common.server.notification.NotificationSlackMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Set;
 
 /*
@@ -54,7 +55,7 @@ public class SlackNotificationService implements NotificationService {
         }
 
         Set<String> recipients = notificationSlackMessage.getRecipients();
-        final String message = notificationSlackMessage.getMessage();
+        final List<String> messageList = notificationSlackMessage.getMessageList();
 
         // if our list of recipients is empty then we have nothing to do,
         // but we want to log it for debugging purposes
@@ -64,7 +65,7 @@ public class SlackNotificationService implements NotificationService {
             return false;
         }
 
-        if (sendSlackMessage(recipients, message)) {
+        if (sendSlackMessage(recipients, messageList)) {
             LOGGER.info("Successfully sent slack notification. Type={}, Recipients={}", notification.getType(), recipients);
             return true;
         } else {
@@ -73,8 +74,8 @@ public class SlackNotificationService implements NotificationService {
         }
     }
 
-    public boolean sendSlackMessage(Set<String> recipients, String message) {
-        return slackClient.sendMessage(recipients, message);
+    public boolean sendSlackMessage(Set<String> recipients, List<String> messageList) {
+        return slackClient.sendMessage(recipients, messageList);
     }
 
 }
