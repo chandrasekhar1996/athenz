@@ -61,7 +61,7 @@ class AuthZPEClient {
 
         if (!roleToken || !resource || !action) {
             return cb(
-                'ERROR: paramater must include 3 members: roleToken, resource, action',
+                'ERROR: parameter must include 3 members: roleToken, resource, action',
                 AccessCheckStatus.DENY_INVALID_PARAMETERS
             );
         }
