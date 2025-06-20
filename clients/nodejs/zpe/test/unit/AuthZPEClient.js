@@ -19,6 +19,7 @@ var AuthZPEClient = require('../../src/AuthZPEClient');
 
 var RoleToken = require('@athenz/auth-core').RoleToken;
 var YBase64 = require('@athenz/auth-core').YBase64;
+var AccessCheckStatus = require('../../src/AccessCheckStatus');
 
 var privateKeyK0 = Buffer.from(
     fs.readFileSync(
@@ -446,6 +447,24 @@ describe('AuthZPEClient', function () {
             (err, accessCheckStatus) => {
                 expect(accessCheckStatus).to.deep.equal(
                     'Access denied due to invalid/empty action/resource values'
+                );
+            }
+        );
+    });
+
+    it('should test AuthZPEClient allowAccess with missing parameters', function () {
+        var action = 'read';
+        AuthZPEClient.allowAccess(
+            {
+                roleToken: roleToken,
+                action: action,
+            },
+            (err, accessCheckStatus) => {
+                expect(err).to.equal(
+                    'ERROR: paramater must include 3 members: roleToken, resource, action'
+                );
+                expect(accessCheckStatus).to.equal(
+                    AccessCheckStatus.DENY_INVALID_PARAMETERS
                 );
             }
         );
